@@ -858,25 +858,18 @@ def load_unit_prompt(unit_name):
         with open(f'prompts/{unit_name}.md', 'r', encoding='utf-8') as f:
             content = f.read().strip()
         
-        # Markdownファイルの内容をプロンプトとして使用
-        # ## 単元固有の指導ポイント以降の内容を抽出
-        lines = content.split('\n')
-        prompt_parts = []
-        current_section = ""
-        
-        for line in lines:
-            if line.startswith('## '):
-                current_section = line[3:].strip()
-                if current_section in ['役割設定', '基本指針', '対話の進め方', '絶対に守ること']:
-                    prompt_parts.append(line)
-            elif current_section in ['役割設定', '基本指針', '対話の進め方', '絶対に守ること']:
-                prompt_parts.append(line)
-        
-        return '\n'.join(prompt_parts)
+        # 新しいプロンプト形式：ファイル内容をそのまま使用
+        if content:
+            return content
+        else:
+            return get_fallback_prompt()
     
     except FileNotFoundError:
-        # フォールバック: デフォルトプロンプト
-        return """
+        return get_fallback_prompt()
+
+def get_fallback_prompt():
+    """フォールバック用のデフォルトプロンプト"""
+    return """
 あなたは小学生向けの産婆法（ソクラテス式問答法）を実践する理科指導者です。小学生のレベルに合わせた簡単な質問で、学習者自身に気づかせることが目的です。
 
 ## 基本指針
@@ -1016,6 +1009,8 @@ def chat():
     
     # 単元ごとのプロンプトを読み込み
     unit_prompt = load_unit_prompt(unit)
+    print(f"プロンプト読み込み確認 - Unit: {unit}")
+    print(f"プロンプト内容（最初の100文字）: {unit_prompt[:100]}...")
     
     # 対話回数に応じた段階別支援戦略を決定
     conversation_count = len(conversation) // 2 + 1  # ユーザーメッセージの回数
