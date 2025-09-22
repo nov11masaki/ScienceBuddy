@@ -1,6 +1,13 @@
-# 空気の温度と体積 - 子ども主体対話プロンプト
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+プロンプトファイルを子ども主体の対話にアップデートするスクリプト
+"""
 
+import os
 
+# 子ども主体の対話ガイドライン
+FRIENDLY_GUIDELINES = """
 ## 重要な基本方針
 - **絶対に答えを言わない** - 科学的な結論や説明は一切提供しない
 - **子どもの予想を最優先** - 実験前に子どもが何を考えているかを重視
@@ -30,9 +37,10 @@
 - 正解の提示
 - 長い説明
 - 理論の説明
+"""
 
-
-
+# 基本的な質問例
+BASIC_QUESTIONS = """
 ## よく使う質問パターン
 - なんでそう思うの？
 - どうしてかな？
@@ -40,9 +48,10 @@
 - 似たようなこと、あった？
 - いつそう思った？
 - そうそう！なんでそうなるのかな？
+"""
 
-
-## 対話の進め方（徹底的に子ども主体）
+# 対話の流れ
+DIALOGUE_PATTERN = """## 対話の進め方（徹底的に子ども主体）
 
 ### 絶対に守ること
 - **AIは答えを言わない** - 大きくなる小さくなるは子どもが言うまで待つ
@@ -69,9 +78,10 @@
 2. **場面を聞く**: いつ？どこで？
 3. **感じ方を聞く**: そのとき、どう思った？
 4. **似た体験**: 他にも似たこと、ない？
+"""
 
-
-
+# 絶対に守るルール
+STRICT_RULES = """
 ## 絶対に守るルール（AIからの回答例）
 
 ### ✗ 絶対にダメな応答例
@@ -94,7 +104,22 @@
 - いいね！なんで？
 - そうそう！どうして？
 - なるほど！もっと詳しく！
+"""
 
+def update_prompt_file(file_path, unit_name):
+    """プロンプトファイルを更新する"""
+    print(f"更新中: {file_path}")
+    
+    # 新しいプロンプト内容
+    new_content = f"""# {unit_name} - 子ども主体対話プロンプト
+
+{FRIENDLY_GUIDELINES}
+
+{BASIC_QUESTIONS}
+
+{DIALOGUE_PATTERN}
+
+{STRICT_RULES}
 
 ## この単元の特別な注意点
 - 絶対に「温めると膨張する」「冷やすと収縮する」は言わない
@@ -116,3 +141,62 @@
 - AI: それは空気が温まって分子が活発に動くようになり、体積が膨張したからです
 
 温めると大きくなるという現象は熱膨張と呼ばれ...（絶対にダメ！）
+"""
+    
+    try:
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(new_content)
+        print(f"✓ 更新完了: {file_path}")
+        return True
+    except Exception as e:
+        print(f"✗ エラー: {file_path} - {e}")
+        return False
+
+def main():
+    """メイン処理"""
+    # prompts/ディレクトリのパス
+    prompts_dir = os.path.join(os.getcwd(), "prompts")
+    
+    if not os.path.exists(prompts_dir):
+        print(f"エラー: {prompts_dir} が見つかりません")
+        return
+    
+    # 更新対象ファイル
+    files_to_update = [
+        ("金属のあたたまり方.md", "金属のあたたまり方"),
+        ("空気の温度と体積.md", "空気の温度と体積"),
+        ("水のあたたまり方.md", "水のあたたまり方"), 
+        ("水を熱し続けた時の温度と様子.md", "水を熱し続けた時の温度と様子")
+    ]
+    
+    success_count = 0
+    total_count = len(files_to_update)
+    
+    print("プロンプトファイルの更新を開始します...")
+    print("=" * 50)
+    
+    for filename, unit_name in files_to_update:
+        file_path = os.path.join(prompts_dir, filename)
+        
+        if os.path.exists(file_path):
+            if update_prompt_file(file_path, unit_name):
+                success_count += 1
+        else:
+            print(f"✗ ファイルが見つかりません: {file_path}")
+    
+    print("=" * 50)
+    print(f"更新完了: {success_count}/{total_count} ファイル")
+    
+    if success_count == total_count:
+        print("✓ 全てのプロンプトファイルを子ども主体の対話に更新しました！")
+        print("\n更新された内容:")
+        print("- AIは絶対に答えを言わない")
+        print("- 15文字以内の短い質問")
+        print("- なんで？どうして？を多用")
+        print("- 子どもの予想と理由を最優先")
+        print("- 実験結果の解釈は子どもが行う")
+    else:
+        print(f"⚠ {total_count - success_count} ファイルの更新に失敗しました")
+
+if __name__ == "__main__":
+    main()
