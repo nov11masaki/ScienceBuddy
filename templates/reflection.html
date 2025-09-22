@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}考察をまとめよう{% endblock %}
+
+{% block content %}
+<div class="reflection-page">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="reflection-header text-center mb-4">
+                    <h2 class="mb-3">
+                        <i class="fas fa-lightbulb text-primary"></i>
+                        考察をまとめよう
+                    </h2>
+                    <div class="unit-display">
+                        <span class="badge bg-primary fs-6">{{ unit }}</span>
+                    </div>
+                </div>
+                
+                <div class="prediction-review mb-4">
+                    <div class="review-card">
+                        <h5 class="review-title">
+                            <i class="fas fa-brain"></i>
+                            あなたの予想
+                        </h5>
+                        <p class="review-content">{{ prediction_summary or '予想が記録されていません。' }}</p>
+                    </div>
+                </div>
+                
+                <div class="chat-container">
+                    <div class="chat-messages" id="reflectionMessages">
+                        <!-- 初期メッセージはJavaScriptで動的に追加 -->
+                    </div>
+                    
+                    <div class="chat-input-section">
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="reflectionInput" placeholder="実験結果を入力してください...">
+                            <button class="btn btn-primary" id="sendReflectionButton">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="action-buttons text-center mt-4">
+                    <button class="btn btn-success" id="finalSummaryButton" style="display: none;">
+                        <i class="fas fa-file-alt me-2"></i>
+                        考察をまとめる
+                    </button>
+                </div>
+                
+                <div class="final-summary-section" id="finalSummarySection" style="display: none;">
+                    <div class="final-summary-card">
+                        <h5 class="final-summary-title">
+                            <i class="fas fa-graduation-cap"></i>
+                            最終考察
+                        </h5>
+                        <div class="final-summary-content" id="finalSummaryContent"></div>
+                        <div class="text-center mt-3">
+                            <a href="/" class="btn btn-primary">
+                                <i class="fas fa-home me-2"></i>
+                                ホームに戻る
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let conversationCount = 0;
+let reflectionCount = 0;
+
+// ページ読み込み時の初期化
+document.addEventListener('DOMContentLoaded', function() {
+    // 初期メッセージを表示
+    addReflectionMessage('実験でどんなことが起こりましたか？', 'ai');
+});
+
+document.getElementById('sendReflectionButton').addEventListener('click', sendReflection);
+document.getElementById('reflectionInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        sendReflection();
+    }
+});
+
+document.getElementById('finalSummaryButton').addEventListener('click', getFinalSummary);
+
+function sendReflection() {
+    const input = document.getElementById('reflectionInput');
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    // ユーザーメッセージを表示
+    addReflectionMessage(message, 'user');
+    input.value = '';
+    
+    // 送信ボタンを無効化
+    document.getElementById('sendReflectionButton').disabled = true;
+    
+    // APIリクエストデータ
+    const requestData = { 
+        message: message
+    };
+    
+    // AIの応答を取得
+    fetch('/reflect_chat', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTPエラー: ${response.status} ${response.statusText}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.error) {
+            addReflectionMessage('エラーが発生しました: ' + data.error, 'ai');
+        } else {
+            addReflectionMessage(data.response, 'ai');
+            reflectionCount++;
+            
+            // 十分な対話が行われた場合、まとめボタンを表示
+            if (reflectionCount >= 3) {
+                document.getElementById('finalSummaryButton').style.display = 'block';
+            }
+        }
+        
+        // 送信ボタンを有効化
+        document.getElementById('sendReflectionButton').disabled = false;
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        addReflectionMessage('通信エラーが発生しました: ' + error.message, 'ai');
+        document.getElementById('sendReflectionButton').disabled = false;
+    });
+}
+
+function addReflectionMessage(content, type) {
+    const messagesContainer = document.getElementById('reflectionMessages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${type}-message`;
+    
+    messageDiv.innerHTML = `
+        <div class="message-avatar"></div>
+        <div class="message-content">
+            ${content}
+        </div>
+    `;
+    
+    messagesContainer.appendChild(messageDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function getFinalSummary() {
+    document.getElementById('finalSummaryButton').disabled = true;
+    
+    fetch('/final_summary', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert('エラーが発生しました: ' + data.error);
+        } else {
+            document.getElementById('finalSummaryContent').textContent = data.summary;
+            document.getElementById('finalSummarySection').style.display = 'block';
+            document.getElementById('finalSummaryButton').style.display = 'none';
+        }
+        document.getElementById('finalSummaryButton').disabled = false;
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('通信エラーが発生しました。');
+        document.getElementById('finalSummaryButton').disabled = false;
+    });
+}
+</script>
+{% endblock %}

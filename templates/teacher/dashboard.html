@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% block title %}教員用ダッシュボード{% endblock %}
+
+{% block content %}
+<div class="teacher-dashboard">
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <div class="dashboard-header text-center mb-5">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div></div>
+                        <h1 class="display-4 mb-0">
+                            <i class="fas fa-chalkboard-teacher text-primary"></i>
+                            教員用ダッシュボード
+                        </h1>
+                        <div class="teacher-info">
+                            <span class="badge bg-success me-2">{{ teacher_id }}</span>
+                            <a href="/teacher/logout" class="btn btn-outline-secondary btn-sm">
+                                <i class="fas fa-sign-out-alt me-1"></i>ログアウト
+                            </a>
+                        </div>
+                    </div>
+                    <p class="lead text-muted">学習者の予想・考察の過程を確認できます</p>
+                </div>
+                
+                <div class="row g-4">
+                    <div class="col-lg-3">
+                        <div class="dashboard-card">
+                            <div class="card-icon">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <h4>学習ログ</h4>
+                            <p>学習者の対話履歴と学習過程を確認</p>
+                            <a href="/teacher/logs" class="btn btn-primary">
+                                <i class="fas fa-eye me-2"></i>ログを見る
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-3">
+                        <div class="dashboard-card">
+                            <div class="card-icon">
+                                <i class="fas fa-file-pdf"></i>
+                            </div>
+                            <h4>指導要領・資料管理</h4>
+                            <p>指導要領や文科省言語活動資料の管理</p>
+                            <a href="/teacher/guidelines" class="btn btn-success">
+                                <i class="fas fa-upload me-2"></i>資料管理
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-3">
+                        <div class="dashboard-card">
+                            <div class="card-icon">
+                                <i class="fas fa-edit"></i>
+                            </div>
+                            <h4>プロンプト管理</h4>
+                            <p>各単元の対話プロンプトをカスタマイズ</p>
+                            <a href="/teacher/prompts" class="btn btn-info">
+                                <i class="fas fa-edit me-2"></i>プロンプト編集
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-3">
+                        <div class="dashboard-card featured-card">
+                            <div class="card-icon">
+                                <i class="fas fa-brain"></i>
+                            </div>
+                            <h4>AI学習分析</h4>
+                            <p>個別・全体の学習傾向分析と言語化プロセス評価</p>
+                            <a href="/teacher/analysis" class="btn btn-warning">
+                                <i class="fas fa-magic me-2"></i>分析を見る
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 指導案設定状況 -->
+                <div class="row mt-5">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="fas fa-clipboard-check text-primary"></i> 指導案設定状況</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    {% for unit in units %}
+                                    <div class="col-md-4 col-lg-3 mb-3">
+                                        <div class="unit-status">
+                                            {% if unit in lesson_plans %}
+                                            <div class="d-flex align-items-center">
+                                                <i class="fas fa-check-circle text-success me-2"></i>
+                                                <div>
+                                                    <strong>{{ unit }}</strong><br>
+                                                    <small class="text-muted">{{ lesson_plans[unit].filename[:20] }}{% if lesson_plans[unit].filename|length > 20 %}...{% endif %}</small>
+                                                </div>
+                                            </div>
+                                            {% else %}
+                                            <div class="d-flex align-items-center">
+                                                <i class="fas fa-exclamation-circle text-warning me-2"></i>
+                                                <div>
+                                                    <strong>{{ unit }}</strong><br>
+                                                    <small class="text-muted">指導案未設定</small>
+                                                </div>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                <div class="mt-3">
+                                    <p class="small text-muted mb-1">
+                                        <i class="fas fa-info-circle"></i> 
+                                        指導案を設定すると、AIの分析が授業内容に基づいて行われ、より具体的で実践的な評価が可能になります。
+                                    </p>
+                                    <a href="/teacher/lesson_plans" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-cog"></i> 指導案を設定する
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row g-4 mt-2">
+                    <div class="col-lg-6">
+                        <div class="dashboard-card">
+                            <div class="card-icon">
+                                <i class="fas fa-download"></i>
+                            </div>
+                            <h4>データエクスポート</h4>
+                            <p>学習データをCSVで出力</p>
+                            <button class="btn btn-secondary" onclick="exportData()">
+                                <i class="fas fa-file-csv me-2"></i>エクスポート
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="quick-filters mt-5">
+                    <h3 class="mb-4">
+                        <i class="fas fa-filter"></i>
+                        クイックフィルター
+                    </h3>
+                    <div class="row g-3">
+                        {% for unit in units %}
+                        <div class="col-lg-3 col-md-4 col-6">
+                            <a href="/teacher/logs?unit={{ unit|urlencode }}" class="filter-card">
+                                <div class="filter-icon">
+                                    {% if '温度' in unit %}
+                                        <i class="fas fa-thermometer-half"></i>
+                                    {% elif 'あたたまり' in unit %}
+                                        <i class="fas fa-fire"></i>
+                                    {% elif 'ふっとう' in unit %}
+                                        <i class="fas fa-tint"></i>
+                                    {% elif '冷やした' in unit %}
+                                        <i class="fas fa-snowflake"></i>
+                                    {% else %}
+                                        <i class="fas fa-flask"></i>
+                                    {% endif %}
+                                </div>
+                                <span class="filter-title">{{ unit }}</span>
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div class="text-center mt-5">
+                    <a href="/" class="btn btn-outline-secondary">
+                        <i class="fas fa-home me-2"></i>学習システムに戻る
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function exportData() {
+    const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
+    
+    fetch(`/teacher/export?date=${today}`)
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('エクスポート中にエラーが発生しました。');
+    });
+}
+</script>
+{% endblock %}

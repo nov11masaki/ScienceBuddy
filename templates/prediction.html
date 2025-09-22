@@ -1,0 +1,501 @@
+{% extends "base.html" %}
+
+{% block title %}予想を立てよう{% endblock %}
+
+{% block content %}
+<div class="chat-page">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="chat-header text-center mb-4">
+                    <h2 class="mb-3">
+                        <i class="fas fa-brain text-primary"></i>
+                        予想を立てよう
+                    </h2>
+                    <div class="unit-display">
+                        <span class="badge bg-primary fs-6">{{ unit }}</span>
+                    </div>
+                </div>
+                
+                <div class="task-section mb-4">
+                    <div class="task-card">
+                        <h5 class="task-title">
+                            <i class="fas fa-clipboard-list"></i>
+                            課題
+                        </h5>
+                        <p class="task-content">{{ task_content }}</p>
+                    </div>
+                </div>
+                
+                <div class="chat-container">
+                    <div class="api-status" id="apiStatus" style="display: none;">
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <span id="apiStatusMessage">AI接続を確認中...</span>
+                            <button class="btn btn-sm btn-outline-secondary ms-2" onclick="testApiConnection()">
+                                <i class="fas fa-sync"></i> 再テスト
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="message ai-message">
+                            <div class="message-avatar"></div>
+                            <div class="message-content">
+                                こんにちは！この課題について、どのような結果になると思いますか？あなたの考えを聞かせてください。
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="chat-input-section">
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="messageInput" placeholder="あなたの考えを入力してください...">
+                            <button class="btn btn-primary" id="sendButton">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="action-buttons text-center mt-4">
+                    <button class="btn btn-success" id="summaryButton" style="display: none;">
+                        <i class="fas fa-check me-2"></i>
+                        予想をまとめる
+                    </button>
+                </div>
+                
+                <div class="summary-section" id="summarySection" style="display: none;">
+                    <div class="summary-card">
+                        <h5 class="summary-title">
+                            <i class="fas fa-lightbulb"></i>
+                            あなたの予想
+                        </h5>
+                        <div class="summary-content" id="summaryContent"></div>
+                        <div class="text-center mt-3">
+                            <a href="/experiment" class="btn btn-primary">
+                                <i class="fas fa-flask me-2"></i>
+                                実験を始める
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let conversationCount = 0;
+let lastMessage = '';
+
+// デジタル学習ツイン用の入力行動追跡
+let inputBehaviorTracker = {
+    startTime: null,
+    keystrokes: [],
+    pauses: 0,
+    backspaces: 0,
+    
+    startTracking: function() {
+        this.startTime = Date.now();
+        this.keystrokes = [];
+        this.pauses = 0;
+        this.backspaces = 0;
+    },
+    
+    recordKeystroke: function(key) {
+        const now = Date.now();
+        
+        if (this.keystrokes.length > 0) {
+            const timeSinceLastKey = now - this.keystrokes[this.keystrokes.length - 1].timestamp;
+            if (timeSinceLastKey > 2000) { // 2秒以上の間隔はためらいとみなす
+                this.pauses++;
+            }
+        }
+        
+        if (key === 'Backspace') {
+            this.backspaces++;
+        }
+        
+        this.keystrokes.push({
+            key: key,
+            timestamp: now
+        });
+    },
+    
+    getMetadata: function() {
+        const totalTime = this.startTime ? (Date.now() - this.startTime) / 1000 : 0;
+        const typingSpeed = this.keystrokes.length > 0 ? this.keystrokes.length / totalTime : 0;
+        
+        return {
+            typing_speed: typingSpeed,
+            pause_count: this.pauses,
+            backspace_count: this.backspaces,
+            thinking_time: totalTime
+        };
+    }
+};
+
+// ページ読み込み時にAPI接続をテスト
+document.addEventListener('DOMContentLoaded', function() {
+    testApiConnection();
+    
+    // 入力フィールドにイベントリスナーを追加
+    const messageInput = document.getElementById('messageInput');
+    
+    messageInput.addEventListener('focus', function() {
+        inputBehaviorTracker.startTracking();
+    });
+    
+    messageInput.addEventListener('keydown', function(e) {
+        inputBehaviorTracker.recordKeystroke(e.key);
+    });
+});
+
+document.getElementById('sendButton').addEventListener('click', sendMessage);
+document.getElementById('messageInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        sendMessage();
+    }
+});
+
+document.getElementById('summaryButton').addEventListener('click', getSummary);
+
+function testApiConnection() {
+    fetch('/api/test')
+    .then(response => response.json())
+    .then(data => {
+        const statusDiv = document.getElementById('apiStatus');
+        const messageSpan = document.getElementById('apiStatusMessage');
+        
+        if (data.status === 'success') {
+            statusDiv.style.display = 'none';
+            console.log('API接続テスト成功:', data.response);
+        } else {
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'alert alert-danger';
+            messageSpan.textContent = data.message || 'AI接続に問題があります';
+        }
+    })
+    .catch(error => {
+        console.error('API接続テストエラー:', error);
+        const statusDiv = document.getElementById('apiStatus');
+        const messageSpan = document.getElementById('apiStatusMessage');
+        statusDiv.style.display = 'block';
+        statusDiv.className = 'alert alert-danger';
+        messageSpan.textContent = 'ネットワーク接続に問題があります';
+    });
+}
+
+function sendMessage() {
+    const input = document.getElementById('messageInput');
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    // ユーザーメッセージを表示
+    addMessage(message, 'user');
+    input.value = '';
+    
+    // APIに送信
+    sendMessageToAPI(message);
+}
+
+function addMessage(content, type) {
+    const messagesContainer = document.getElementById('chatMessages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${type}-message`;
+    
+    messageDiv.innerHTML = `
+        <div class="message-avatar"></div>
+        <div class="message-content">
+            ${content}
+        </div>
+    `;
+    
+    messagesContainer.appendChild(messageDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    
+    return messageDiv; // 作成されたメッセージ要素を返す
+}
+
+function addRetryButton() {
+    const messagesContainer = document.getElementById('chatMessages');
+    const retryDiv = document.createElement('div');
+    retryDiv.className = 'message ai-message retry-message';
+    retryDiv.innerHTML = `
+        <div class="message-avatar"></div>
+        <div class="message-content">
+            <button class="btn btn-outline-primary btn-sm" onclick="retryLastMessage()">
+                <i class="fas fa-redo me-2"></i>再試行
+            </button>
+        </div>
+    `;
+    messagesContainer.appendChild(retryDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function retryLastMessage() {
+    // 再試行ボタンを削除
+    const retryMessages = document.querySelectorAll('.retry-message');
+    retryMessages.forEach(msg => msg.remove());
+    
+    // 最後のユーザーメッセージを再送信
+    const userMessages = document.querySelectorAll('.user-message .message-content');
+    if (userMessages.length > 0) {
+        const lastMessage = userMessages[userMessages.length - 1].textContent;
+        // 直接APIを呼び出す
+        sendMessageToAPI(lastMessage);
+    }
+}
+
+function sendMessageToAPI(message) {
+    // 送信ボタンを無効化
+    document.getElementById('sendButton').disabled = true;
+    
+    // 読み込み中のメッセージを表示
+    const loadingMessage = addMessage('考え中...', 'ai');
+    loadingMessage.classList.add('loading-message');
+    
+    // 入力行動メタデータを取得
+    const inputMetadata = inputBehaviorTracker.getMetadata();
+    
+    // APIリクエストデータ
+    const requestData = { 
+        message: message,
+        metadata: inputMetadata  // デジタル学習ツイン用データ
+    };
+    
+    // AIの応答を取得
+    fetch('/chat', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
+    })
+    .then(response => {
+        // 読み込み中メッセージを削除
+        const loadingMessages = document.querySelectorAll('.loading-message');
+        loadingMessages.forEach(msg => msg.remove());
+        
+        if (!response.ok) {
+            throw new Error(`HTTPエラー: ${response.status} ${response.statusText}`);
+        }
+        
+        return response.json();
+    })
+    .then(data => {
+        if (data.error) {
+            addMessage('⚠️ ' + data.error, 'ai');
+            addRetryButton();
+        } else {
+            addMessage(data.response, 'ai');
+            conversationCount++;
+            
+            // デジタル学習ツインのインサイトを表示（開発時のみ）
+            if (data.twin_insights && window.location.hostname === 'localhost') {
+                console.log('学習ツイン分析:', data.twin_insights);
+                displayTwinInsights(data.twin_insights);
+            }
+            
+            if (data.suggest_summary) {
+                document.getElementById('summaryButton').style.display = 'block';
+            }
+        }
+        
+        document.getElementById('sendButton').disabled = false;
+    })
+    .catch(error => {
+        // 読み込み中メッセージを削除
+        const loadingMessages = document.querySelectorAll('.loading-message');
+        loadingMessages.forEach(msg => msg.remove());
+        
+        console.error('通信エラー詳細:', error);
+        addMessage('⚠️ 通信エラーが発生しました: ' + error.message, 'ai');
+        addRetryButton();
+        document.getElementById('sendButton').disabled = false;
+        
+        // API接続テストを実行
+        testApiConnection();
+    });
+}
+
+function displayTwinInsights(insights) {
+    // 開発・デバッグ用のインサイト表示
+    const insightDiv = document.createElement('div');
+    insightDiv.className = 'twin-insights mt-2 p-2 bg-light rounded small';
+    insightDiv.innerHTML = `
+        <strong>🧠 学習分析:</strong><br>
+        自信度: ${(insights.confidence_level * 100).toFixed(0)}%<br>
+        思考パターン: ${insights.thinking_pattern.join(', ')}<br>
+        ためらいレベル: ${insights.hesitation_level}
+    `;
+    
+    const chatContainer = document.querySelector('.chat-container');
+    chatContainer.appendChild(insightDiv);
+    
+    // 5秒後に削除
+    setTimeout(() => {
+        if (insightDiv.parentNode) {
+            insightDiv.parentNode.removeChild(insightDiv);
+        }
+    }, 5000);
+}
+
+function getSummary() {
+    document.getElementById('summaryButton').disabled = true;
+    
+    fetch('/summary', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert('エラーが発生しました: ' + data.error);
+        } else {
+            document.getElementById('summaryContent').textContent = data.summary;
+            document.getElementById('summarySection').style.display = 'block';
+            document.getElementById('summaryButton').style.display = 'none';
+        }
+        document.getElementById('summaryButton').disabled = false;
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('通信エラーが発生しました。');
+        document.getElementById('summaryButton').disabled = false;
+    });
+}
+
+// デジタル学習ツイン統合
+class LearningTwinIntegration {
+    constructor() {
+        this.messageStartTime = null;
+        this.isTyping = false;
+        this.setupTypingDetection();
+    }
+    
+    setupTypingDetection() {
+        const messageInput = document.getElementById('messageInput');
+        if (messageInput) {
+            messageInput.addEventListener('focus', () => {
+                this.messageStartTime = Date.now();
+            });
+            
+            messageInput.addEventListener('input', () => {
+                this.isTyping = true;
+            });
+            
+            messageInput.addEventListener('blur', () => {
+                this.isTyping = false;
+            });
+        }
+    }
+    
+    getResponseTime() {
+        if (this.messageStartTime) {
+            return (Date.now() - this.messageStartTime) / 1000;
+        }
+        return 5.0; // デフォルト値
+    }
+    
+    async updateTwinRealtime(message) {
+        try {
+            const responseTime = this.getResponseTime();
+            const metadata = {
+                response_time: responseTime,
+                typing_duration: responseTime,
+                message_length: message.length,
+                timestamp: new Date().toISOString()
+            };
+            
+            const response = await fetch('/teacher/twin/realtime-update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    student_id: this.getStudentId(),
+                    message: message,
+                    response_time: responseTime,
+                    context: {
+                        phase: 'prediction',
+                        unit: this.getCurrentUnit(),
+                        timestamp: new Date().toISOString()
+                    }
+                })
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                this.displayTwinInsights(data);
+            }
+        } catch (error) {
+            console.log('Learning twin update failed:', error);
+            // エラーは表示せず、サイレントに処理
+        }
+    }
+    
+    displayTwinInsights(data) {
+        // 先生用のリアルタイム洞察を表示（デバッグ目的）
+        if (window.location.search.includes('debug=true')) {
+            const analysis = data.analysis;
+            const insights = document.createElement('div');
+            insights.className = 'alert alert-info mt-2';
+            insights.innerHTML = `
+                <small>
+                    <strong>🧠 学習ツイン分析:</strong><br>
+                    確信度: ${Math.round(analysis.confidence_level * 100)}% | 
+                    ためらい: ${Math.round(analysis.hesitation_level * 100)}% | 
+                    概念: ${analysis.concept_mentions.join(', ') || 'なし'}
+                </small>
+            `;
+            
+            const chatMessages = document.getElementById('chatMessages');
+            chatMessages.appendChild(insights);
+            
+            // 5秒後に削除
+            setTimeout(() => {
+                if (insights.parentNode) {
+                    insights.parentNode.removeChild(insights);
+                }
+            }, 5000);
+        }
+    }
+    
+    getStudentId() {
+        // セッションから学習者IDを取得（実装により異なる）
+        return document.body.dataset.studentId || '1';
+    }
+    
+    getCurrentUnit() {
+        const unitBadge = document.querySelector('.badge');
+        return unitBadge ? unitBadge.textContent : '';
+    }
+}
+
+// 学習ツイン統合を初期化
+const twinIntegration = new LearningTwinIntegration();
+
+// 既存のsendMessage関数を拡張
+const originalSendMessage = window.sendMessage;
+window.sendMessage = function() {
+    const messageInput = document.getElementById('messageInput');
+    const message = messageInput.value.trim();
+    
+    if (message) {
+        // 学習ツインをリアルタイム更新
+        twinIntegration.updateTwinRealtime(message);
+    }
+    
+    // 元の関数を実行
+    if (originalSendMessage) {
+        return originalSendMessage();
+    }
+};
+</script>
+{% endblock %}
