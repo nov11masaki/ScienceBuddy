@@ -2025,10 +2025,7 @@ def analyze_class_trends(logs, unit=None):
     
     if not unit_logs or len(students) == 0:
         return {
-            'overall_trend': '分析対象のデータがありません',
-            'common_misconceptions': [],
-            'effective_approaches': [],
-            'recommendations': []
+            'overall_trend': '分析対象のデータがありません'
         }
     
     # 指導案の内容を取得（特定単元の場合）
@@ -2098,7 +2095,7 @@ def analyze_class_trends(logs, unit=None):
 言語活動支援の観点からクラス全体の状況を分析してください。
 
 【分析項目】
-- overall_trend: クラス全体の言語活動の傾向（100文字程度）
+- overall_trend: クラス全体の言語活動の傾向（200文字程度）
 - language_challenges: 児童が共通して抱える言語化の課題を3つ
 - verbalization_level: 言語化能力のレベル（発展中/安定/要支援）
 - dialogue_engagement: 対話への参加状況
