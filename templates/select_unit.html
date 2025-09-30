@@ -36,6 +36,24 @@
                                 {% endif %}
                             </div>
                             <h5 class="unit-title">{{ unit }}</h5>
+                            
+                            {% if unit_progress and unit in unit_progress %}
+                                {% set progress = unit_progress[unit] %}
+                                {% if progress.needs_resumption %}
+                                    <div class="progress-indicator">
+                                        <span class="badge bg-warning">
+                                            <i class="fas fa-play-circle"></i> {{ progress.progress_summary }}
+                                        </span>
+                                        <small class="text-muted d-block mt-1">前回の続きから</small>
+                                    </div>
+                                {% elif progress.progress_summary != "未開始" %}
+                                    <div class="progress-indicator">
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check-circle"></i> {{ progress.progress_summary }}
+                                        </span>
+                                    </div>
+                                {% endif %}
+                            {% endif %}
                         </div>
                     </div>
                     {% endfor %}
@@ -66,6 +84,9 @@ const studentNumber = urlParams.get('number') || '1';
 document.getElementById('selectedClass').textContent = classNumber;
 document.getElementById('selectedNumber').textContent = studentNumber;
 
+// 進行状況データ
+const unitProgress = {{ unit_progress | tojson }};
+
 function selectUnit(unit) {
     // 選択されたカードにアクティブクラスを追加
     document.querySelectorAll('.unit-card').forEach(card => {
@@ -73,10 +94,26 @@ function selectUnit(unit) {
     });
     event.target.closest('.unit-card').classList.add('active');
     
-    // 少し待ってから次のページに移動（クラス情報も含める）
-    setTimeout(() => {
-        window.location.href = `/prediction?class=${classNumber}&number=${studentNumber}&unit=${encodeURIComponent(unit)}`;
-    }, 300);
+    // 進行状況をチェック
+    const needsResumption = unitProgress[unit] && unitProgress[unit].needs_resumption;
+    
+    if (needsResumption) {
+        // 復帰確認ダイアログを表示
+        const confirmResume = confirm(`この単元は前回の続きがあります。\n前回の続きから始めますか？\n\n進行状況: ${unitProgress[unit].progress_summary}\n\nOK: 続きから開始\nキャンセル: 最初から開始`);
+        
+        setTimeout(() => {
+            if (confirmResume) {
+                window.location.href = `/prediction?class=${classNumber}&number=${studentNumber}&unit=${encodeURIComponent(unit)}&resume=true`;
+            } else {
+                window.location.href = `/prediction?class=${classNumber}&number=${studentNumber}&unit=${encodeURIComponent(unit)}`;
+            }
+        }, 300);
+    } else {
+        // 通常の開始
+        setTimeout(() => {
+            window.location.href = `/prediction?class=${classNumber}&number=${studentNumber}&unit=${encodeURIComponent(unit)}`;
+        }, 300);
+    }
 }
 
 function goBack() {

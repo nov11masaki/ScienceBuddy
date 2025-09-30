@@ -2124,3 +2124,50 @@ body {
         padding: 10px;
     }
 }
+
+/* 学習進行状況表示 */
+.progress-indicator {
+    margin-top: 10px;
+    text-align: center;
+}
+
+.progress-indicator .badge {
+    font-size: 0.8rem;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-weight: 500;
+}
+
+.progress-indicator .badge.bg-warning {
+    background-color: var(--warning-color) !important;
+    color: var(--dark-color) !important;
+}
+
+.progress-indicator .badge.bg-success {
+    background-color: var(--success-color) !important;
+    color: white !important;
+}
+
+.unit-card:hover .progress-indicator .badge {
+    transform: scale(1.05);
+    transition: var(--transition);
+}
+
+/* 復帰モード用の特別スタイル */
+.unit-card.has-progress {
+    border: 2px solid var(--warning-color);
+    position: relative;
+}
+
+.unit-card.has-progress::before {
+    content: '続きから';
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: var(--warning-color);
+    color: white;
+    font-size: 0.7rem;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-weight: bold;
+}

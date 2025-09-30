@@ -19,6 +19,9 @@ from werkzeug.utils import secure_filename
 # 環境変数を読み込み
 load_dotenv()
 
+# 学習進行状況管理用のファイルパス
+LEARNING_PROGRESS_FILE = 'learning_progress.json'
+
 # SSL設定の改善
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -108,6 +111,135 @@ def remove_markdown_formatting(text):
     text = re.sub(r'\n\s*\n', '\n', text)  # 複数の改行を1つに
     
     return text.strip()
+
+# 学習進行状況管理機能
+def load_learning_progress():
+    """学習進行状況を読み込み"""
+    if os.path.exists(LEARNING_PROGRESS_FILE):
+        try:
+            with open(LEARNING_PROGRESS_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except (json.JSONDecodeError, Exception):
+            return {}
+    return {}
+
+def save_learning_progress(progress_data):
+    """学習進行状況を保存"""
+    try:
+        with open(LEARNING_PROGRESS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(progress_data, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"進行状況保存エラー: {e}")
+
+def get_student_progress(class_number, student_number, unit):
+    """特定の学習者の単元進行状況を取得"""
+    progress_data = load_learning_progress()
+    student_id = f"{class_number}_{student_number}"
+    
+    if student_id not in progress_data:
+        progress_data[student_id] = {}
+    
+    if unit not in progress_data[student_id]:
+        progress_data[student_id][unit] = {
+            "current_stage": "prediction",
+            "last_access": datetime.now().isoformat(),
+            "stage_progress": {
+                "prediction": {
+                    "started": False,
+                    "conversation_count": 0,
+                    "summary_created": False,
+                    "last_message": ""
+                },
+                "experiment": {
+                    "started": False,
+                    "completed": False
+                },
+                "reflection": {
+                    "started": False,
+                    "conversation_count": 0,
+                    "summary_created": False
+                }
+            },
+            "conversation_history": []
+        }
+    
+    return progress_data[student_id][unit]
+
+def update_student_progress(class_number, student_number, unit, stage=None, **kwargs):
+    """学習者の進行状況を更新"""
+    progress_data = load_learning_progress()
+    student_id = f"{class_number}_{student_number}"
+    
+    # 現在の進行状況を取得
+    current_progress = get_student_progress(class_number, student_number, unit)
+    
+    # 最終アクセス時刻を更新
+    current_progress["last_access"] = datetime.now().isoformat()
+    
+    # 現在の段階を更新（指定された場合）
+    if stage:
+        current_progress["current_stage"] = stage
+    
+    # 段階別の進行状況を更新
+    current_stage = current_progress["current_stage"]
+    if current_stage in current_progress["stage_progress"]:
+        stage_data = current_progress["stage_progress"][current_stage]
+        
+        # 引数で渡された情報で更新
+        for key, value in kwargs.items():
+            if key in stage_data:
+                stage_data[key] = value
+    
+    # 進行状況を保存
+    if student_id not in progress_data:
+        progress_data[student_id] = {}
+    progress_data[student_id][unit] = current_progress
+    
+    save_learning_progress(progress_data)
+    return current_progress
+
+def check_resumption_needed(class_number, student_number, unit):
+    """復帰が必要かチェック"""
+    progress = get_student_progress(class_number, student_number, unit)
+    
+    # 予想段階で対話がある場合
+    if progress["stage_progress"]["prediction"]["conversation_count"] > 0:
+        return True
+    
+    # 実験段階が開始されている場合
+    if progress["stage_progress"]["experiment"]["started"]:
+        return True
+    
+    # 考察段階で対話がある場合  
+    if progress["stage_progress"]["reflection"]["conversation_count"] > 0:
+        return True
+    
+    return False
+
+def get_progress_summary(progress):
+    """進行状況の要約を生成"""
+    stage_progress = progress.get('stage_progress', {})
+    current_stage = progress.get('current_stage', 'prediction')
+    
+    if current_stage == 'prediction':
+        conv_count = stage_progress.get('prediction', {}).get('conversation_count', 0)
+        if conv_count > 0:
+            return f"予想段階（対話{conv_count}回）"
+        else:
+            return "未開始"
+    elif current_stage == 'experiment':
+        if stage_progress.get('experiment', {}).get('started', False):
+            return "実験段階"
+        else:
+            return "予想完了"
+    elif current_stage == 'reflection':
+        conv_count = stage_progress.get('reflection', {}).get('conversation_count', 0)
+        if conv_count > 0:
+            return f"考察段階（対話{conv_count}回）"
+        else:
+            return "実験完了"
+    else:
+        return "学習完了"
 
 def normalize_childish_expressions(text):
     """子供の擬音語・擬態語を一般的な表現に変換する"""
@@ -973,23 +1105,57 @@ def select_unit():
     student_number = request.args.get('number')
     session['class_number'] = class_number
     session['student_number'] = student_number
-    return render_template('select_unit.html', units=UNITS)
+    
+    # 各単元の進行状況をチェック
+    unit_progress = {}
+    for unit in UNITS:
+        progress = get_student_progress(class_number, student_number, unit)
+        needs_resumption = check_resumption_needed(class_number, student_number, unit)
+        unit_progress[unit] = {
+            'current_stage': progress['current_stage'],
+            'needs_resumption': needs_resumption,
+            'last_access': progress.get('last_access', ''),
+            'progress_summary': get_progress_summary(progress)
+        }
+    
+    return render_template('select_unit.html', units=UNITS, unit_progress=unit_progress)
 
 @app.route('/prediction')
 def prediction():
     class_number = request.args.get('class', session.get('class_number', '1'))
     student_number = request.args.get('number', session.get('student_number', '1'))
     unit = request.args.get('unit')
+    resume = request.args.get('resume', 'false').lower() == 'true'
     
     session['class_number'] = class_number
     session['student_number'] = student_number
     session['unit'] = unit
-    session['conversation'] = []
     
     task_content = load_task_content(unit)
     session['task_content'] = task_content
     
-    return render_template('prediction.html', unit=unit, task_content=task_content)
+    # 進行状況をチェック
+    progress = get_student_progress(class_number, student_number, unit)
+    
+    if resume and progress['stage_progress']['prediction']['conversation_count'] > 0:
+        # 対話履歴を復元
+        session['conversation'] = progress.get('conversation_history', [])
+        resumption_info = {
+            'is_resumption': True,
+            'last_conversation_count': progress['stage_progress']['prediction']['conversation_count'],
+            'last_access': progress.get('last_access', '')
+        }
+    else:
+        # 新規開始
+        session['conversation'] = []
+        resumption_info = {'is_resumption': False}
+        
+        # 予想段階開始を記録
+        update_student_progress(class_number, student_number, unit, 
+                              stage='prediction', started=True)
+    
+    return render_template('prediction.html', unit=unit, task_content=task_content, 
+                         resumption_info=resumption_info)
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -1119,6 +1285,17 @@ def chat():
                 'used_suggestion': False,
                 'suggestion_index': None
             }
+        )
+        
+        # 進行状況を更新
+        conversation_count = len(conversation) // 2
+        update_student_progress(
+            session.get('class_number', '1'),
+            session.get('student_number'),
+            unit,
+            conversation_count=conversation_count,
+            last_message=user_message,
+            conversation_history=conversation[-10:]  # 最新10件のみ保存
         )
         
         # 対話が3回以上の場合、予想のまとめを提案
