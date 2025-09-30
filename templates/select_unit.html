@@ -74,6 +74,9 @@
 {% endblock %}
 
 {% block scripts %}
+<!-- 進行状況データをJSONとして埋め込み -->
+<script type="application/json" id="unit-progress-data">{{ unit_progress | tojson | safe }}</script>
+
 <script>
 // URLからクラス番号と出席番号を取得
 const urlParams = new URLSearchParams(window.location.search);
@@ -84,8 +87,9 @@ const studentNumber = urlParams.get('number') || '1';
 document.getElementById('selectedClass').textContent = classNumber;
 document.getElementById('selectedNumber').textContent = studentNumber;
 
-// 進行状況データ
-const unitProgress = {{ unit_progress | tojson }};
+// 進行状況データを安全に取得
+const unitProgressElement = document.getElementById('unit-progress-data');
+const unitProgress = unitProgressElement ? JSON.parse(unitProgressElement.textContent) : {};
 
 function selectUnit(unit) {
     // 選択されたカードにアクティブクラスを追加
