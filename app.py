@@ -60,22 +60,10 @@ def require_teacher_auth(f):
 
 # OpenAI APIの設定
 api_key = os.getenv('OPENAI_API_KEY')
-if not api_key:
-    print("警告: OPENAI_API_KEYが設定されていません")
-else:
-    print(f"APIキー設定確認: {api_key[:10]}...{api_key[-4:]}")
-    
 try:
-    # OpenAI クライアントを初期化
     client = openai.OpenAI(api_key=api_key)
-    print("OpenAI API設定完了")
 except Exception as e:
-    print(f"OpenAI API設定エラー: {e}")
     client = None
-
-# OpenAI client設定の確認
-if client is None:
-    print("警告: OpenAIクライアントの初期化に失敗しました")
 
 # マークダウン記法を除去する関数
 def remove_markdown_formatting(text):
@@ -128,8 +116,8 @@ def save_learning_progress(progress_data):
     try:
         with open(LEARNING_PROGRESS_FILE, 'w', encoding='utf-8') as f:
             json.dump(progress_data, f, ensure_ascii=False, indent=2)
-    except Exception as e:
-        print(f"進行状況保存エラー: {e}")
+    except Exception:
+        pass
 
 def get_student_progress(class_number, student_number, unit):
     """特定の学習者の単元進行状況を取得"""
@@ -301,7 +289,6 @@ def extract_message_from_json_response(response):
             return response
             
     except (json.JSONDecodeError, Exception) as e:
-        print(f"JSON解析エラー: {e}, 元のレスポンスを返します")
         return response
 
 def load_markdown_content(file_path):
@@ -311,49 +298,21 @@ def load_markdown_content(file_path):
             content = file.read()
         return content.strip()
     except Exception as e:
-        print(f"Markdown読み込みエラー: {e}")
         return None
 
 # APIコール用のリトライ関数
-def build_enhanced_prompt(base_prompt, unit=None, stage=None):
-    """プロンプトファイルの内容をそのまま使用"""
-    # プロンプトファイルから読み込まれた内容をそのまま返す
-    # app.pyでは詳細なガイダンスを追加しない
-    return base_prompt
-
-
-    
-    # 会話履歴を考慮して質問の重複を避ける
-    if conversation_history:
-        used_patterns = []
-        for msg in conversation_history:
-            if msg.get('role') == 'assistant':
-                used_patterns.append(msg.get('content', ''))
-        
-        # 使用済みパターンと類似していない質問を選択
-        for question in questions:
-            if not any(pattern in question or question in pattern for pattern in used_patterns):
-                return question
-    
-    return questions[0] if questions else "どう感じましたか？"
-
 def call_openai_with_retry(prompt, max_retries=3, delay=2, unit=None, stage=None):
     """OpenAI APIを呼び出し、エラー時はリトライする（Markdownガイドライン活用版）"""
     if client is None:
         return "AI システムの初期化に問題があります。管理者に連絡してください。"
     
-    # プロンプトを強化（ファイル内容をそのまま使用）
-    enhanced_prompt = build_enhanced_prompt(prompt, unit, stage)
+    enhanced_prompt = prompt
     
     for attempt in range(max_retries):
         try:
-            print(f"OpenAI API呼び出し試行 {attempt + 1}/{max_retries}")
-            
-            # タイムアウト設定を短くして早期に失敗検出
             import time
             start_time = time.time()
             
-            # OpenAI APIでリクエストを送信
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
@@ -361,28 +320,19 @@ def call_openai_with_retry(prompt, max_retries=3, delay=2, unit=None, stage=None
                 ],
                 max_tokens=2000,
                 temperature=0.3,
-                timeout=30  # 30秒タイムアウト
+                timeout=30
             )
-            
-            elapsed_time = time.time() - start_time
-            print(f"API呼び出し所要時間: {elapsed_time:.2f}秒")
             
             if response.choices and response.choices[0].message.content:
                 content = response.choices[0].message.content
-                print(f"API呼び出し成功: {len(content)}文字の応答")
-                # マークダウン記法を除去してから返す
                 cleaned_response = remove_markdown_formatting(content)
                 return cleaned_response
             else:
-                print("空の応答が返されました")
-                print(f"応答全体: {response}")
                 raise Exception("空の応答が返されました")
                 
         except Exception as e:
             error_msg = str(e)
-            print(f"APIコール試行 {attempt + 1}/{max_retries} でエラー: {error_msg}")
             
-            # エラーの種類に応じた処理
             if "API_KEY" in error_msg.upper() or "invalid_api_key" in error_msg.lower():
                 return "APIキーの設定に問題があります。管理者に連絡してください。"
             elif "QUOTA" in error_msg.upper() or "LIMIT" in error_msg.upper() or "rate_limit_exceeded" in error_msg.lower():
@@ -390,7 +340,6 @@ def call_openai_with_retry(prompt, max_retries=3, delay=2, unit=None, stage=None
             elif "TIMEOUT" in error_msg.upper() or "DNS" in error_msg.upper() or "503" in error_msg:
                 if attempt < max_retries - 1:
                     wait_time = delay * (attempt + 1)
-                    print(f"ネットワークエラー、{wait_time}秒後に再試行...")
                     time.sleep(wait_time)
                     continue
                 else:
@@ -402,7 +351,6 @@ def call_openai_with_retry(prompt, max_retries=3, delay=2, unit=None, stage=None
             else:
                 if attempt < max_retries - 1:
                     wait_time = delay * (attempt + 1)
-                    print(f"その他のエラー、{wait_time}秒後に再試行...")
                     time.sleep(wait_time)
                     continue
                 else:
@@ -652,7 +600,6 @@ def chat():
         return jsonify(response_data)
         
     except Exception as e:
-        print(f"チャットエラー: {str(e)}")
         return jsonify({'error': f'AI接続エラーが発生しました。しばらく待ってから再度お試しください。'}), 500
 
 @app.route('/summary', methods=['POST'])
@@ -690,7 +637,6 @@ def summary():
         
         return jsonify({'summary': summary_text})
     except Exception as e:
-        print(f"まとめエラー: {str(e)}")
         return jsonify({'error': f'まとめ生成中にエラーが発生しました。'}), 500
 
 @app.route('/experiment')
@@ -749,7 +695,6 @@ def reflect_chat():
         return jsonify({'response': ai_message})
         
     except Exception as e:
-        print(f"考察チャットエラー: {str(e)}")
         return jsonify({'error': f'AI接続エラーが発生しました。しばらく待ってから再度お試しください。'}), 500
 
 @app.route('/final_summary', methods=['POST'])
@@ -790,7 +735,6 @@ def final_summary():
         
         return jsonify({'summary': final_summary_text})
     except Exception as e:
-        print(f"最終まとめエラー: {str(e)}")
         return jsonify({'error': f'最終まとめ生成中にエラーが発生しました。'}), 500
 
 # 教員用ルート
@@ -845,15 +789,12 @@ def teacher_logs():
     student = request.args.get('student', '')
     
     logs = load_learning_logs(date)
-    print(f"ログ読み込み - 対象日付: {date}, 読み込んだログ数: {len(logs)}")
     
     # フィルタリング
     if unit:
         logs = [log for log in logs if log.get('unit') == unit]
-        print(f"単元フィルタ適用後: {len(logs)}件")
     if student:
         logs = [log for log in logs if log.get('student_number') == student]
-        print(f"学生フィルタ適用後: {len(logs)}件")
     
     # 学生ごとにグループ化
     students_data = {}
@@ -952,19 +893,16 @@ def load_guidelines_content():
         return combined_content[:2000]  # 最大2000文字まで
     
     except Exception as e:
-        print(f"指導要領読み込みエラー: {str(e)}")
         return ""
 
 def analyze_student_learning(student_number, unit, logs):
     """特定の学生・単元の学習過程を詳細分析"""
-    print(f"分析開始 - 学生: {student_number}, 単元: {unit}")
     
     # 該当する学生のログを抽出
     student_logs = [log for log in logs if 
                    log.get('student_number') == student_number and 
                    log.get('unit') == unit]
     
-    print(f"該当ログ数: {len(student_logs)}")
     
     if not student_logs:
         return {
@@ -1019,7 +957,6 @@ def analyze_student_learning(student_number, unit, logs):
         elif log_type == 'final_summary':
             final_summary = data.get('final_summary', '')
     
-    print(f"予想対話数: {len(prediction_chats)}, 考察対話数: {len(reflection_chats)}")
     
     # 簡易分析結果を返す（OpenAI APIエラーを避けるため）
     try:
@@ -1048,7 +985,6 @@ def analyze_student_learning(student_number, unit, logs):
         }
     
     except Exception as e:
-        print(f"分析エラー: {str(e)}")
         return {
             'evaluation': f'分析エラー: {str(e)}',
             'prediction_analysis': {
@@ -1067,7 +1003,6 @@ def analyze_student_learning(student_number, unit, logs):
         }
         if json_match:
             json_str = json_match.group(0)
-            print(f"抽出されたJSON: {json_str}")
             try:
                 result = json.loads(json_str)
                 print("方法1でJSON解析成功")
@@ -1094,7 +1029,6 @@ def analyze_student_learning(student_number, unit, logs):
             
             if json_lines:
                 json_str = '\n'.join(json_lines)
-                print(f"方法2で抽出されたJSON: {json_str}")
                 try:
                     result = json.loads(json_str)
                     print("方法2でJSON解析成功")
@@ -1124,7 +1058,6 @@ def analyze_student_learning(student_number, unit, logs):
         }
         
     except json.JSONDecodeError as e:
-        print(f"JSON解析エラー: {e}")
         # 言語活動支援観点のフォールバック応答
         return {
             'evaluation': '分析処理でエラーが発生しましたが、言語活動への取り組みは確認できます',
@@ -1378,8 +1311,6 @@ JSON形式で回答してください。
     try:
         print("クラス分析開始...")
         analysis_result = call_openai_with_retry(analysis_prompt)
-        print(f"クラス分析応答（前500文字）: {repr(analysis_result[:500])}")
-        print(f"クラス分析応答（後500文字）: {repr(analysis_result[-500:])}")
         
         # 複数の方法でJSONを抽出
         result = None
@@ -1389,7 +1320,6 @@ JSON形式で回答してください。
         json_match = re.search(r'\{.*?\}', analysis_result, re.DOTALL)
         if json_match:
             json_str = json_match.group(0)
-            print(f"クラス分析抽出JSON: {json_str}")
             try:
                 result = json.loads(json_str)
                 print("クラス分析方法1でJSON解析成功")
@@ -1416,7 +1346,6 @@ JSON形式で回答してください。
             
             if json_lines:
                 json_str = '\n'.join(json_lines)
-                print(f"クラス分析方法2で抽出されたJSON: {json_str}")
                 try:
                     result = json.loads(json_str)
                     print("クラス分析方法2でJSON解析成功")
@@ -1438,7 +1367,6 @@ JSON形式で回答してください。
             'expression_growth': ['自分の言葉での表現向上', '思考の言語化進展']
         }
     except Exception as e:
-        print(f"クラス分析エラー: {e}")
         return {
             'overall_trend': '言語活動の分析でエラーが発生しました',
             'language_challenges': ['分析データ不足'],
@@ -1758,7 +1686,6 @@ def student_detail(student_number):
                    log.get('student_number') == student_number and 
                    (not unit or log.get('unit') == unit)]
     
-    print(f"学生{student_number}のログ検索結果: {len(student_logs)}件 (単元: {unit}, 日付: {selected_date})")
     
     if not student_logs:
         flash(f'学生{student_number}番のログがありません。日付や単元を変更してお試しください。', 'warning')
