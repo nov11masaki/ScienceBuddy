@@ -383,10 +383,9 @@ def get_learning_support_system():
     return None
 
 def analyze_unit_characteristics(unit):
-    """単元の特性を分析して見方・考え方を抽出"""
+    """単元の特性を分析"""
     unit_characteristics = {
         "水のあたたまり方": {
-            "見方・考え方": "温度と物質の状態・性質の関係性に注目する",
             "重点活動": ["温度変化の比較", "対流現象の言語化", "日常経験との関連"],
             "生活経験": ["お風呂の循環", "やかんのお湯", "暖房の仕組み"],
             "キーワード": ["対流", "循環", "あたたまり方", "温度差"],
@@ -394,24 +393,9 @@ def analyze_unit_characteristics(unit):
                 "お風呂に入るとき、どの部分があたたかく感じますか？",
                 "やかんでお湯を沸かすとき、どんなことが起こりますか？",
                 "水の中で何が動いているのでしょうか？"
-            ],
-            "産婆法_経験引き出し": [
-                "お風呂に入った時、一番あたたかいのはどこでしたか？",
-                "どんなふうにあたたかさが広がっていきましたか？",
-                "お風呂のお湯をかき混ぜた時、どうなりましたか？",
-                "やかんでお湯を沸かす時、どこから湯気が出てきましたか？",
-                "水の中に色をつけて温めた実験、覚えていますか？",
-                "その時、色はどんなふうに動いていましたか？"
-            ],
-            "経験不足時の質問": [
-                "お風呂で遊んだことはありませんか？お湯に手を入れた時の感じを覚えていますか？",
-                "お家でお湯を沸かしているところを見たことはありませんか？",
-                "暖房がついた部屋で、どこがあたたかく感じたか覚えていますか？",
-                "プールや川で泳いだ時、水が動いているのを感じたことはありませんか？"
             ]
         },
         "金属のあたたまり方": {
-            "見方・考え方": "温度と物質の状態・性質の関係性に注目する",
             "重点活動": ["伝導現象の観察", "順序立てた説明", "物質比較"],
             "生活経験": ["フライパンで料理", "金属スプーン", "アイロン"],
             "キーワード": ["伝導", "順番に", "伝わる", "熱くなる"],
@@ -419,24 +403,9 @@ def analyze_unit_characteristics(unit):
                 "フライパンで料理をするとき、どの部分から熱くなりますか？",
                 "金属のスプーンをお湯に入れると、どうなりますか？",
                 "なぜ金属は料理道具によく使われるのでしょう？"
-            ],
-            "産婆法_経験引き出し": [
-                "お家でフライパンを使った時、どんなことに気がつきましたか？",
-                "熱いスプーンを触った時、どんな感じでしたか？",
-                "お家の人がお料理している時、どんなふうに熱が伝わっていましたか？",
-                "その時、どこから熱くなっていきましたか？",
-                "どのくらいの時間で熱くなりましたか？",
-                "他の材料と比べて、金属はどうでしたか？"
-            ],
-            "経験不足時の質問": [
-                "お家でお料理を見たことはありませんか？フライパンや鍋を使っているところを見たことは？",
-                "金属のスプーンやフォークを使ったことはありませんか？",
-                "アイロンやドライヤーなど、熱くなる道具を見たことはありませんか？",
-                "お家の人が「熱いから気をつけて」と言ったことはありませんか？"
             ]
         },
         "空気の温度と体積": {
-            "見方・考え方": "物質の性質を温度との関係で捉え、目に見えない変化を数値で表現する",
             "重点活動": ["数値データの分析", "グラフ読み取り", "関係性の発見"],
             "生活経験": ["風船の変化", "空気入れ", "自転車のタイヤ"],
             "キーワード": ["体積", "温度", "膨張", "収縮", "関係"],
@@ -444,24 +413,9 @@ def analyze_unit_characteristics(unit):
                 "風船を温めるとどうなりますか？",
                 "冷やした風船はどうなるでしょう？",
                 "温度が変わると空気にどんな変化が起こりますか？"
-            ],
-            "産婆法_経験引き出し": [
-                "風船で遊んだ時、どんなことがありましたか？",
-                "太陽の下に置いた風船はどうなりましたか？",
-                "冷蔵庫から出した風船はどうでしたか？",
-                "自転車の空気入れを使った時、どんな感じでしたか？",
-                "空気入れが熱くなったことはありませんか？",
-                "ボールの空気が抜けた時、どんなふうになりましたか？"
-            ],
-            "経験不足時の質問": [
-                "風船で遊んだことはありませんか？お誕生日会や祭りで見たことは？",
-                "自転車やボールに空気を入れたことはありませんか？",
-                "ペットボトルがぺこっとへこんだのを見たことはありませんか？",
-                "車に乗っている時、暑い日と寒い日でタイヤの感じが違うと感じたことは？"
             ]
         },
         "水を熱し続けた時の温度と様子": {
-            "見方・考え方": "物質の状態変化を温度との関係で捉え、現象を定量的に分析する",
             "重点活動": ["継続的観察", "状態変化の記録", "グラフ分析"],
             "生活経験": ["やかんでお湯を沸かす", "鍋で料理", "お風呂のお湯"],
             "キーワード": ["沸騰", "状態変化", "温度変化", "泡", "蒸気"],
@@ -469,59 +423,10 @@ def analyze_unit_characteristics(unit):
                 "お湯を沸かし続けるとどうなりますか？",
                 "温度はずっと上がり続けるでしょうか？",
                 "沸騰している時の泡は何でしょうか？"
-            ],
-            "産婆法_経験引き出し": [
-                "お家でお湯を沸かした時、どんなことが起こりましたか？",
-                "最初はどんな感じでしたか？",
-                "だんだんどうなっていきましたか？",
-                "ぶくぶくと泡が出てきた時、どんな音がしていましたか？",
-                "やかんの蓋が動いたことはありませんか？",
-                "お湯が沸騰してからも、ずっと熱いままでしたか？"
-            ],
-            "経験不足時の質問": [
-                "お家でお湯を沸かしているところを見たことはありませんか？",
-                "やかんから湯気が出ているのを見たことは？",
-                "お風呂のお湯が熱すぎて、水を足したことはありませんか？",
-                "ラーメンを作る時に、お湯がぐらぐらしているのを見たことは？"
             ]
         }
     }
     return unit_characteristics.get(unit, {})
-
-def determine_learning_stage(conversation_count, conversation_content=None):
-    """対話内容から学習段階を判定"""
-    if conversation_count <= 2:
-        return "自己思考段階"
-    elif conversation_count <= 4:
-        return "伝え合い段階"
-    else:
-        return "思考まとめ段階"
-
-def generate_stage_appropriate_guidance(stage, unit):
-    """学習段階に応じた指導ガイダンスを生成"""
-    unit_info = analyze_unit_characteristics(unit)
-    
-    guidance = {
-        "自己思考段階": {
-            "目標": "児童が自分の考えを持ち、予想・仮説を立てる",
-            "支援方針": ["日常経験を引き出す", "既習事項との関連付け", "根拠を持った予想を促す"],
-            "質問例": unit_info.get("産婆法質問", ["どう思いますか？"])[:1],
-            "重点": f"生活経験（{', '.join(unit_info.get('生活経験', [])[:2])}）との関連を重視"
-        },
-        "伝え合い段階": {
-            "目標": "他者との比較・共有・討論を通じて考えを深める", 
-            "支援方針": ["多様な考えを価値付ける", "比較検討を促す", "根拠を明確化"],
-            "質問例": ["友達の考えと比べてどうですか？", "なぜ違いが生まれたのでしょう？"],
-            "重点": f"見方・考え方「{unit_info.get('見方・考え方', '')}」の深化"
-        },
-        "思考まとめ段階": {
-            "目標": "結果の整理、概念の抽出、考察の記述",
-            "支援方針": ["学習内容の整理", "概念の一般化", "新たな疑問の発見"],
-            "質問例": ["今日分かったことは何ですか？", "他でも同じことが起こりそうですか？"],
-            "重点": f"キーワード（{', '.join(unit_info.get('キーワード', [])[:3])}）の理解確認"
-        }
-    }
-    return guidance.get(stage, guidance["自己思考段階"])
 
 def save_lesson_plan_info(unit, content):
     """指導案情報をJSONファイルに保存"""
@@ -551,35 +456,7 @@ def save_lesson_plan_info(unit, content):
     with open(lesson_plans_file, 'w', encoding='utf-8') as f:
         json.dump(lesson_plans, f, ensure_ascii=False, indent=2)
 
-def load_lesson_plan_content(unit):
-    """指定された単元の指導案内容を読み込む"""
-    # まず既存のMarkdownファイルを確認
-    markdown_path = f"lesson_plans_md/{unit}.md"
-    if os.path.exists(markdown_path):
-        return load_markdown_content(markdown_path)
-    
-    # インデックスファイルからも確認
-    lesson_plans_file = "lesson_plans_md/lesson_plans_index.json"
-    if not os.path.exists(lesson_plans_file):
-        return None
-    
-    try:
-        with open(lesson_plans_file, 'r', encoding='utf-8') as f:
-            lesson_plans = json.load(f)
-        
-        if unit not in lesson_plans:
-            return None
-        
-        # Markdownファイルから内容を読み込み
-        markdown_path = os.path.join("lesson_plans_md", lesson_plans[unit]['filename'])
-        if os.path.exists(markdown_path):
-            return load_markdown_content(markdown_path)
-        else:
-            return None
-            
-    except (json.JSONDecodeError, Exception) as e:
-        print(f"指導案読み込みエラー: {e}")
-        return None
+
 
 def get_lesson_plans_list():
     """アップロード済みの指導案一覧を取得"""
@@ -596,260 +473,12 @@ def get_lesson_plans_list():
 
 # APIコール用のリトライ関数
 def build_enhanced_prompt(base_prompt, unit=None, stage=None):
-    """学習指導要領とMarkdownガイドラインを活用して強化されたプロンプトを構築"""
-    enhanced_prompt = base_prompt
-    
-    # 親しみやすい話し方の具体例を最初に追加
-    enhanced_prompt += """
+    """プロンプトファイルの内容をそのまま使用"""
+    # プロンプトファイルから読み込まれた内容をそのまま返す
+    # app.pyでは詳細なガイダンスを追加しない
+    return base_prompt
 
-## 【最重要】経験を必ず引き出す対話スタイル
-### 毎回の対話で必須のパターン
-1. **最初に経験を聞く**: 「〜したことある？」「〜見たことない？」
-2. **温度変化の体験を聞く**: 「温めたことある？」「冷やしたことある？」
-3. **家庭での体験を具体的に**: 「お母さんと一緒に〜したとき」「お風呂で〜」
-4. **比較体験を聞く**: 「夏と冬で違った？」「暑いときと寒いときで」
 
-### 経験引き出しの具体的質問（必ず使用）
-- 「お家でお湯沸かしたこと、ある？その時どうなった？」
-- 「冷蔵庫から出したペットボトル、どんな感じだった？」
-- 「お風呂のお湯、熱いのと温いのでどう違う？」
-- 「氷を手で握ったこと、ある？どんな感じ？」
-- 「夏の暑い日と冬の寒い日で、何か違うこと気づいた？」
-- 「お母さんがお料理してるとき、鍋を見てて気づいたことある？」
-
-### 温度変化体験の重点的引き出し
-- 「温めたら何か変わること、知ってる？」
-- 「冷やしたら何か変わること、ない？」
-- 「熱いものと冷たいもの、触った感じ違うよね？」
-- 「温度が変わると、形や大きさも変わること、気づいたことある？」
-
-### 親しみやすい話し方の例
-- 「そうそう！それで？」「いいね！他には？」「なるほど〜、面白いね！」
-- 「あ、それ知ってる！」「へ〜、すごいじゃん！」「そっか〜、どうしてかな？」
-- 「やったことある？」「見たことない？」「どんな感じだった？」
-- 「家でもそういうこと、ない？」「お母さんと料理してる時は？」「お風呂で気づいたことは？」
-
-### 対話の絶対ルール
-1. **経験なしには進まない**: 必ず体験を1つ以上聞いてから次の質問
-2. **温度変化は必須**: 「温める」「冷やす」体験を毎回確認
-3. **具体的な場面**: 「いつ」「どこで」「誰と」を明確に
-4. **比較を促す**: 「〜と〜ではどう違った？」
-
-## 最重要：段階別言語化支援の実践
-### 予想段階での支援（概念化はしない）
-## 重要：予想段階は経験と結びつく主体的な予想を引き出すことが目的
-
-### 支援の流れ（4段階）
-1. **体験的表現の受容**: 「ふわふわ」「じゅーじゅー」等のオノマトペや感覚的表現をまず受け止める
-2. **一般表現への引き上げ**: 「〜を別の言い方でできないかな？」で書き言葉への変換を支援
-3. **経験関連付け**: 「お家で似たようなこと、ない？」「やったことある？」で具体的な経験を引き出す
-4. **根拠明確化**: 「なぜそう思ったの？」「何から考えたの？」で予想の根拠を明確にする
-
-### 重要な支援原則
-- **子供が主体**: 答えを教えず、子供自身に考えさせて予想を立てさせる
-- **経験重視**: 必ず生活経験や既習事項と結びつけて予想させる  
-- **概念化禁止**: 予想段階では科学的概念は教えない、足場かけに留める
-- **言語化支援**: オノマトペ→一般用語への変換を支援するが難しい言葉に置き換えない
-
-### 段階別質問例
-**1-2回目（体験的表現→一般表現）**:
-- 「どうなると思いますか？」「どんなふうになりそう？」
-- 「もう少し詳しく教えて」「別の言い方でいうと？」
-
-**3-4回目（経験関連付け）**:
-- 「お家でそういうこと見たことある？」「いつ、どこで見た？」
-- 「似たようなこと知ってる？」「どんな時だった？」
-
-**5回目以降（根拠明確化）**:
-- 「なぜそう思ったの？」「何から考えたの？」
-- 「どうしてそうなると思う？」
-
-### 考察段階での支援（実験結果の言語化が最優先）
-## 重要：見た結果を生活用語から一般用語に引き上げ、予想との差異・経験を引き出す
-
-### 支援の流れ（6段階）
-1. **実験結果の言語化**: 「実験でどうなった？」「どんなふうになった？」
-2. **結果の詳細確認**: 「どの部分が変化した？」「どのくらい変わった？」  
-3. **言語の引き上げ**: オノマトペ・感覚表現→一般的な書き言葉への変換支援
-4. **予想との比較**: 「予想と同じだった？」「違ったところは？」
-5. **経験関連付け**: 結果を受けてから「似たようなこと見たことある？」
-6. **概念化足掛かり**: 「このことから何が言えそうかな？」
-
-### 重要な支援原則  
-- **結果優先**: まず実験結果をしっかり言語化させる（最初から体験談は聞かない）
-- **言語引き上げ**: 「ぐつぐつ」→「泡が出る」「ふわふわ」→「軽くなる」等の変換支援
-- **予想比較**: 必ず予想と結果の差異を確認する
-- **経験後付け**: 結果が明確になってから関連経験を引き出す
-
-### 段階別質問例
-**1-2回目（結果言語化）**:
-- 「実験でどんなことが起こりましたか？」「どうなりましたか？」
-- 「もう少し詳しく教えて」「どの部分が変わった？」
-
-**3-4回目（言語引き上げ・予想比較）**:
-- 「別の言い方でいうと？」「書く時はどう表現する？」
-- 「予想と同じだった？」「どこが違った？」
-
-**5回目以降（経験関連・概念化足掛かり）**:
-- 「お家で似たようなこと見たことある？」
-- 「このことから何が分かりそう？」
-
-**注意**: 考察段階では最初から体験談は聞かない。まず実験結果をしっかり言語化させる。
-
-### 対話の基本パターン
-- 児童の発言を必ず受け止める：「そうそう！」「いいね！」「なるほど〜」
-- 1回1つの質問：複数の質問を同時にしない
-- 10文字以内の短い質問：「どうなった？」「なぜかな？」「見たことある？」
-- 経験重視：「お家でそういうこと、ない？」「似たような体験は？」
-
-### 理科の見方・考え方の活用
-- 量的・関係的視点：「どのくらい？」「前と比べると？」
-- 質的・実体的視点：「何の性質？」「どんな特徴？」
-- 共通性・多様性視点：「他でも同じ？」「違うところは？」
-- 時間的・空間的視点：「いつから？」「どこから変化？」
-"""
-    
-    # 学習指導要領の内容を追加（言語活動重視）
-    guidelines = get_learning_guidelines()
-    if guidelines:
-        # 特に言語活動部分を抽出
-        relevant_section = ""
-        if "言語活動" in guidelines:
-            lines = guidelines.split('\n')
-            for i, line in enumerate(lines):
-                if "言語活動" in line or "見方・考え方" in line:
-                    relevant_section += '\n'.join(lines[max(0, i-2):min(len(lines), i+8)])
-                    break
-        enhanced_prompt += f"\n\n【学習指導要領（言語活動重視）】:\n{relevant_section[:1000]}..."
-    
-    # 指導支援方針を追加
-    teaching_support = get_teaching_support()
-    if teaching_support:
-        # 産婆法の部分を重点的に抽出
-        if "産婆法" in teaching_support:
-            lines = teaching_support.split('\n')
-            for i, line in enumerate(lines):
-                if "産婆法" in line:
-                    support_section = '\n'.join(lines[i:min(len(lines), i+20)])
-                    enhanced_prompt += f"\n\n【産婆法実践方針】:\n{support_section[:800]}..."
-                    break
-    
-    # 単元別指導案があれば追加
-    if unit:
-        lesson_content = load_lesson_plan_content(unit)
-        if lesson_content:
-            # 産婆法実践のポイント部分を抽出
-            if "産婆法実践のポイント" in lesson_content:
-                lines = lesson_content.split('\n')
-                for i, line in enumerate(lines):
-                    if "産婆法実践のポイント" in line:
-                        lesson_section = '\n'.join(lines[i:min(len(lines), i+15)])
-                        enhanced_prompt += f"\n\n【{unit}指導案（産婆法）】:\n{lesson_section[:600]}..."
-                        break
-        
-        # 単元特性の詳細分析を追加
-        unit_info = analyze_unit_characteristics(unit)
-        if unit_info:
-            enhanced_prompt += f"\n\n【{unit}の特性分析】:\n"
-            enhanced_prompt += f"・見方・考え方: {unit_info.get('見方・考え方', '')}\n"
-            enhanced_prompt += f"・重点活動: {', '.join(unit_info.get('重点活動', []))}\n"
-            enhanced_prompt += f"・生活経験例: {', '.join(unit_info.get('生活経験', []))}\n"
-            enhanced_prompt += f"・キーワード: {', '.join(unit_info.get('キーワード', []))}\n"
-    
-    # 学習段階別の支援ガイダンスを追加
-    if stage and unit:
-        conversation_count = 1  # デフォルト値
-        learning_stage = determine_learning_stage(conversation_count)
-        stage_guidance = generate_stage_appropriate_guidance(learning_stage, unit)
-        
-        enhanced_prompt += f"\n\n【現在の学習段階】: {learning_stage}\n"
-        enhanced_prompt += f"・目標: {stage_guidance.get('目標', '')}\n"
-        enhanced_prompt += f"・支援方針: {', '.join(stage_guidance.get('支援方針', []))}\n"
-        enhanced_prompt += f"・重点: {stage_guidance.get('重点', '')}\n"
-        enhanced_prompt += f"・推奨質問: {stage_guidance.get('質問例', [''])[0]}\n"
-    
-    return enhanced_prompt
-
-def analyze_student_response(response, unit):
-    """児童の発言から学習状況を分析して次の支援方針を決定"""
-    analysis = {
-        "理解度": "継続観察",
-        "言語化レベル": "基礎段階", 
-        "日常関連": False,
-        "概念理解": False,
-        "感情・態度": "普通",
-        "推奨支援": "継続質問",
-        "次の質問タイプ": "開放的質問"
-    }
-    
-    response = response.lower() if response else ""
-    
-    # 理解度の判定
-    positive_indicators = ["分かった", "なるほど", "そういうこと", "面白い", "すごい"]
-    negative_indicators = ["分からない", "よく分からない", "難しい", "よく見えない"]
-    
-    if any(word in response for word in positive_indicators):
-        analysis["理解度"] = "良好"
-        analysis["推奨支援"] = "発展質問"
-    elif any(word in response for word in negative_indicators):
-        analysis["理解度"] = "要支援"
-        analysis["推奨支援"] = "基礎確認"
-    
-    # 言語化レベルの判定
-    if len(response) > 30 and any(word in response for word in ["なぜなら", "だから", "理由は"]):
-        analysis["言語化レベル"] = "高度"
-        analysis["次の質問タイプ"] = "深化質問"
-    elif len(response) > 15 and any(word in response for word in ["と思う", "気がする", "みたい"]):
-        analysis["言語化レベル"] = "中程度"
-    
-    # 日常経験との関連確認
-    daily_keywords = ["家で", "普段", "お風呂", "料理", "お母さん", "見たことある", "前に", "いつも"]
-    if any(word in response for word in daily_keywords):
-        analysis["日常関連"] = True
-        analysis["推奨支援"] = "関連深化"
-    
-    # 単元特性に基づく概念理解確認
-    unit_info = analyze_unit_characteristics(unit)
-    keywords = unit_info.get("キーワード", [])
-    if any(keyword.lower() in response for keyword in keywords):
-        analysis["概念理解"] = True
-        analysis["推奨支援"] = "概念確認"
-    
-    # 感情・態度の判定
-    positive_emotions = ["楽しい", "面白い", "すごい", "びっくり", "驚いた"]
-    if any(word in response for word in positive_emotions):
-        analysis["感情・態度"] = "積極的"
-    
-    return analysis
-
-def generate_adaptive_question(analysis, unit, conversation_history=None):
-    """分析結果に基づいて適応的な質問を生成"""
-    unit_info = analyze_unit_characteristics(unit)
-    
-    # 理解度に基づく質問選択
-    if analysis["理解度"] == "良好":
-        if analysis["概念理解"]:
-            questions = [
-                "他の場面でも同じようなことが起こりそうですか？",
-                f"普段の生活で{', '.join(unit_info.get('生活経験', [])[:1])}以外にも似たことはありますか？"
-            ]
-        else:
-            questions = unit_info.get("産婆法質問", ["もう少し詳しく教えてください"])
-    elif analysis["理解度"] == "要支援":
-        questions = [
-            "どの部分が分からないですか？",
-            "今見えたことを教えてください",
-            "どんな感じがしましたか？"
-        ]
-    else:
-        # 通常の段階的質問
-        if analysis["日常関連"]:
-            questions = [
-                "それと今回の実験、似ているところはありますか？",
-                "どんなところが同じだと思いますか？"
-            ]
-        else:
-            questions = unit_info.get("産婆法質問", ["どう思いますか？"])
     
     # 会話履歴を考慮して質問の重複を避ける
     if conversation_history:
@@ -870,37 +499,8 @@ def call_openai_with_retry(prompt, max_retries=3, delay=2, unit=None, stage=None
     if client is None:
         return "AI システムの初期化に問題があります。管理者に連絡してください。"
     
-    # Markdownガイドラインを活用してプロンプトを強化
+    # プロンプトを強化（ファイル内容をそのまま使用）
     enhanced_prompt = build_enhanced_prompt(prompt, unit, stage)
-    
-    # OpenAI向けの応答指示を追加
-    enhanced_prompt += f"""
-
-**重要な応答指示（OpenAI向け）:**
-- 子どもの発言を必ず受け止めてから質問してください
-- 「なんでそう思うの？」「どうしてかな？」で理由を聞いてください
-- 「似たようなこと見たことある？」で経験を引き出してください
-- 「前に習ったこと思い出せる？」で既習事項との関連を聞いてください
-- 子どもが答えてから、具体的な体験を聞いてください
-- 必ず普通の日本語の文章で回答してください
-- JSON、マークダウン、その他の形式は一切使用しないでください
-- 小学生向けの短い質問を1つだけしてください
-- 質問は15文字以内で簡潔にしてください
-- 専門用語は使わず、日常的な言葉を使ってください
-- {{ }}, [ ], **, #, ``` などの記号は使わないでください
-- 1文で質問を終えてください
-- 「実験お疲れさまでした」「実験の結果は」などの定型句は使わないでください
-- 子どもの前の発言を受け止めてから、新しい質問をしてください
-- 同じフレーズを繰り返さないでください
-- 産婆法（ソクラテス式問答法）を実践し、答えを直接教えるのではなく適切な質問で導いてください
-
-**対話の基本パターン:**
-1. 子どもの発言を受け止める：「そうだね」「なるほど」
-2. 理由を聞く：「なんでそう思うの？」「どうしてかな？」
-3. 経験を聞く：「似たようなこと見たことある？」
-4. 既習事項：「前に習ったこと思い出せる？」
-5. 具体的体験：子どもが答えてから「〜したことある？」
-"""
     
     for attempt in range(max_retries):
         try:
@@ -994,30 +594,13 @@ def load_unit_prompt(unit_name):
         if content:
             return content
         else:
-            return get_fallback_prompt()
+            # フォールバック：ファイルが空の場合
+            return "児童の発言をよく聞いて、適切な質問で考えを引き出してください。"
     
     except FileNotFoundError:
-        return get_fallback_prompt()
+        # フォールバック：ファイルが見つからない場合
+        return "児童の発言をよく聞いて、適切な質問で考えを引き出してください。"
 
-def get_fallback_prompt():
-    """フォールバック用のデフォルトプロンプト"""
-    return """
-あなたは小学生向けの産婆法（ソクラテス式問答法）を実践する理科指導者です。小学生のレベルに合わせた簡単な質問で、学習者自身に気づかせることが目的です。
-
-## 基本指針
-- 1つずつ聞く - 複数の質問を同時にしない
-- 身近な例で考えさせる
-- 学習者の発言を受け止める - まず肯定してから次の質問
-- 経験を聞く - 「前に見たことある？」「どんな時に？」
-
-## 絶対に守ること
-- 1文で短く質問する（20文字以内を目指す）
-- 小学生が知らない専門用語は使わない
-- 複雑な例え話はしない
-- 1回に1つのことだけ聞く
-- JSON形式では絶対に回答しない
-- 普通の文章で質問する
-"""
 
 # 学習ログを保存する関数
 def save_learning_log(student_number, unit, log_type, data):
@@ -1175,88 +758,9 @@ def chat():
     
     # 単元ごとのプロンプトを読み込み
     unit_prompt = load_unit_prompt(unit)
-    print(f"プロンプト読み込み確認 - Unit: {unit}")
-    print(f"プロンプト内容（最初の100文字）: {unit_prompt[:100]}...")
-    
-    # 対話回数に応じた段階別支援戦略を決定
-    conversation_count = len(conversation) // 2 + 1  # ユーザーメッセージの回数
-    unit_info = analyze_unit_characteristics(unit)
-    
-    # 予想段階の段階別戦略
-    if conversation_count <= 2:
-        # 第1段階：体験的表現→一般表現
-        stage_guidance = """
-**現在の段階**: 体験的表現から一般表現への引き上げ段階
-**目標**: 子供の感覚的・体験的表現を受け止めて、一般的な表現に引き上げる
-**戦略**: 
-1. まず子供の表現を受け止める「そうですね」「なるほど」
-2. 「どんなふうになると思う？」「もう少し詳しく教えて」で具体化
-3. 「別の言い方でいうと？」で表現の引き上げ
-**禁止**: 概念的な説明、専門用語の使用、複数質問
-**質問例**: 「どうなると思いますか？」「どんな感じになりそう？」
-"""
-    elif conversation_count <= 4:
-        # 第2段階：経験関連付け（産婆法強化）
-        socratic_questions = unit_info.get('産婆法_経験引き出し', [])
-        experience_shortage_questions = unit_info.get('経験不足時の質問', [])
-        stage_guidance = f"""
-**現在の段階**: 生活経験・既習事項との関連付け段階（産婆法実践）
-**目標**: 予想の根拠となる具体的な経験を産婆法で詳しく引き出す
-**戦略**:
-1. 「お家でそういうこと見たことある？」で経験の有無を確認
-2. 「いつ、どこで見た？」「誰と一緒だった？」で具体的な場面を詳細化
-3. 「その時どんな感じだった？」「どうなっていた？」で詳細な観察を引き出す
-4. 「他にも似たようなこと知ってる？」で関連経験を広げる
-5. **経験不足の場合**: こちらから具体的な経験を提示して「こういうのない？」と聞く
-
-**経験引き出し質問例**: {socratic_questions[0] if socratic_questions else ''}
-**経験不足時の質問例**: {experience_shortage_questions[0] if experience_shortage_questions else ''}
-**関連生活経験例**: {', '.join(unit_info.get('生活経験', []))}
-**質問例**: 「どんな時に見たことある？」「その時どうだった？」「他にも似たようなことある？」
-**経験不足時の対応**: 「こういうの見たことない？」「○○した時はどうだった？」
-"""
-    else:
-        # 第3段階：根拠明確化
-        stage_guidance = """
-**現在の段階**: 予想の根拠明確化段階
-**目標**: なぜそう予想したかの根拠を明確にする
-**戦略**:
-1. 「なぜそう思ったの？」「何から考えたの？」で根拠を聞く
-2. 経験と予想の関連を確認
-3. 予想をまとめる準備
-**質問例**: 「どうしてそう思ったの？」「何から考えたの？」
-"""
-    
-    # プロンプト作成
-    system_prompt = f"""{unit_prompt}
-
-【学習単元】: {unit}
-【課題】: {task_content}
-【対話回数】: {conversation_count}回目
-
-{stage_guidance}
-
-【単元特性】:
-・見方・考え方: {unit_info.get('見方・考え方', '')}
-・生活経験例: {', '.join(unit_info.get('生活経験', []))}
-・産婆法質問例: {unit_info.get('産婆法質問', [''])[0] if unit_info.get('産婆法質問') else ''}
-
-【応答ルール】:
-1. 子供の発言をまず受け止める（「そうですね」「なるほど」等）
-2. その後、1つだけ短い質問をする（20文字以内）
-3. JSON形式やマークダウンは絶対使わない
-4. 普通の日本語で自然に話す
-5. 専門用語は使わない、小学生レベルの言葉のみ
-6. 概念は教えない、子供自身に考えさせる
-7. 予想段階では概念化は行わない
-
-【重要】: 子供が主体となって予想を立てられるよう支援してください。
-答えを教えるのではなく、経験を引き出して予想の根拠を明確にしてください。
-
-次の応答を普通の文章で1文で書いてください："""
     
     # 対話履歴を含めてプロンプト作成
-    full_prompt = system_prompt + "\n\n対話履歴:\n"
+    full_prompt = unit_prompt + "\n\n対話履歴:\n"
     for msg in conversation:
         role = "学習者" if msg['role'] == 'user' else "AI"
         full_prompt += f"{role}: {msg['content']}\n"
@@ -1317,33 +821,17 @@ def summary():
     conversation = session.get('conversation', [])
     unit = session.get('unit')
     
-    # 課題文を読み込み
-    task_content = load_task_content(unit)
+    # 予想のまとめ用プロンプトを読み込み（すべてのユニット共通）
+    summary_prompt = load_unit_prompt("予想_summary")
     
-    # 予想のまとめを生成（対話内容のみに基づく）
-    summary_prompt = f"""
-以下の対話内容「のみ」を基に、学習者が実際に発言した内容をまとめて予想文を作成してください。
-
-**重要な制約:**
-1. 対話に出てこなかった内容は絶対に追加しない
-2. 学習者が実際に言った言葉や表現をできるだけ使用する
-3. 学習者が話した経験や根拠のみを含める
-4. 対話で言及されていない例や理由は一切使わない
-5. 1-2文の短い予想文にまとめる
-6. 「〜と思います。」「〜だと予想します。」の形で終わる
-7. マークダウン記法は一切使用しない
-
-課題文: {task_content}
-単元: {unit}
-
-対話履歴:
-"""
+    # 対話履歴をプロンプトに追加
+    full_summary_prompt = summary_prompt + "\n\n対話履歴:\n"
     for msg in conversation:
         role = "学習者" if msg['role'] == 'user' else "AI"
-        summary_prompt += f"{role}: {msg['content']}\n"
+        full_summary_prompt += f"{role}: {msg['content']}\n"
     
     try:
-        summary_response = call_openai_with_retry(summary_prompt)
+        summary_response = call_openai_with_retry(full_summary_prompt)
         
         # JSON形式のレスポンスの場合は解析して純粋なメッセージを抽出
         summary_text = extract_message_from_json_response(summary_response)
@@ -1390,102 +878,14 @@ def reflect_chat():
     # 反省対話履歴に追加
     reflection_conversation.append({'role': 'user', 'content': user_message})
     
-    # 児童の発言を分析
-    student_analysis = analyze_student_response(user_message, unit)
-    
-    # 学習段階判定
-    conversation_turn = len(reflection_conversation) // 2 + 1
-    learning_stage = determine_learning_stage(conversation_turn)
-    stage_guidance = generate_stage_appropriate_guidance(learning_stage, unit)
-    
-    # 適応的質問生成
-    adaptive_question = generate_adaptive_question(student_analysis, unit, reflection_conversation)
-    
-    # 対話回数に応じた段階別支援戦略を決定  
-    conversation_turn = len(reflection_conversation) // 2 + 1
+    # ユニット情報を取得（後処理用）
     unit_info = analyze_unit_characteristics(unit)
     
-    # 考察段階の段階別戦略
-    if conversation_turn <= 2:
-        # 第1段階：実験結果の言語化
-        stage_guidance = """
-**現在の段階**: 実験結果の言語化段階
-**目標**: まず実験で見た結果をしっかりと言語化させる
-**戦略**: 
-1. 「実験でどんなことが起こりましたか？」で結果を聞く
-2. 「どの部分が変わった？」「どのくらい変わった？」で詳細化
-3. オノマトペや感覚表現を受け止めつつ、一般表現への変換を支援
-**重要**: 最初から体験談は聞かない、まず結果の言語化が最優先
-**質問例**: 「実験でどうなりましたか？」「どんなふうになった？」
-"""
-    elif conversation_turn <= 4:
-        # 第2-3段階：言語引き上げ・予想との比較
-        stage_guidance = """
-**現在の段階**: 言語引き上げ・予想比較段階
-**目標**: 生活用語→一般用語への引き上げ、予想との差異確認
-**戦略**:
-1. 「別の言い方でいうと？」「書く時はどう表現する？」で言語引き上げ
-2. 「予想と同じだった？」「どこが違った？」で予想比較
-3. オノマトペ→書き言葉の変換支援（「ぐつぐつ」→「泡が出る」等）
-**重要**: 難しい言葉に置き換えるのではなく、適切な一般用語に
-**質問例**: 「予想と同じでしたか？」「書く時はどう表現する？」
-"""
-    else:
-        # 第4段階以降：経験関連付け・概念化足掛かり（産婆法強化）
-        socratic_questions = unit_info.get('産婆法_経験引き出し', [])
-        stage_guidance = f"""
-**現在の段階**: 経験関連付け・概念化足掛かり段階（産婆法実践）
-**目標**: 結果を受けて生活経験と関連付け、概念化への足掛かりを作る
-**戦略**:
-1. 結果が明確になってから「似たようなこと見たことある？」で経験関連
-2. 「どんな時だった？」「どこで見た？」で具体的な場面を詳細化
-3. 「その時も同じようなことが起こった？」で関連性を確認
-4. 「前に習ったことと似てる？」で既習事項との関連
-5. 「このことから何が分かりそう？」で概念化への足掛かり
-**産婆法質問例**: {socratic_questions[1] if len(socratic_questions) > 1 else socratic_questions[0] if socratic_questions else ''}
-**重要**: 結果の言語化ができてから、産婆法で詳しく経験を引き出す
-**質問例**: 「お家で似たようなこと見たことある？」「どんな時だった？」「このことから何が分かる？」
-"""
-    
-    # 強化された考察支援プロンプト
-    system_prompt = f"""
-【学習単元】: {unit}
-【学習者の予想】: {prediction_summary}
-【対話回数】: {conversation_turn}回目
-
-{stage_guidance}
-
-【単元特性】:
-・見方・考え方: {unit_info.get('見方・考え方', '')}
-・重点活動: {', '.join(unit_info.get('重点活動', []))}
-・生活経験例: {', '.join(unit_info.get('生活経験', []))}
-・キーワード: {', '.join(unit_info.get('キーワード', []))}
-
-【考察段階の重要な流れ】:
-実験結果の言語化 → 言語の引き上げ → 予想との差異確認 → 経験関連付け → 概念化足掛かり
-
-【応答ルール】:
-1. 子供の発言をまず受け止める（「そうですね」「なるほど」等）
-2. その後、1つだけ短い質問をする（20文字以内）
-3. JSON形式やマークダウンは絶対使わない
-4. 普通の日本語で自然に話す
-5. 専門用語は使わない、小学生レベルの言葉のみ
-6. 対話履歴を確認し、既に聞いた内容は重複して聞かない
-7. 子供の答えに応じて次のステップに進む
-
-【言語引き上げ支援例】:
-・「ふわふわ」→「軽くなる」「やわらかくなる」
-・「ぐつぐつ」→「泡が出る」「沸騰する」  
-・「じゅーじゅー」→「温まる」「熱くなる」
-・「すーっと」→「ゆっくりと」「だんだん」
-
-【重要】: 見た結果を生活用語から適切な一般用語に引き上げることで、
-考察の質を向上させてください。難しい専門用語は使わないでください。
-
-次の応答を普通の文章で1文で書いてください："""
+    # プロンプトファイルからベースプロンプトを取得
+    unit_prompt = load_unit_prompt(unit)
     
     # 対話履歴を追加
-    full_prompt = system_prompt + "\n\n対話履歴:\n"
+    full_prompt = unit_prompt + "\n\n対話履歴:\n"
     for msg in reflection_conversation:
         role = "学習者" if msg['role'] == 'user' else "AI"
         full_prompt += f"{role}: {msg['content']}\n"
@@ -1524,30 +924,19 @@ def reflect_chat():
 def final_summary():
     reflection_conversation = session.get('reflection_conversation', [])
     prediction_summary = session.get('prediction_summary', '')
+    unit = session.get('unit')
     
-    # 最終まとめを生成（対話内容のみに基づく）
-    final_prompt = f"""
-以下の対話内容「のみ」を基に、学習者が実際に発言した内容をまとめて考察文を作成してください。
-
-**重要な制約:**
-1. 対話に出てこなかった内容は絶対に追加しない
-2. 学習者が実際に言った実験結果のみを使用する
-3. 学習者が実際に話した経験や考えのみを含める
-4. 対話で言及されていない結論や解釈は一切追加しない
-5. 定型文の形式を守る：「(結果)という結果であった。(予想)と予想していたが、(合っていた/誤っていた)。このことから(経験や既習事項)は~と考えた」
-6. マークダウン記法は一切使用しない
-7. 学習者の実際の表現をできるだけ使用する
-
-学習者の予想: {prediction_summary}
-
-考察対話履歴:
-"""
+    # 最終考察用プロンプトを読み込み（すべてのユニット共通）
+    final_prompt = load_unit_prompt("考察_final_summary")
+    
+    # 対話履歴と予想をプロンプトに追加
+    full_final_prompt = final_prompt + f"\n\n学習者の予想: {prediction_summary}\n\n考察対話履歴:\n"
     for msg in reflection_conversation:
         role = "学習者" if msg['role'] == 'user' else "AI"
-        final_prompt += f"{role}: {msg['content']}\n"
+        full_final_prompt += f"{role}: {msg['content']}\n"
     
     try:
-        final_summary_response = call_openai_with_retry(final_prompt)
+        final_summary_response = call_openai_with_retry(full_final_prompt)
         
         # JSON形式のレスポンスの場合は解析して純粋なメッセージを抽出
         final_summary_text = extract_message_from_json_response(final_summary_response)
@@ -1657,13 +1046,7 @@ def upload_lesson_plan():
             # ファイルを保存（現在はMarkdown形式のため、この部分は使用しない）
             # file.save(file_path)
             
-            # 指導案情報を保存（Markdownファイルが既に存在すると仮定）
-            lesson_content = load_lesson_plan_content(unit)
-            if lesson_content:
-                save_lesson_plan_info(unit, lesson_content)
-                flash(f'{unit}の指導案が更新されました', 'success')
-            else:
-                flash('指導案の内容を読み込めませんでした', 'error')
+            flash(f'{unit}の指導案がアップロードされました', 'success')
         else:
             flash('現在はMarkdown形式の指導案のみ対応しています', 'info')
             
@@ -2200,25 +1583,6 @@ def analyze_class_trends(logs, unit=None):
             'overall_trend': '分析対象のデータがありません'
         }
     
-    # 指導案の内容を取得（特定単元の場合）
-    lesson_plan_context = ""
-    if unit:
-        lesson_plan_content = load_lesson_plan_content(unit)
-        if lesson_plan_content:
-            lesson_plan_preview = lesson_plan_content[:800]
-            lesson_plan_context = f"""
-指導案情報:
-{lesson_plan_preview}
-
-[指導案に基づく分析観点]
-- 指導目標の達成状況
-- 予想されていた課題や誤解の出現
-- 指導計画との整合性
-- 次回授業への示唆
-"""
-        else:
-            lesson_plan_context = "※この単元の指導案は設定されていません。"
-    
     # 学習データを要約
     summary_data = {}
     for student in students:
@@ -2245,8 +1609,6 @@ def analyze_class_trends(logs, unit=None):
 
 対象単元: {analysis_unit}
 学習者数: {len(students)}人
-
-{lesson_plan_context}
 
 各学習者の状況:
 """
