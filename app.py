@@ -374,6 +374,32 @@ def load_task_content(unit_name):
     except FileNotFoundError:
         return f"{unit_name}について実験を行います。どのような結果になると予想しますか？"
 
+def get_initial_ai_message(unit_name, stage='prediction'):
+    """段階と単元に応じた最初のAIメッセージを生成"""
+    if stage == 'prediction':
+        messages = {
+            "水のあたたまり方": "こんにちは！水を温めるとき、最初にあたたかくなるのはどこだと思いますか？あなたの考えを聞かせてください。",
+            "金属のあたたまり方": "こんにちは！金属を温めるとき、どのようにあたたまっていくと思いますか？あなたの予想を教えてください。",
+            "空気の温度と体積": "こんにちは！空気を温めるとき、空気にはどのような変化が起こると思いますか？あなたの考えを聞かせてください。",
+            "水を熱し続けた時の温度と様子": "こんにちは！水を熱し続けると、温度と様子がどのように変わると思いますか？あなたの予想を教えてください。"
+        }
+    elif stage == 'reflection':
+        messages = {
+            "水のあたたまり方": "こんにちは！実験してみてどうでしたか？予想と比べてどのようなことに気づきましたか？教えてください。",
+            "金属のあたたまり方": "こんにちは！実験の結果はどうでしたか？金属のあたたまり方について、気づいたことを聞かせてください。",
+            "空気の温度と体積": "こんにちは！実験から、空気の温度と体積の関係について、どんなことがわかりましたか？教えてください。",
+            "水を熱し続けた時の温度と様子": "こんにちは！水を熱し続けた時の変化について、実験からわかったことを教えてください。"
+        }
+    else:
+        messages = {
+            "水のあたたまり方": "こんにちは！この課題について、どのような結果になると思いますか？あなたの考えを聞かせてください。",
+            "金属のあたたまり方": "こんにちは！この課題について、どのような結果になると思いますか？あなたの考えを聞かせてください。",
+            "空気の温度と体積": "こんにちは！この課題について、どのような結果になると思いますか？あなたの考えを聞かせてください。",
+            "水を熱し続けた時の温度と様子": "こんにちは！この課題について、どのような結果になると思いますか？あなたの考えを聞かせてください。"
+        }
+    
+    return messages.get(unit_name, "こんにちは！この課題について、どのような結果になると思いますか？あなたの考えを聞かせてください。")
+
 # 単元ごとのプロンプトを読み込む関数
 def load_unit_prompt(unit_name):
     """単元専用のプロンプトファイルを読み込む"""
@@ -528,8 +554,11 @@ def prediction():
         update_student_progress(class_number, student_number, unit, 
                               stage='prediction', started=True)
     
+    # 単元に応じた最初のAIメッセージを取得
+    initial_ai_message = get_initial_ai_message(unit, stage='prediction')
+    
     return render_template('prediction.html', unit=unit, task_content=task_content, 
-                         resumption_info=resumption_info)
+                         resumption_info=resumption_info, initial_ai_message=initial_ai_message)
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -645,9 +674,16 @@ def experiment():
 
 @app.route('/reflection')
 def reflection():
+    unit = session.get('unit')
+    prediction_summary = session.get('prediction_summary')
+    
+    # 単元に応じた最初のAIメッセージを取得
+    initial_ai_message = get_initial_ai_message(unit, stage='reflection')
+    
     return render_template('reflection.html', 
-                         unit=session.get('unit'),
-                         prediction_summary=session.get('prediction_summary'))
+                         unit=unit,
+                         prediction_summary=prediction_summary,
+                         initial_ai_message=initial_ai_message)
 
 @app.route('/reflect_chat', methods=['POST'])
 def reflect_chat():

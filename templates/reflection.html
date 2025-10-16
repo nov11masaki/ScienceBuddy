@@ -77,8 +77,9 @@ let reflectionCount = 0;
 
 // ページ読み込み時の初期化
 document.addEventListener('DOMContentLoaded', function() {
-    // 初期メッセージを表示
-    addReflectionMessage('実験でどんなことが起こりましたか？', 'ai');
+    // 初期メッセージを表示（サーバーから渡されたメッセージを使用）
+    const initialMessage = '{{ initial_ai_message }}';
+    addReflectionMessage(initialMessage, 'ai');
 });
 
 document.getElementById('sendReflectionButton').addEventListener('click', sendReflection);
