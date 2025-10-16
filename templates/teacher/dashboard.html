@@ -6,27 +6,23 @@
 <div class="teacher-dashboard">
     <!-- ヘッダーセクション -->
     <div class="dashboard-header-section">
-        <div class="container px-3">
-            <div class="row align-items-center py-4">
-                <div class="col-12">
-                    <div class="header-content">
-                        <div>
-                            <h1 class="dashboard-title">
-                                <i class="fas fa-chalkboard-teacher"></i>
-                                教員用ダッシュボード
-                            </h1>
-                            <p class="dashboard-subtitle">学習者の予想・考察の過程を確認できます</p>
-                        </div>
-                        <div class="teacher-actions">
-                            <span class="teacher-badge">
-                                <i class="fas fa-user-tie"></i>
-                                {{ teacher_id }}
-                            </span>
-                            <a href="/teacher/logout" class="btn btn-logout">
-                                <i class="fas fa-sign-out-alt me-2"></i>ログアウト
-                            </a>
-                        </div>
-                    </div>
+        <div class="container-fluid">
+            <div class="header-wrapper">
+                <div class="header-left">
+                    <h1 class="dashboard-title">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                        教員用ダッシュボード
+                    </h1>
+                    <p class="dashboard-subtitle">学習者の予想・考察の過程を確認できます</p>
+                </div>
+                <div class="header-right">
+                    <span class="teacher-badge">
+                        <i class="fas fa-user-tie"></i>
+                        {{ teacher_id }}
+                    </span>
+                    <a href="/teacher/logout" class="btn btn-logout">
+                        <i class="fas fa-sign-out-alt me-2"></i>ログアウト
+                    </a>
                 </div>
             </div>
         </div>
@@ -34,36 +30,32 @@
 
     <!-- メインコンテンツ -->
     <div class="dashboard-content">
-        <div class="container px-3">
+        <div class="container-fluid">
             <!-- メインカードセクション -->
-            <div class="row g-4 mb-5 mt-4">
-                <div class="col-12 col-lg-6">
-                    <div class="dashboard-card featured-card">
-                        <div class="card-body">
-                            <div class="card-icon-wrapper">
-                                <i class="fas fa-chart-line"></i>
-                            </div>
-                            <h3 class="card-title">学習ログ</h3>
-                            <p class="card-description">学習者の対話履歴と学習過程を確認</p>
-                            <a href="/teacher/logs" class="btn btn-card">
-                                <i class="fas fa-eye me-2"></i>ログを見る
-                            </a>
+            <div class="cards-grid">
+                <div class="dashboard-card featured-card">
+                    <div class="card-body">
+                        <div class="card-icon-wrapper">
+                            <i class="fas fa-chart-line"></i>
                         </div>
+                        <h3 class="card-title">学習ログ</h3>
+                        <p class="card-description">学習者の対話履歴と学習過程を確認</p>
+                        <a href="/teacher/logs" class="btn btn-card">
+                            <i class="fas fa-eye me-2"></i>ログを見る
+                        </a>
                     </div>
                 </div>
                 
-                <div class="col-12 col-lg-6">
-                    <div class="dashboard-card">
-                        <div class="card-body">
-                            <div class="card-icon-wrapper info-icon">
-                                <i class="fas fa-download"></i>
-                            </div>
-                            <h3 class="card-title">データエクスポート</h3>
-                            <p class="card-description">学習データをCSVで出力</p>
-                            <button class="btn btn-card secondary" onclick="exportData()">
-                                <i class="fas fa-file-csv me-2"></i>エクスポート
-                            </button>
+                <div class="dashboard-card">
+                    <div class="card-body">
+                        <div class="card-icon-wrapper info-icon">
+                            <i class="fas fa-download"></i>
                         </div>
+                        <h3 class="card-title">データエクスポート</h3>
+                        <p class="card-description">学習データをCSVで出力</p>
+                        <button class="btn btn-card secondary" onclick="exportData()">
+                            <i class="fas fa-file-csv me-2"></i>エクスポート
+                        </button>
                     </div>
                 </div>
             </div>
@@ -73,28 +65,26 @@
                 <h2 class="filter-section-title">
                     <i class="fas fa-filter me-2"></i>単元で検索
                 </h2>
-                <div class="row g-3">
+                <div class="filter-cards-grid">
                     {% for unit in units %}
-                    <div class="col-6 col-sm-4 col-lg-3">
-                        <a href="/teacher/logs?unit={{ unit|urlencode }}" class="filter-card-link">
-                            <div class="filter-card">
-                                <div class="filter-icon">
-                                    {% if '温度' in unit %}
-                                        <i class="fas fa-thermometer-half"></i>
-                                    {% elif 'あたたまり' in unit %}
-                                        <i class="fas fa-fire"></i>
-                                    {% elif 'ふっとう' in unit %}
-                                        <i class="fas fa-tint"></i>
-                                    {% elif '冷やした' in unit %}
-                                        <i class="fas fa-snowflake"></i>
-                                    {% else %}
-                                        <i class="fas fa-flask"></i>
-                                    {% endif %}
-                                </div>
-                                <span class="filter-title">{{ unit }}</span>
+                    <a href="/teacher/logs?unit={{ unit|urlencode }}" class="filter-card-link">
+                        <div class="filter-card">
+                            <div class="filter-icon">
+                                {% if '温度' in unit %}
+                                    <i class="fas fa-thermometer-half"></i>
+                                {% elif 'あたたまり' in unit %}
+                                    <i class="fas fa-fire"></i>
+                                {% elif 'ふっとう' in unit %}
+                                    <i class="fas fa-tint"></i>
+                                {% elif '冷やした' in unit %}
+                                    <i class="fas fa-snowflake"></i>
+                                {% else %}
+                                    <i class="fas fa-flask"></i>
+                                {% endif %}
                             </div>
-                        </a>
-                    </div>
+                            <span class="filter-title">{{ unit }}</span>
+                        </div>
+                    </a>
                     {% endfor %}
                 </div>
             </div>
