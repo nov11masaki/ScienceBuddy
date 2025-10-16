@@ -1097,16 +1097,40 @@ def chatbot_verify():
         flash('4桁の数字を入力してください（例：4103）', 'error')
         return redirect(url_for('chatbot_login'))
     
-    # IDをパース: 4103 = 学年:4, クラス:1, 出席番号:03
-    grade = student_id[0]
-    class_num = student_id[1]
-    seat_num = student_id[2:4]
+    # 有効なIDリストを定義
+    valid_ids = set()
     
-    # セッションに保存
-    session['chatbot_student_id'] = student_id
-    session['chatbot_grade'] = grade
-    session['chatbot_class'] = class_num
-    session['chatbot_number'] = seat_num
+    # 教員用ID
+    valid_ids.add('1111')
+    
+    # 4年1組～4組（各1～30番）
+    for class_num in range(1, 5):  # 1, 2, 3, 4組
+        for seat_num in range(1, 31):  # 1～30番
+            valid_ids.add(f"4{class_num}{seat_num:02d}")
+    
+    # IDの有効性チェック
+    if student_id not in valid_ids:
+        flash('無効なIDです。正しいIDを入力してください', 'error')
+        return redirect(url_for('chatbot_login'))
+    
+    # IDをパース
+    if student_id == '1111':
+        # 教員用
+        session['chatbot_student_id'] = student_id
+        session['chatbot_grade'] = '教員'
+        session['chatbot_class'] = ''
+        session['chatbot_number'] = ''
+    else:
+        # 学生用: 4103 = 学年:4, クラス:1, 出席番号:03
+        grade = student_id[0]
+        class_num = student_id[1]
+        seat_num = student_id[2:4]
+        
+        session['chatbot_student_id'] = student_id
+        session['chatbot_grade'] = grade
+        session['chatbot_class'] = class_num
+        session['chatbot_number'] = seat_num
+    
     session['chatbot_history'] = []
     
     return redirect(url_for('chatbot'))
@@ -1141,27 +1165,44 @@ def chatbot_chat():
     chat_history = session.get('chatbot_history', [])
     
     # システムプロンプト（理科学習支援）
-    system_prompt = """あなたは小学生向けの理科学習を支援する優しいAIアシスタントです。
+    system_prompt = """あなたは小学4年生向けの理科学習を支援する優しいAIアシスタントです。
 
-【重要なルール】
-1. 小学生にわかる平易な言葉を使う
-2. 専門用語は使わず、日常的な言葉で説明する
-3. 答えを直接教えるのではなく、考えるヒントを与える
-4. 児童の疑問に寄り添い、興味を引き出す
-5. 短く、わかりやすい文章で答える
-6. 理科の実験や観察に関する質問には、安全に注意を促す
-7. 励ましの言葉を入れて、学習意欲を高める
+【絶対に守るルール】
+1. **やさしい言葉を使う**: 小学4年生が使う言葉で話す
+   - ❌「物質」「現象」「温度上昇」
+   - ✅「もの」「できごと」「あたたかくなる」
+
+2. **短い文で答える**: 1つの文は短く、わかりやすく
+   - 長い説明は2〜3文に分ける
+   - 難しい言葉は使わない
+
+3. **答えを教えない**: 自分で考えられるようにヒントを出す
+   - ❌「答えは〇〇です」
+   - ✅「〇〇してみたら、どうなると思う？」
+
+4. **身近なものに例える**: 日常生活で見たことがあるものを使って説明
+   - 「お風呂のお湯」「フライパン」「氷」など
+
+5. **励ます言葉を入れる**:
+   - 「いいね！」「すごいね！」「よく気づいたね！」
+   - 「おもしろい考えだね！」「それについて考えてみよう！」
+
+6. **安全を大切に**: 実験の話では、必ず安全に気をつけるように言う
+   - 「やけどに気をつけてね」「大人の人と一緒にやろうね」
 
 【対応する内容】
-- 金属のあたたまり方
-- 水のあたたまり方
-- 空気の温度と体積
-- 水を熱し続けたときの温度と様子
+- 金属のあたたまり方（鉄やアルミニウムなど）
+- 水のあたたまり方（お湯の動き方）
+- 空気の温度と体積（あたたまると空気はどうなるか）
+- 水を熱し続けたときの温度と様子（沸騰について）
 - その他、小学校理科に関する質問
 
-【話し方の例】
-「いい質問だね！」「なるほど、それについて考えてみよう」「～ってどういうことかな？」など、
-児童が考えやすいような問いかけをする。"""
+【良い返答の例】
+質問:「金属ってどうやってあたたまるの？」
+返答:「いい質問だね！金属をあたためると、あたためた場所からだんだん広がっていくんだよ。フライパンを火にかけると、真ん中からあたたかくなっていくよね。それと同じだよ。やってみたことある？」
+
+質問:「水はどうやってあたたまるの？」
+返答:「おもしろいことに、水は金属とはちがうあたたまり方をするんだよ。お風呂のお湯を思い出してみて。下からあたためると、あたたかいお湯はどこに行くかな？」"""
     
     try:
         # Gemini APIが利用可能かチェック
