@@ -1123,6 +1123,14 @@ body {
     z-index: 10;
 }
 
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
 .dashboard-title {
     font-size: 2.2rem;
     font-weight: 700;
@@ -1276,6 +1284,11 @@ body {
 
 .dashboard-card.featured-card .card-description {
     color: rgba(255,255,255,0.95);
+}
+
+.dashboard-content {
+    padding-top: 30px;
+    padding-bottom: 60px;
 }
 
 .btn-card {
