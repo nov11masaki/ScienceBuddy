@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}理科のお助けチャット{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-robot me-2"></i>
+                        理科のお助けチャット
+                    </h4>
+                    <p class="mb-0 small">理科の勉強でわからないことを聞いてね！</p>
+                </div>
+                <div class="card-body" style="height: 500px; overflow-y: auto;" id="chatMessages">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>こんにちは！</strong><br>
+                        理科の勉強で困っていることや、わからないことがあったら何でも聞いてね。<br>
+                        例えば：<br>
+                        ・「金属はどうやって温まるの？」<br>
+                        ・「水が沸騰するってどういうこと？」<br>
+                        ・「空気を温めるとどうなるの？」
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <form id="chatForm">
+                        <div class="input-group">
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="userInput" 
+                                   placeholder="質問を入力してね..."
+                                   autocomplete="off"
+                                   required>
+                            <button type="submit" class="btn btn-success" id="sendButton">
+                                <i class="fas fa-paper-plane me-1"></i>
+                                送信
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="text-center mt-3">
+                <a href="/" class="btn btn-outline-secondary">
+                    <i class="fas fa-home me-2"></i>
+                    ホームに戻る
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.chat-message {
+    margin-bottom: 15px;
+    padding: 10px 15px;
+    border-radius: 10px;
+    max-width: 80%;
+}
+
+.user-message {
+    background-color: #e3f2fd;
+    margin-left: auto;
+    text-align: right;
+}
+
+.ai-message {
+    background-color: #f5f5f5;
+    margin-right: auto;
+}
+
+.message-label {
+    font-size: 0.85em;
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #666;
+}
+
+.user-message .message-label {
+    color: #1976d2;
+}
+
+.ai-message .message-label {
+    color: #388e3c;
+}
+
+#chatMessages {
+    display: flex;
+    flex-direction: column;
+}
+</style>
+
+<script>
+document.getElementById('chatForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const input = document.getElementById('userInput');
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    // ユーザーメッセージを表示
+    addMessage(message, 'user');
+    input.value = '';
+    
+    // 送信ボタンを無効化
+    const sendButton = document.getElementById('sendButton');
+    sendButton.disabled = true;
+    sendButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>考え中...';
+    
+    try {
+        const response = await fetch('/chatbot/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ message: message })
+        });
+        
+        const data = await response.json();
+        
+        if (data.error) {
+            addMessage('ごめんね、今うまく答えられないみたい。もう一度聞いてくれる？', 'ai');
+        } else {
+            addMessage(data.response, 'ai');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        addMessage('ごめんね、エラーが起きちゃった。もう一度試してみてね。', 'ai');
+    } finally {
+        // 送信ボタンを有効化
+        sendButton.disabled = false;
+        sendButton.innerHTML = '<i class="fas fa-paper-plane me-1"></i>送信';
+        input.focus();
+    }
+});
+
+function addMessage(text, type) {
+    const messagesContainer = document.getElementById('chatMessages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `chat-message ${type}-message`;
+    
+    const label = document.createElement('div');
+    label.className = 'message-label';
+    label.textContent = type === 'user' ? 'あなた' : 'お助けAI';
+    
+    const content = document.createElement('div');
+    content.textContent = text;
+    
+    messageDiv.appendChild(label);
+    messageDiv.appendChild(content);
+    messagesContainer.appendChild(messageDiv);
+    
+    // 最新メッセージまでスクロール
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+</script>
+{% endblock %}

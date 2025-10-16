@@ -65,6 +65,15 @@ try:
 except Exception as e:
     client = None
 
+# Gemini APIの設定（チャットボット用）
+import google.generativeai as genai
+gemini_api_key = os.getenv('GEMINI_API_KEY')
+if gemini_api_key:
+    genai.configure(api_key=gemini_api_key)
+    gemini_model = genai.GenerativeModel('gemini-pro')
+else:
+    gemini_model = None
+
 # マークダウン記法を除去する関数
 def remove_markdown_formatting(text):
     """AIの応答からマークダウン記法を除去する"""
@@ -1553,6 +1562,130 @@ def student_detail(student_number):
                          available_dates=available_dates,
                          units_data={unit_name: {} for unit_name in all_units},
                          teacher_id=session.get('teacher_id', 'teacher'))
+
+# ========================================
+# チャットボット機能（Gemini API使用）
+# ========================================
+
+@app.route('/chatbot')
+def chatbot():
+    """理科学習支援チャットボット"""
+    # セッションにチャット履歴がない場合は初期化
+    if 'chatbot_history' not in session:
+        session['chatbot_history'] = []
+    return render_template('chatbot.html')
+
+@app.route('/chatbot/chat', methods=['POST'])
+def chatbot_chat():
+    """チャットボットとの対話処理（Gemini API使用）"""
+    user_message = request.json.get('message', '')
+    
+    if not user_message:
+        return jsonify({'error': '質問を入力してください'}), 400
+    
+    # チャット履歴を取得
+    chat_history = session.get('chatbot_history', [])
+    
+    # システムプロンプト（理科学習支援）
+    system_prompt = """あなたは小学生向けの理科学習を支援する優しいAIアシスタントです。
+
+【重要なルール】
+1. 小学生にわかる平易な言葉を使う
+2. 専門用語は使わず、日常的な言葉で説明する
+3. 答えを直接教えるのではなく、考えるヒントを与える
+4. 児童の疑問に寄り添い、興味を引き出す
+5. 短く、わかりやすい文章で答える
+6. 理科の実験や観察に関する質問には、安全に注意を促す
+7. 励ましの言葉を入れて、学習意欲を高める
+
+【対応する内容】
+- 金属のあたたまり方
+- 水のあたたまり方
+- 空気の温度と体積
+- 水を熱し続けたときの温度と様子
+- その他、小学校理科に関する質問
+
+【話し方の例】
+「いい質問だね！」「なるほど、それについて考えてみよう」「～ってどういうことかな？」など、
+児童が考えやすいような問いかけをする。"""
+    
+    try:
+        # Gemini APIが利用可能かチェック
+        if not gemini_model:
+            # Gemini APIが使えない場合はOpenAI APIにフォールバック
+            return fallback_to_openai(system_prompt, user_message, chat_history)
+        
+        # Gemini APIで応答を生成
+        # チャット履歴を含めたコンテキストを作成
+        full_context = system_prompt + "\n\n"
+        for msg in chat_history[-6:]:  # 最新3往復のみ使用
+            role = "ユーザー" if msg['role'] == 'user' else "AI"
+            full_context += f"{role}: {msg['content']}\n"
+        full_context += f"ユーザー: {user_message}\nAI: "
+        
+        response = gemini_model.generate_content(full_context)
+        ai_response = response.text
+        
+        # チャット履歴を更新
+        chat_history.append({'role': 'user', 'content': user_message})
+        chat_history.append({'role': 'assistant', 'content': ai_response})
+        
+        # 履歴が長くなりすぎないように制限（最新10往復まで）
+        if len(chat_history) > 20:
+            chat_history = chat_history[-20:]
+        
+        session['chatbot_history'] = chat_history
+        
+        return jsonify({'response': ai_response})
+        
+    except Exception as e:
+        print(f"Gemini API Error: {e}")
+        # エラー時はOpenAI APIにフォールバック
+        return fallback_to_openai(system_prompt, user_message, chat_history)
+
+def fallback_to_openai(system_prompt, user_message, chat_history):
+    """Gemini APIが使えない場合のOpenAI APIフォールバック"""
+    try:
+        if not client:
+            return jsonify({'error': 'APIが利用できません'}), 500
+        
+        # OpenAI API用のメッセージ形式に変換
+        messages = [{"role": "system", "content": system_prompt}]
+        
+        # チャット履歴を追加（最新3往復）
+        for msg in chat_history[-6:]:
+            messages.append({
+                "role": msg['role'],
+                "content": msg['content']
+            })
+        
+        # ユーザーメッセージを追加
+        messages.append({"role": "user", "content": user_message})
+        
+        # OpenAI APIで応答を生成
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages,
+            max_tokens=500,
+            temperature=0.7
+        )
+        
+        ai_response = response.choices[0].message.content
+        
+        # チャット履歴を更新
+        chat_history.append({'role': 'user', 'content': user_message})
+        chat_history.append({'role': 'assistant', 'content': ai_response})
+        
+        if len(chat_history) > 20:
+            chat_history = chat_history[-20:]
+        
+        session['chatbot_history'] = chat_history
+        
+        return jsonify({'response': ai_response})
+        
+    except Exception as e:
+        print(f"OpenAI API Error: {e}")
+        return jsonify({'error': 'エラーが発生しました。もう一度試してください。'}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5014)
