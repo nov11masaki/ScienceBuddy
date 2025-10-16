@@ -241,53 +241,6 @@ def get_progress_summary(progress):
     else:
         return "学習完了"
 
-def normalize_childish_expressions(text):
-    """子供の擬音語・擬態語を一般的な表現に変換する"""
-    conversions = {
-        # 触感・質感
-        'ふわふわ': '柔らかかったんだね',
-        'べたべた': 'ねばねばしていたんだね',
-        'ざらざら': 'でこぼこしていたんだね',
-        'つるつる': 'なめらかだったんだね',
-        'ぶよぶよ': '弾力があったんだね',
-        
-        # 音・動き
-        'ぶくぶく': '泡が出ていたんだね',
-        'ごぼごぼ': '音がしていたんだね',
-        'ぐるぐる': '回っていたんだね',
-        'ふわり': 'ゆっくり動いたんだね',
-        'ひらひら': '軽やかに動いたんだね',
-        
-        # 温度・感覚
-        'あつあつ': '熱かったんだね',
-        'ひんやり': '冷たかったんだね',
-        'ぽかぽか': 'あたたかかったんだね',
-        
-        # 量・程度
-        'いっぱい': 'たくさんあったんだね',
-        'ちょっぴり': '少しだったんだね',
-        'どんどん': 'だんだん変わったんだね'
-    }
-    
-    normalized_text = text
-    for childish, formal in conversions.items():
-        if childish in normalized_text:
-            normalized_text = normalized_text.replace(childish, formal)
-    
-    return normalized_text
-
-def normalize_family_expressions(text):
-    """家族表現を統一する"""
-    # お母さん → お家の人
-    text = text.replace('お母さん', 'お家の人')
-    text = text.replace('おかあさん', 'お家の人')
-    text = text.replace('ママ', 'お家の人')
-    text = text.replace('お父さん', 'お家の人')
-    text = text.replace('おとうさん', 'お家の人')
-    text = text.replace('パパ', 'お家の人')
-    
-    return text
-
 def extract_message_from_json_response(response):
     """JSON形式のレスポンスから純粋なメッセージを抽出する"""
     try:
@@ -360,116 +313,6 @@ def load_markdown_content(file_path):
     except Exception as e:
         print(f"Markdown読み込みエラー: {e}")
         return None
-
-def get_learning_guidelines():
-    """学習指導要領の内容を取得"""
-    guidelines_path = "guidelines/learning_guidelines.md"
-    if os.path.exists(guidelines_path):
-        return load_markdown_content(guidelines_path)
-    return None
-
-def get_teaching_support():
-    """指導支援方針の内容を取得"""
-    support_path = "guidelines/teaching_support.md"
-    if os.path.exists(support_path):
-        return load_markdown_content(support_path)
-    return None
-
-def get_learning_support_system():
-    """学習段階別支援システムの内容を取得"""
-    support_path = "guidelines/learning_support_system.md"
-    if os.path.exists(support_path):
-        return load_markdown_content(support_path)
-    return None
-
-def analyze_unit_characteristics(unit):
-    """単元の特性を分析"""
-    unit_characteristics = {
-        "水のあたたまり方": {
-            "重点活動": ["温度変化の比較", "対流現象の言語化", "日常経験との関連"],
-            "生活経験": ["お風呂の循環", "やかんのお湯", "暖房の仕組み"],
-            "キーワード": ["対流", "循環", "あたたまり方", "温度差"],
-            "産婆法質問": [
-                "お風呂に入るとき、どの部分があたたかく感じますか？",
-                "やかんでお湯を沸かすとき、どんなことが起こりますか？",
-                "水の中で何が動いているのでしょうか？"
-            ]
-        },
-        "金属のあたたまり方": {
-            "重点活動": ["伝導現象の観察", "順序立てた説明", "物質比較"],
-            "生活経験": ["フライパンで料理", "金属スプーン", "アイロン"],
-            "キーワード": ["伝導", "順番に", "伝わる", "熱くなる"],
-            "産婆法質問": [
-                "フライパンで料理をするとき、どの部分から熱くなりますか？",
-                "金属のスプーンをお湯に入れると、どうなりますか？",
-                "なぜ金属は料理道具によく使われるのでしょう？"
-            ]
-        },
-        "空気の温度と体積": {
-            "重点活動": ["数値データの分析", "グラフ読み取り", "関係性の発見"],
-            "生活経験": ["風船の変化", "空気入れ", "自転車のタイヤ"],
-            "キーワード": ["体積", "温度", "膨張", "収縮", "関係"],
-            "産婆法質問": [
-                "風船を温めるとどうなりますか？",
-                "冷やした風船はどうなるでしょう？",
-                "温度が変わると空気にどんな変化が起こりますか？"
-            ]
-        },
-        "水を熱し続けた時の温度と様子": {
-            "重点活動": ["継続的観察", "状態変化の記録", "グラフ分析"],
-            "生活経験": ["やかんでお湯を沸かす", "鍋で料理", "お風呂のお湯"],
-            "キーワード": ["沸騰", "状態変化", "温度変化", "泡", "蒸気"],
-            "産婆法質問": [
-                "お湯を沸かし続けるとどうなりますか？",
-                "温度はずっと上がり続けるでしょうか？",
-                "沸騰している時の泡は何でしょうか？"
-            ]
-        }
-    }
-    return unit_characteristics.get(unit, {})
-
-def save_lesson_plan_info(unit, content):
-    """指導案情報をJSONファイルに保存"""
-    lesson_plans_file = "lesson_plans_md/lesson_plans_index.json"
-    
-    # ディレクトリが存在しない場合は作成
-    os.makedirs("lesson_plans_md", exist_ok=True)
-    
-    # 既存の指導案情報を読み込み
-    lesson_plans = {}
-    if os.path.exists(lesson_plans_file):
-        try:
-            with open(lesson_plans_file, 'r', encoding='utf-8') as f:
-                lesson_plans = json.load(f)
-        except (json.JSONDecodeError, Exception):
-            lesson_plans = {}
-    
-    # 新しい指導案情報を追加
-    lesson_plans[unit] = {
-        'filename': f'{unit}.md',
-        'last_updated': datetime.now().isoformat(),
-        'content_preview': content[:500] if content else "",  # 最初の500文字のプレビュー
-        'content_length': len(content) if content else 0
-    }
-    
-    # ファイルに保存
-    with open(lesson_plans_file, 'w', encoding='utf-8') as f:
-        json.dump(lesson_plans, f, ensure_ascii=False, indent=2)
-
-
-
-def get_lesson_plans_list():
-    """アップロード済みの指導案一覧を取得"""
-    lesson_plans_file = "lesson_plans/lesson_plans_index.json"
-    
-    if not os.path.exists(lesson_plans_file):
-        return {}
-    
-    try:
-        with open(lesson_plans_file, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except (json.JSONDecodeError, Exception):
-        return {}
 
 # APIコール用のリトライ関数
 def build_enhanced_prompt(base_prompt, unit=None, stage=None):
@@ -749,10 +592,6 @@ def chat():
     task_content = session.get('task_content')
     student_number = session.get('student_number')
     
-    # ユーザーメッセージを正規化
-    user_message = normalize_childish_expressions(user_message)
-    user_message = normalize_family_expressions(user_message)
-    
     # 対話履歴に追加
     conversation.append({'role': 'user', 'content': user_message})
     
@@ -871,15 +710,8 @@ def reflect_chat():
     unit = session.get('unit')
     prediction_summary = session.get('prediction_summary', '')
     
-    # ユーザーメッセージを正規化
-    user_message = normalize_childish_expressions(user_message)
-    user_message = normalize_family_expressions(user_message)
-    
     # 反省対話履歴に追加
     reflection_conversation.append({'role': 'user', 'content': user_message})
-    
-    # ユニット情報を取得（後処理用）
-    unit_info = analyze_unit_characteristics(unit)
     
     # プロンプトファイルからベースプロンプトを取得
     unit_prompt = load_unit_prompt(unit)
@@ -992,94 +824,9 @@ def teacher_logout():
 @require_teacher_auth
 def teacher():
     """教員用ダッシュボード"""
-    # 指導案一覧も含めて表示
-    lesson_plans = get_lesson_plans_list()
     return render_template('teacher/dashboard.html', 
                          units=UNITS, 
-                         teacher_id=session.get('teacher_id'),
-                         lesson_plans=lesson_plans)
-
-@app.route('/teacher/lesson_plans')
-@require_teacher_auth
-def teacher_lesson_plans():
-    """指導案管理ページ"""
-    lesson_plans = get_lesson_plans_list()
-    return render_template('teacher/lesson_plans.html', 
-                         units=UNITS, 
-                         lesson_plans=lesson_plans,
                          teacher_id=session.get('teacher_id'))
-
-@app.route('/teacher/lesson_plans/upload', methods=['POST'])
-@require_teacher_auth
-def upload_lesson_plan():
-    """指導案PDFのアップロード"""
-    try:
-        unit = request.form.get('unit')
-        
-        # 単元の検証
-        if unit not in UNITS:
-            flash('無効な単元が選択されました', 'error')
-            return redirect(url_for('teacher_lesson_plans'))
-        
-        # ファイルの確認
-        if 'file' not in request.files:
-            flash('ファイルが選択されていません', 'error')
-            return redirect(url_for('teacher_lesson_plans'))
-        
-        file = request.files['file']
-        if file.filename == '':
-            flash('ファイルが選択されていません', 'error')
-            return redirect(url_for('teacher_lesson_plans'))
-        
-        if file and allowed_file(file.filename):
-            # ファイル名を安全にする（単元名を含める）
-            filename = secure_filename(f"{unit}_{file.filename}")
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            
-            # 既存ファイルがあれば削除
-            lesson_plans = get_lesson_plans_list()
-            if unit in lesson_plans:
-                old_file = os.path.join(app.config['UPLOAD_FOLDER'], lesson_plans[unit]['filename'])
-                if os.path.exists(old_file):
-                    os.remove(old_file)
-            
-            # ファイルを保存（現在はMarkdown形式のため、この部分は使用しない）
-            # file.save(file_path)
-            
-            flash(f'{unit}の指導案がアップロードされました', 'success')
-        else:
-            flash('現在はMarkdown形式の指導案のみ対応しています', 'info')
-            
-    except Exception as e:
-        flash(f'アップロード中にエラーが発生しました: {str(e)}', 'error')
-    
-    return redirect(url_for('teacher_lesson_plans'))
-
-@app.route('/teacher/lesson_plans/delete/<unit>')
-@require_teacher_auth
-def delete_lesson_plan(unit):
-    """指導案の削除"""
-    try:
-        lesson_plans = get_lesson_plans_list()
-        if unit in lesson_plans:
-            # ファイルを削除
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], lesson_plans[unit]['filename'])
-            if os.path.exists(file_path):
-                os.remove(file_path)
-            
-            # インデックスから削除
-            del lesson_plans[unit]
-            lesson_plans_file = "lesson_plans/lesson_plans_index.json"
-            with open(lesson_plans_file, 'w', encoding='utf-8') as f:
-                json.dump(lesson_plans, f, ensure_ascii=False, indent=2)
-            
-            flash(f'{unit}の指導案が削除されました', 'success')
-        else:
-            flash('指導案が見つかりません', 'error')
-    except Exception as e:
-        flash(f'削除中にエラーが発生しました: {str(e)}', 'error')
-    
-    return redirect(url_for('teacher_lesson_plans'))
 
 @app.route('/teacher/logs')
 @require_teacher_auth
@@ -1491,60 +1238,38 @@ def analyze_language_activity_levels(logs, unit):
 
 def analyze_experience_knowledge_connections(logs, unit):
     """既習・経験関連付けの傾向を分析"""
-    unit_info = analyze_unit_characteristics(unit)
-    expected_experiences = unit_info.get('生活経験', [])
-    
-    # 関連付けされた経験・既習事項を抽出
-    mentioned_experiences = []
+    # 既習事項の言及をチェック
     mentioned_knowledge = []
     
     for log in logs:
         if log.get('log_type') in ['prediction_chat', 'reflection_chat']:
             message = log['data'].get('user_message', '').lower()
             
-            # 生活経験の言及をチェック
-            for exp in expected_experiences:
-                if any(keyword in message for keyword in exp.split()):
-                    mentioned_experiences.append(exp)
-            
             # 既習事項の言及をチェック
             if any(keyword in message for keyword in ['前に習った', '勉強した', '覚えている', '似ている']):
                 mentioned_knowledge.append(message[:50])  # 最初の50文字を記録
     
-    # 頻度分析
-    from collections import Counter
-    experience_frequency = Counter(mentioned_experiences)
-    
     return {
-        'expected_experiences': expected_experiences,
-        'mentioned_experiences': dict(experience_frequency.most_common()),
         'knowledge_connections': len(mentioned_knowledge),
-        'total_connections': len(mentioned_experiences) + len(mentioned_knowledge),
-        'connection_rate': round((len(mentioned_experiences) / len(expected_experiences) * 100), 1) if expected_experiences else 0,
+        'total_connections': len(mentioned_knowledge),
         'unit': unit
     }
 
 def analyze_unit_specific_trends(logs, unit):
     """単元特有の学習傾向を分析"""
-    unit_info = analyze_unit_characteristics(unit)
-    
-    # 単元の特性に基づく分析
-    keywords = unit_info.get('キーワード', [])
-    重点活動 = unit_info.get('重点活動', [])
-    
-    keyword_usage = {keyword: 0 for keyword in keywords}
+    # シンプルな学習傾向分析
+    keyword_usage = {}
     
     for log in logs:
         if log.get('log_type') in ['prediction_chat', 'reflection_chat']:
-            message = log['data'].get('user_message', '').lower()
-            for keyword in keywords:
-                if keyword.lower() in message:
-                    keyword_usage[keyword] += 1
+            message = log['data'].get('user_message', '')
+            # メッセージを記録
+            if message:
+                keyword_usage[message[:50]] = keyword_usage.get(message[:50], 0) + 1
     
     return {
         'unit': unit,
         'keyword_usage': keyword_usage,
-        'focus_activities': 重点活動,
         'total_interactions': len([log for log in logs if log.get('log_type') in ['prediction_chat', 'reflection_chat']]),
         'students_count': len(set(log.get('student_number') for log in logs))
     }
