@@ -654,12 +654,23 @@ def summary():
     conversation = session.get('conversation', [])
     unit = session.get('unit')
     
-    # 予想のまとめ用プロンプトを読み込み（すべてのユニット共通）
-    summary_prompt = load_unit_prompt("予想_summary")
+    # 単元のプロンプトを読み込み、要約指示を追加
+    unit_prompt = load_unit_prompt(unit)
+    
+    # 要約専用のプロンプトを作成
+    summary_instruction = f"""{unit_prompt}
+
+#重要な指示
+これまでの対話内容をもとに、#要約フォーマットに従って予想をまとめてください。
+- 「話した内容をもとにして，まとめてみるね。」という前置きをつけること
+- 「〜と思う。なぜなら〜だから。」の形式でまとめること
+- 子どもが話した内容だけを使うこと
+- #要約のサンプルを参考にすること
+"""
     
     # メッセージフォーマットで構築
     messages = [
-        {"role": "system", "content": summary_prompt}
+        {"role": "system", "content": summary_instruction}
     ]
     
     # 対話履歴をメッセージフォーマットで追加
@@ -668,6 +679,12 @@ def summary():
             "role": msg['role'],
             "content": msg['content']
         })
+    
+    # 最後に要約を促すメッセージを追加
+    messages.append({
+        "role": "user",
+        "content": "これまでの話をもとに、予想をまとめてください。"
+    })
     
     try:
         summary_response = call_openai_with_retry(messages)
@@ -769,12 +786,26 @@ def final_summary():
     prediction_summary = session.get('prediction_summary', '')
     unit = session.get('unit')
     
-    # 最終考察用プロンプトを読み込み（すべてのユニット共通）
-    final_prompt = load_unit_prompt("考察_final_summary")
+    # 単元のプロンプトを読み込み、考察の要約指示を追加
+    unit_prompt = load_unit_prompt(unit)
+    
+    # 考察要約専用のプロンプトを作成
+    final_instruction = f"""{unit_prompt}
+
+#重要な指示
+これまでの対話内容と予想をもとに、#要約フォーマットに従って考察をまとめてください。
+- 「話した内容をもとにして，まとめてみるね。」という前置きをつけること
+- 「〜ことがわかった。〜からだと思う。〜にも言えると思った。」の形式でまとめること
+- 実験結果、予想との比較、日常生活とのつながりを含めること
+- 子どもが話した内容だけを使うこと
+- #要約のサンプル（考察）を参考にすること
+
+学習者の予想: {prediction_summary}
+"""
     
     # メッセージフォーマットで構築
     messages = [
-        {"role": "system", "content": final_prompt + f"\n\n学習者の予想: {prediction_summary}"}
+        {"role": "system", "content": final_instruction}
     ]
     
     # 対話履歴をメッセージフォーマットで追加
@@ -783,6 +814,12 @@ def final_summary():
             "role": msg['role'],
             "content": msg['content']
         })
+    
+    # 最後に要約を促すメッセージを追加
+    messages.append({
+        "role": "user",
+        "content": "これまでの話と予想をもとに、考察をまとめてください。"
+    })
     
     try:
         final_summary_response = call_openai_with_retry(messages)
