@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}チャットボット - ID入力{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white text-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-robot me-2"></i>
+                        理科のお助けチャット
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>IDを入力してください</strong><br>
+                        学年、クラス、出席番号を組み合わせたIDを入力してね。<br>
+                        <br>
+                        <strong>例：</strong><br>
+                        ・4年1組3番 → <code>4103</code><br>
+                        ・4年2組15番 → <code>4215</code><br>
+                        ・4年3組28番 → <code>4328</code>
+                    </div>
+                    
+                    <form id="idForm" method="POST" action="/chatbot/verify">
+                        <div class="mb-3">
+                            <label for="studentId" class="form-label">学生ID</label>
+                            <input type="text" 
+                                   class="form-control form-control-lg text-center" 
+                                   id="studentId" 
+                                   name="student_id"
+                                   placeholder="例: 4103"
+                                   pattern="[0-9]{4}"
+                                   maxlength="4"
+                                   required
+                                   autofocus>
+                            <div class="form-text">4桁の数字を入力してください</div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-sign-in-alt me-2"></i>
+                                チャットを始める
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                <div class="card-footer text-center">
+                    <a href="/" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-home me-2"></i>
+                        ホームに戻る
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+#studentId {
+    font-size: 2em;
+    letter-spacing: 0.1em;
+}
+</style>
+{% endblock %}

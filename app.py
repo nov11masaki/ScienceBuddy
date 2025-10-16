@@ -992,511 +992,30 @@ def teacher_export():
     
     return jsonify({'message': f'エクスポートが完了しました: {output_file}'})
 
-# ログ分析機能
-def load_guidelines_content():
-    """指導要領・資料の内容を読み込み"""
-    try:
-        index_file = 'guidelines/guidelines_index.json'
-        
-        if not os.path.exists(index_file):
-            return ""
-        
-        with open(index_file, 'r', encoding='utf-8') as f:
-            guidelines_index = json.load(f)
-        
-        # 全ての資料の内容を結合
-        combined_content = ""
-        for doc_id, doc_info in guidelines_index.items():
-            doc_type = doc_info.get('type', '')
-            title = doc_info.get('title', '')
-            content = doc_info.get('content', '')
-            
-            combined_content += f"\n【{title}】\n{content}\n"
-        
-        return combined_content[:2000]  # 最大2000文字まで
-    
-    except Exception as e:
-        return ""
-
-def analyze_student_learning(student_number, unit, logs):
-    """特定の学生・単元の学習過程を詳細分析"""
-    
-    # 該当する学生のログを抽出
-    student_logs = [log for log in logs if 
-                   log.get('student_number') == student_number and 
-                   log.get('unit') == unit]
-    
-    
-    if not student_logs:
-        return {
-            'evaluation': '学習データがありません',
-            'prediction_analysis': {
-                'daily_life_connection': 'データなし - 日常体験との関連付けを確認できません',
-                'prior_knowledge_use': 'データなし - 既習事項の活用を確認できません',
-                'reasoning_quality': 'データなし - 予想の根拠を確認できません'
-            },
-            'reflection_analysis': {
-                'result_verbalization': 'データなし - 結果の言語化を確認できません',
-                'prediction_comparison': 'データなし - 予想との比較を確認できません',
-                'daily_life_connection': 'データなし - 日常生活との関連付けを確認できません',
-                'scientific_understanding': 'データなし - 科学的理解を確認できません'
-            },
-            'language_development': '学習活動への参加が必要です',
-            'support_recommendations': ['学習活動への参加促進', '対話の機会提供']
-        }
-    
-    # 指導要領・資料の内容を取得
-    try:
-        guidelines_content = load_guidelines_content()
-        guidelines_context = ""
-        
-        if guidelines_content:
-            guidelines_context = f"参考指導資料: {guidelines_content[:800]}"
-    except:
-        guidelines_context = ""
-    
-    # 対話履歴を整理
-    prediction_chats = []
-    reflection_chats = []
-    prediction_summary = ""
-    final_summary = ""
-    
-    for log in student_logs:
-        log_type = log.get('log_type')
-        data = log.get('data', {})
-        
-        if log_type == 'prediction_chat':
-            prediction_chats.append({
-                'user': data.get('user_message', ''),
-                'ai': data.get('ai_response', '')
-            })
-        elif log_type == 'reflection_chat':
-            reflection_chats.append({
-                'user': data.get('user_message', ''),
-                'ai': data.get('ai_response', '')
-            })
-        elif log_type == 'prediction_summary':
-            prediction_summary = data.get('summary', '')
-        elif log_type == 'final_summary':
-            final_summary = data.get('final_summary', '')
-    
-    
-    # 簡易分析結果を返す（OpenAI APIエラーを避けるため）
-    try:
-        return {
-            "analysis_text": f"学生{student_number}の{unit}学習分析:\n予想段階の対話: {len(prediction_chats)}回\n考察段階の対話: {len(reflection_chats)}回\n予想まとめ: {'あり' if prediction_summary else 'なし'}\n最終まとめ: {'あり' if final_summary else 'なし'}",
-            "unit": unit,
-            "student_number": student_number,
-            "prediction_count": len(prediction_chats),
-            "reflection_count": len(reflection_chats),
-            "has_prediction_summary": bool(prediction_summary),
-            "has_final_summary": bool(final_summary),
-            "evaluation": "学習活動に参加し、対話を通じて学習を進めています",
-            "prediction_analysis": {
-                "daily_life_connection": f"予想段階で{len(prediction_chats)}回の対話を行いました",
-                "prior_knowledge_use": "対話記録から既習事項の活用状況を確認できます",
-                "reasoning_quality": f"予想の根拠について{'まとめが作成されています' if prediction_summary else '対話を継続中です'}"
-            },
-            "reflection_analysis": {
-                "result_verbalization": f"考察段階で{len(reflection_chats)}回の対話を行いました",
-                "prediction_comparison": "実験結果と予想の比較を進めています",
-                "daily_life_connection": "日常生活との関連付けを模索中です",
-                "scientific_understanding": f"科学的理解について{'まとめが作成されています' if final_summary else '学習継続中です'}"
-            },
-            "language_development": "対話活動を通じて言語化能力の向上が期待されます",
-            "support_recommendations": ["継続的な対話支援", "言語化の促進", "概念理解の深化"]
-        }
-    
-    except Exception as e:
-        return {
-            'evaluation': f'分析エラー: {str(e)}',
-            'prediction_analysis': {
-                'daily_life_connection': 'エラーが発生しました',
-                'prior_knowledge_use': 'エラーが発生しました',
-                'reasoning_quality': 'エラーが発生しました'
-            },
-            'reflection_analysis': {
-                'result_verbalization': 'エラーが発生しました',
-                'prediction_comparison': 'エラーが発生しました',
-                'daily_life_connection': 'エラーが発生しました',
-                'scientific_understanding': 'エラーが発生しました'
-            },
-            'language_development': 'エラーが発生しました',
-            'support_recommendations': ['システム管理者に連絡してください']
-        }
-        if json_match:
-            json_str = json_match.group(0)
-            try:
-                result = json.loads(json_str)
-                print("方法1でJSON解析成功")
-            except json.JSONDecodeError:
-                print("方法1でJSON解析失敗")
-        
-        # 方法2: 複数行にわたるJSONを抽出
-        if not result:
-            lines = response.split('\n')
-            json_lines = []
-            in_json = False
-            brace_count = 0
-            
-            for line in lines:
-                if '{' in line and not in_json:
-                    in_json = True
-                    brace_count = line.count('{') - line.count('}')
-                    json_lines = [line]
-                elif in_json:
-                    json_lines.append(line)
-                    brace_count += line.count('{') - line.count('}')
-                    if brace_count <= 0:
-                        break
-            
-            if json_lines:
-                json_str = '\n'.join(json_lines)
-                try:
-                    result = json.loads(json_str)
-                    print("方法2でJSON解析成功")
-                except json.JSONDecodeError:
-                    print("方法2でJSON解析失敗")
-        
-        # 成功した場合は結果を返す
-        if result:
-            print("分析完了")
-            return result
-        
-        # 全て失敗した場合はフォールバック
-        print("JSON抽出に失敗、フォールバックを使用")
-        return {
-            'evaluation': '言語活動の記録から対話への取り組み姿勢が確認できます',
-            'language_support_needed': ['経験の言語化支援', '既習事項との関連付け支援', '結果の表現力向上支援'],
-            'prediction_analysis': {
-                'experience_connection': '日常経験の引き出しを継続的に支援',
-                'prior_knowledge_use': '既習事項との関連付けを意識させる対話が必要'
-            },
-            'reflection_analysis': {
-                'result_verbalization': '実験結果を自分の言葉で表現する練習が必要',
-                'prediction_comparison': '予想との比較を言語化する支援が効果的',
-                'daily_life_connection': '日常生活との関連を言葉で説明する機会を増やす'
-            },
-            'language_development': '対話を通じて徐々に言語化能力が向上しています'
-        }
-        
-    except json.JSONDecodeError as e:
-        # 言語活動支援観点のフォールバック応答
-        return {
-            'evaluation': '分析処理でエラーが発生しましたが、言語活動への取り組みは確認できます',
-            'language_support_needed': ['システム安定化後の詳細な言語化支援', '個別対話支援の継続', '表現力向上のための指導'],
-            'prediction_analysis': {
-                'experience_connection': '経験の言語化について再評価が必要',
-                'prior_knowledge_use': '既習事項の活用状況を確認中'
-            },
-            'reflection_analysis': {
-                'result_verbalization': '結果の言語化について評価中',
-                'prediction_comparison': '予想との比較の言語化について分析中',
-                'daily_life_connection': '日常生活との関連付けについて評価予定'
-            },
-            'language_development': 'システム復旧後に言語活動の成長を詳細分析予定'
-        }
-
-def analyze_language_activity_levels(logs, unit):
-    """言語活動レベルの達成度をクラス傾向として分析"""
-    prediction_logs = [log for log in logs if log.get('log_type') == 'prediction_chat']
-    reflection_logs = [log for log in logs if log.get('log_type') == 'reflection_chat']
-    
-    # 予想段階の言語活動分析
-    prediction_analysis = {
-        'total_students': len(set(log.get('student_number') for log in prediction_logs)),
-        'experience_connection_rate': 0,
-        'reasoning_clarity_rate': 0,
-        'language_level_distribution': {'高': 0, '中': 0, '低': 0}
+# チャットボットのログ保存関数
+def save_chatbot_log(student_id, user_message, ai_response):
+    """チャットボットの会話ログを保存"""
+    log_entry = {
+        'timestamp': datetime.now().isoformat(),
+        'student_id': student_id,
+        'user_message': user_message,
+        'ai_response': ai_response
     }
     
-    # 考察段階の言語活動分析
-    reflection_analysis = {
-        'total_students': len(set(log.get('student_number') for log in reflection_logs)),
-        'result_verbalization_rate': 0,
-        'prediction_comparison_rate': 0,
-        'experience_integration_rate': 0,
-        'language_improvement_rate': 0
-    }
+    log_file = f"logs/chatbot_log_{datetime.now().strftime('%Y%m%d')}.json"
     
-    # 学生ごとの分析
-    students = set(log.get('student_number') for log in logs)
-    
-    for student in students:
-        student_prediction_logs = [log for log in prediction_logs if log.get('student_number') == student]
-        student_reflection_logs = [log for log in reflection_logs if log.get('student_number') == student]
-        
-        # 予想段階分析
-        if student_prediction_logs:
-            has_experience = any('見たことある' in log['data'].get('user_message', '') or 
-                               'やったことある' in log['data'].get('user_message', '') or
-                               'お家で' in log['data'].get('user_message', '') for log in student_prediction_logs)
-            
-            has_reasoning = any('なぜなら' in log['data'].get('user_message', '') or 
-                              'だから' in log['data'].get('user_message', '') or
-                              '思う' in log['data'].get('user_message', '') for log in student_prediction_logs)
-            
-            if has_experience:
-                prediction_analysis['experience_connection_rate'] += 1
-            if has_reasoning:
-                prediction_analysis['reasoning_clarity_rate'] += 1
-                
-            # 言語レベル判定（簡易版）
-            total_chars = sum(len(log['data'].get('user_message', '')) for log in student_prediction_logs)
-            if total_chars > 100:
-                prediction_analysis['language_level_distribution']['高'] += 1
-            elif total_chars > 50:
-                prediction_analysis['language_level_distribution']['中'] += 1
-            else:
-                prediction_analysis['language_level_distribution']['低'] += 1
-        
-        # 考察段階分析
-        if student_reflection_logs:
-            has_result = any('なった' in log['data'].get('user_message', '') or 
-                           '変わった' in log['data'].get('user_message', '') or
-                           '起こった' in log['data'].get('user_message', '') for log in student_reflection_logs)
-            
-            has_comparison = any('予想' in log['data'].get('user_message', '') or 
-                               '同じ' in log['data'].get('user_message', '') or
-                               '違った' in log['data'].get('user_message', '') for log in student_reflection_logs)
-            
-            has_experience_integration = any('似ている' in log['data'].get('user_message', '') or 
-                                            '前に' in log['data'].get('user_message', '') or
-                                            'お家で' in log['data'].get('user_message', '') for log in student_reflection_logs)
-            
-            if has_result:
-                reflection_analysis['result_verbalization_rate'] += 1
-            if has_comparison:
-                reflection_analysis['prediction_comparison_rate'] += 1
-            if has_experience_integration:
-                reflection_analysis['experience_integration_rate'] += 1
-    
-    # パーセンテージ計算
-    if prediction_analysis['total_students'] > 0:
-        prediction_analysis['experience_connection_rate'] = round(
-            (prediction_analysis['experience_connection_rate'] / prediction_analysis['total_students']) * 100, 1)
-        prediction_analysis['reasoning_clarity_rate'] = round(
-            (prediction_analysis['reasoning_clarity_rate'] / prediction_analysis['total_students']) * 100, 1)
-    
-    if reflection_analysis['total_students'] > 0:
-        reflection_analysis['result_verbalization_rate'] = round(
-            (reflection_analysis['result_verbalization_rate'] / reflection_analysis['total_students']) * 100, 1)
-        reflection_analysis['prediction_comparison_rate'] = round(
-            (reflection_analysis['prediction_comparison_rate'] / reflection_analysis['total_students']) * 100, 1)
-        reflection_analysis['experience_integration_rate'] = round(
-            (reflection_analysis['experience_integration_rate'] / reflection_analysis['total_students']) * 100, 1)
-    
-    return {
-        'prediction': prediction_analysis,
-        'reflection': reflection_analysis,
-        'unit': unit
-    }
-
-def analyze_experience_knowledge_connections(logs, unit):
-    """既習・経験関連付けの傾向を分析"""
-    # 既習事項の言及をチェック
-    mentioned_knowledge = []
-    
-    for log in logs:
-        if log.get('log_type') in ['prediction_chat', 'reflection_chat']:
-            message = log['data'].get('user_message', '').lower()
-            
-            # 既習事項の言及をチェック
-            if any(keyword in message for keyword in ['前に習った', '勉強した', '覚えている', '似ている']):
-                mentioned_knowledge.append(message[:50])  # 最初の50文字を記録
-    
-    return {
-        'knowledge_connections': len(mentioned_knowledge),
-        'total_connections': len(mentioned_knowledge),
-        'unit': unit
-    }
-
-def analyze_unit_specific_trends(logs, unit):
-    """単元特有の学習傾向を分析"""
-    # シンプルな学習傾向分析
-    keyword_usage = {}
-    
-    for log in logs:
-        if log.get('log_type') in ['prediction_chat', 'reflection_chat']:
-            message = log['data'].get('user_message', '')
-            # メッセージを記録
-            if message:
-                keyword_usage[message[:50]] = keyword_usage.get(message[:50], 0) + 1
-    
-    return {
-        'unit': unit,
-        'keyword_usage': keyword_usage,
-        'total_interactions': len([log for log in logs if log.get('log_type') in ['prediction_chat', 'reflection_chat']]),
-        'students_count': len(set(log.get('student_number') for log in logs))
-    }
-
-def analyze_class_trends(logs, unit=None):
-    """クラス全体の学習傾向をOpenAIで分析（指導案考慮）"""
-    if unit:
-        # 特定単元の分析
-        unit_logs = [log for log in logs if log.get('unit') == unit]
-        if not unit_logs:
-            return {
-                'unit_analysis': {},
-                'language_activity_analysis': {},
-                'experience_knowledge_analysis': {}
-            }
-        
-        # 新しい分析機能を追加
-        language_analysis = analyze_language_activity_levels(unit_logs, unit)
-        experience_analysis = analyze_experience_knowledge_connections(unit_logs, unit)
-        
-        return {
-            'unit_analysis': analyze_unit_specific_trends(unit_logs, unit),
-            'language_activity_analysis': language_analysis,
-            'experience_knowledge_analysis': experience_analysis
-        }
-        students = set(log.get('student_number') for log in unit_logs)
-        analysis_unit = unit
+    # 既存のログを読み込み
+    if os.path.exists(log_file):
+        with open(log_file, 'r', encoding='utf-8') as f:
+            logs = json.load(f)
     else:
-        # 全体の分析
-        unit_logs = logs
-        students = set(log.get('student_number') for log in logs)
-        analysis_unit = "全単元"
+        logs = []
     
-    if not unit_logs or len(students) == 0:
-        return {
-            'overall_trend': '分析対象のデータがありません'
-        }
+    logs.append(log_entry)
     
-    # 学習データを要約
-    summary_data = {}
-    for student in students:
-        student_logs = [log for log in unit_logs if log.get('student_number') == student]
-        summary_data[student] = {
-            'prediction_count': len([log for log in student_logs if log.get('log_type') == 'prediction_chat']),
-            'reflection_count': len([log for log in student_logs if log.get('log_type') == 'reflection_chat']),
-            'has_prediction': any(log.get('log_type') == 'prediction_summary' for log in student_logs),
-            'has_final': any(log.get('log_type') == 'final_summary' for log in student_logs)
-        }
-    
-    # よくある予想や考察のパターンを抽出
-    predictions = []
-    reflections = []
-    
-    for log in unit_logs:
-        if log.get('log_type') == 'prediction_summary':
-            predictions.append(log.get('data', {}).get('summary', ''))
-        elif log.get('log_type') == 'final_summary':
-            reflections.append(log.get('data', {}).get('final_summary', ''))
-    
-    analysis_prompt = f"""
-クラス全体の学習状況を分析してください。
-
-対象単元: {analysis_unit}
-学習者数: {len(students)}人
-
-各学習者の状況:
-"""
-    
-    for student, data in summary_data.items():
-        analysis_prompt += f"学習者{student}: 予想{data['prediction_count']}回 考察{data['reflection_count']}回 "
-        analysis_prompt += f"予想完了{'○' if data['has_prediction'] else '×'} 考察完了{'○' if data['has_final'] else '×'}\n"
-    
-    analysis_prompt += f"\n主な予想:\n"
-    for i, pred in enumerate(predictions[:3], 1):  # 最大3つまで
-        analysis_prompt += f"{i}. {pred[:50]}...\n"
-    
-    analysis_prompt += f"\n主な考察:\n"
-    for i, ref in enumerate(reflections[:3], 1):  # 最大3つまで
-        analysis_prompt += f"{i}. {ref[:50]}...\n"
-    
-    analysis_prompt += """
-言語活動支援の観点からクラス全体の状況を分析してください。
-
-【分析項目】
-- overall_trend: クラス全体の言語活動の傾向（200文字程度）
-- language_challenges: 児童が共通して抱える言語化の課題を3つ
-- verbalization_level: 言語化能力のレベル（発展中/安定/要支援）
-- dialogue_engagement: 対話への参加状況
-- expression_growth: 表現力の成長状況を2つ
-
-JSON形式で回答してください。
-"""
-    
-    analysis_prompt += """
-この学習状況について、以下の形式で分析結果をJSON形式で出力してください。
-
-{
-  "overall_trend": "クラス全体で言語活動に意欲的に取り組んでいます",
-  "language_challenges": ["経験の言語化", "既習事項との関連付け", "結果の表現"],
-  "verbalization_level": "発展中",
-  "dialogue_engagement": "積極的に対話に参加しています",
-  "expression_growth": ["自分の言葉での表現", "論理的な説明の向上"]
-}
-"""
-    
-    try:
-        print("クラス分析開始...")
-        analysis_result = call_openai_with_retry(analysis_prompt)
-        
-        # 複数の方法でJSONを抽出
-        result = None
-        
-        # 方法1: 通常の正規表現
-        import re
-        json_match = re.search(r'\{.*?\}', analysis_result, re.DOTALL)
-        if json_match:
-            json_str = json_match.group(0)
-            try:
-                result = json.loads(json_str)
-                print("クラス分析方法1でJSON解析成功")
-            except json.JSONDecodeError:
-                print("クラス分析方法1でJSON解析失敗")
-        
-        # 方法2: 複数行JSON抽出
-        if not result:
-            lines = analysis_result.split('\n')
-            json_lines = []
-            in_json = False
-            brace_count = 0
-            
-            for line in lines:
-                if '{' in line and not in_json:
-                    in_json = True
-                    brace_count = line.count('{') - line.count('}')
-                    json_lines = [line]
-                elif in_json:
-                    json_lines.append(line)
-                    brace_count += line.count('{') - line.count('}')
-                    if brace_count <= 0:
-                        break
-            
-            if json_lines:
-                json_str = '\n'.join(json_lines)
-                try:
-                    result = json.loads(json_str)
-                    print("クラス分析方法2でJSON解析成功")
-                except json.JSONDecodeError:
-                    print("クラス分析方法2でJSON解析失敗")
-        
-        # 成功した場合は結果を返す
-        if result:
-            print("クラス分析完了")
-            return result
-            
-        # 全て失敗した場合はフォールバック
-        print("クラス分析JSON抽出に失敗、フォールバックを使用")
-        return {
-            'overall_trend': 'クラス全体として言語活動に意欲的に取り組んでいます',
-            'language_challenges': ['経験の言語化', '既習事項との関連付け', '結果の表現力'],
-            'verbalization_level': '発展中',
-            'dialogue_engagement': '積極的に対話に参加している状況です',
-            'expression_growth': ['自分の言葉での表現向上', '思考の言語化進展']
-        }
-    except Exception as e:
-        return {
-            'overall_trend': '言語活動の分析でエラーが発生しました',
-            'language_challenges': ['分析データ不足'],
-            'verbalization_level': 'システムエラー',
-            'dialogue_engagement': 'システムエラー',
-            'expression_growth': ['システム調整']
-        }
+    # ログを保存
+    with open(log_file, 'w', encoding='utf-8') as f:
+        json.dump(logs, f, ensure_ascii=False, indent=2)
 
 def get_available_log_dates():
     """利用可能なログファイルの日付一覧を取得"""
@@ -1546,9 +1065,6 @@ def student_detail(student_number):
     if not student_logs:
         flash(f'学生{student_number}番のログがありません。日付や単元を変更してお試しください。', 'warning')
     
-    # 分析結果を取得
-    analysis = analyze_student_learning(student_number, unit, logs) if student_logs else None
-    
     # 単元一覧を取得（フィルター用）
     all_units = list(set([log.get('unit') for log in logs if log.get('unit')]))
     
@@ -1558,7 +1074,6 @@ def student_detail(student_number):
                          current_unit=unit,
                          current_date=selected_date,
                          logs=student_logs,
-                         analysis=analysis,
                          available_dates=available_dates,
                          units_data={unit_name: {} for unit_name in all_units},
                          teacher_id=session.get('teacher_id', 'teacher'))
@@ -1567,17 +1082,56 @@ def student_detail(student_number):
 # チャットボット機能（Gemini API使用）
 # ========================================
 
+@app.route('/chatbot/login')
+def chatbot_login():
+    """チャットボットログイン画面"""
+    return render_template('chatbot_login.html')
+
+@app.route('/chatbot/verify', methods=['POST'])
+def chatbot_verify():
+    """学生IDの検証"""
+    student_id = request.form.get('student_id', '').strip()
+    
+    # IDのバリデーション
+    if not student_id or len(student_id) != 4 or not student_id.isdigit():
+        flash('4桁の数字を入力してください（例：4103）', 'error')
+        return redirect(url_for('chatbot_login'))
+    
+    # IDをパース: 4103 = 学年:4, クラス:1, 出席番号:03
+    grade = student_id[0]
+    class_num = student_id[1]
+    seat_num = student_id[2:4]
+    
+    # セッションに保存
+    session['chatbot_student_id'] = student_id
+    session['chatbot_grade'] = grade
+    session['chatbot_class'] = class_num
+    session['chatbot_number'] = seat_num
+    session['chatbot_history'] = []
+    
+    return redirect(url_for('chatbot'))
+
 @app.route('/chatbot')
 def chatbot():
     """理科学習支援チャットボット"""
+    # ログインチェック
+    if 'chatbot_student_id' not in session:
+        return redirect(url_for('chatbot_login'))
+    
     # セッションにチャット履歴がない場合は初期化
     if 'chatbot_history' not in session:
         session['chatbot_history'] = []
+    
     return render_template('chatbot.html')
 
 @app.route('/chatbot/chat', methods=['POST'])
 def chatbot_chat():
     """チャットボットとの対話処理（Gemini API使用）"""
+    # ログインチェック
+    student_id = session.get('chatbot_student_id')
+    if not student_id:
+        return jsonify({'error': 'ログインしてください'}), 401
+    
     user_message = request.json.get('message', '')
     
     if not user_message:
@@ -1636,14 +1190,17 @@ def chatbot_chat():
         
         session['chatbot_history'] = chat_history
         
+        # チャットログを保存
+        save_chatbot_log(student_id, user_message, ai_response)
+        
         return jsonify({'response': ai_response})
         
     except Exception as e:
         print(f"Gemini API Error: {e}")
         # エラー時はOpenAI APIにフォールバック
-        return fallback_to_openai(system_prompt, user_message, chat_history)
+        return fallback_to_openai(system_prompt, user_message, chat_history, student_id)
 
-def fallback_to_openai(system_prompt, user_message, chat_history):
+def fallback_to_openai(system_prompt, user_message, chat_history, student_id):
     """Gemini APIが使えない場合のOpenAI APIフォールバック"""
     try:
         if not client:
@@ -1680,6 +1237,9 @@ def fallback_to_openai(system_prompt, user_message, chat_history):
             chat_history = chat_history[-20:]
         
         session['chatbot_history'] = chat_history
+        
+        # チャットログを保存
+        save_chatbot_log(student_id, user_message, ai_response)
         
         return jsonify({'response': ai_response})
         
