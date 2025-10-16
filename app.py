@@ -641,8 +641,8 @@ def chat():
             conversation_history=conversation[-10:]  # 最新10件のみ保存
         )
         
-        # 対話が3回以上の場合、予想のまとめを提案
-        suggest_summary = len(conversation) >= 6  # user + AI で1セット
+        # 対話が1回以上あれば、いつでも予想のまとめを作成可能
+        suggest_summary = len(conversation) >= 2  # user + AI で最低1セット
         
         response_data = {
             'response': ai_message,
