@@ -302,11 +302,24 @@ def load_markdown_content(file_path):
 
 # APIコール用のリトライ関数
 def call_openai_with_retry(prompt, max_retries=3, delay=2, unit=None, stage=None):
-    """OpenAI APIを呼び出し、エラー時はリトライする（Markdownガイドライン活用版）"""
+    """OpenAI APIを呼び出し、エラー時はリトライする
+    
+    Args:
+        prompt: 文字列またはメッセージリスト
+        max_retries: リトライ回数
+        delay: リトライ間隔（秒）
+        unit: 単元名
+        stage: 学習段階
+    """
     if client is None:
         return "AI システムの初期化に問題があります。管理者に連絡してください。"
     
-    enhanced_prompt = prompt
+    # promptがリストの場合（メッセージフォーマット）
+    if isinstance(prompt, list):
+        messages = prompt
+    else:
+        # promptが文字列の場合（従来フォーマット）
+        messages = [{"role": "user", "content": prompt}]
     
     for attempt in range(max_retries):
         try:
@@ -315,9 +328,7 @@ def call_openai_with_retry(prompt, max_retries=3, delay=2, unit=None, stage=None
             
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
-                messages=[
-                    {"role": "user", "content": enhanced_prompt}
-                ],
+                messages=messages,
                 max_tokens=2000,
                 temperature=0.3,
                 timeout=30
@@ -576,13 +587,20 @@ def chat():
     unit_prompt = load_unit_prompt(unit)
     
     # 対話履歴を含めてプロンプト作成
-    full_prompt = unit_prompt + "\n\n対話履歴:\n"
+    # OpenAI APIに送信するためにメッセージ形式で構築
+    messages = [
+        {"role": "system", "content": unit_prompt}
+    ]
+    
+    # 対話履歴をメッセージフォーマットで追加
     for msg in conversation:
-        role = "学習者" if msg['role'] == 'user' else "AI"
-        full_prompt += f"{role}: {msg['content']}\n"
+        messages.append({
+            "role": msg['role'],
+            "content": msg['content']
+        })
     
     try:
-        ai_response = call_openai_with_retry(full_prompt, unit=unit, stage='prediction')
+        ai_response = call_openai_with_retry(messages, unit=unit, stage='prediction')
         
         # JSON形式のレスポンスの場合は解析して純粋なメッセージを抽出
         ai_message = extract_message_from_json_response(ai_response)
@@ -639,14 +657,20 @@ def summary():
     # 予想のまとめ用プロンプトを読み込み（すべてのユニット共通）
     summary_prompt = load_unit_prompt("予想_summary")
     
-    # 対話履歴をプロンプトに追加
-    full_summary_prompt = summary_prompt + "\n\n対話履歴:\n"
+    # メッセージフォーマットで構築
+    messages = [
+        {"role": "system", "content": summary_prompt}
+    ]
+    
+    # 対話履歴をメッセージフォーマットで追加
     for msg in conversation:
-        role = "学習者" if msg['role'] == 'user' else "AI"
-        full_summary_prompt += f"{role}: {msg['content']}\n"
+        messages.append({
+            "role": msg['role'],
+            "content": msg['content']
+        })
     
     try:
-        summary_response = call_openai_with_retry(full_summary_prompt)
+        summary_response = call_openai_with_retry(messages)
         
         # JSON形式のレスポンスの場合は解析して純粋なメッセージを抽出
         summary_text = extract_message_from_json_response(summary_response)
@@ -698,14 +722,20 @@ def reflect_chat():
     # プロンプトファイルからベースプロンプトを取得
     unit_prompt = load_unit_prompt(unit)
     
-    # 対話履歴を追加
-    full_prompt = unit_prompt + "\n\n対話履歴:\n"
+    # メッセージフォーマットで対話履歴を構築
+    messages = [
+        {"role": "system", "content": unit_prompt}
+    ]
+    
+    # 対話履歴をメッセージフォーマットで追加
     for msg in reflection_conversation:
-        role = "学習者" if msg['role'] == 'user' else "AI"
-        full_prompt += f"{role}: {msg['content']}\n"
+        messages.append({
+            "role": msg['role'],
+            "content": msg['content']
+        })
     
     try:
-        ai_response = call_openai_with_retry(full_prompt, unit=unit, stage='reflection')
+        ai_response = call_openai_with_retry(messages, unit=unit, stage='reflection')
         
         # JSON形式のレスポンスの場合は解析して純粋なメッセージを抽出
         ai_message = extract_message_from_json_response(ai_response)
@@ -742,14 +772,20 @@ def final_summary():
     # 最終考察用プロンプトを読み込み（すべてのユニット共通）
     final_prompt = load_unit_prompt("考察_final_summary")
     
-    # 対話履歴と予想をプロンプトに追加
-    full_final_prompt = final_prompt + f"\n\n学習者の予想: {prediction_summary}\n\n考察対話履歴:\n"
+    # メッセージフォーマットで構築
+    messages = [
+        {"role": "system", "content": final_prompt + f"\n\n学習者の予想: {prediction_summary}"}
+    ]
+    
+    # 対話履歴をメッセージフォーマットで追加
     for msg in reflection_conversation:
-        role = "学習者" if msg['role'] == 'user' else "AI"
-        full_final_prompt += f"{role}: {msg['content']}\n"
+        messages.append({
+            "role": msg['role'],
+            "content": msg['content']
+        })
     
     try:
-        final_summary_response = call_openai_with_retry(full_final_prompt)
+        final_summary_response = call_openai_with_retry(messages)
         
         # JSON形式のレスポンスの場合は解析して純粋なメッセージを抽出
         final_summary_text = extract_message_from_json_response(final_summary_response)
