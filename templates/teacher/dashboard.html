@@ -3,100 +3,70 @@
 {% block title %}教員用ダッシュボード{% endblock %}
 
 {% block content %}
-<div class="teacher-dashboard">
-    <!-- ヘッダーセクション -->
-    <div class="dashboard-header-section">
-        <div class="container-fluid">
-            <div class="header-wrapper">
-                <div class="header-left">
-                    <h1 class="dashboard-title">
-                        <i class="fas fa-chalkboard-teacher"></i>
-                        教員用ダッシュボード
-                    </h1>
-                    <p class="dashboard-subtitle">学習者の予想・考察の過程を確認できます</p>
-                </div>
-                <div class="header-right">
-                    <span class="teacher-badge">
-                        <i class="fas fa-user-tie"></i>
-                        {{ teacher_id }}
-                    </span>
-                    <a href="/teacher/logout" class="btn btn-logout">
-                        <i class="fas fa-sign-out-alt me-2"></i>ログアウト
-                    </a>
-                </div>
+<div class="teacher-dashboard-page">
+    <!-- ヘッダー -->
+    <header class="teacher-header">
+        <div class="header-container">
+            <div class="header-title-section">
+                <h1><i class="fas fa-chalkboard-teacher"></i> 教員用ダッシュボード</h1>
+                <p>学習者の予想・考察の過程を確認できます</p>
+            </div>
+            <div class="header-actions-section">
+                <span class="teacher-id-badge"><i class="fas fa-user-tie"></i> {{ teacher_id }}</span>
+                <a href="/teacher/logout" class="logout-btn"><i class="fas fa-sign-out-alt"></i> ログアウト</a>
             </div>
         </div>
-    </div>
+    </header>
 
     <!-- メインコンテンツ -->
-    <div class="dashboard-content">
-        <div class="container-fluid">
-            <!-- メインカードセクション -->
-            <div class="cards-grid">
-                <div class="dashboard-card featured-card">
-                    <div class="card-body">
-                        <div class="card-icon-wrapper">
-                            <i class="fas fa-chart-line"></i>
-                        </div>
-                        <h3 class="card-title">学習ログ</h3>
-                        <p class="card-description">学習者の対話履歴と学習過程を確認</p>
-                        <a href="/teacher/logs" class="btn btn-card">
-                            <i class="fas fa-eye me-2"></i>ログを見る
-                        </a>
-                    </div>
-                </div>
-                
-                <div class="dashboard-card">
-                    <div class="card-body">
-                        <div class="card-icon-wrapper info-icon">
-                            <i class="fas fa-download"></i>
-                        </div>
-                        <h3 class="card-title">データエクスポート</h3>
-                        <p class="card-description">学習データをCSVで出力</p>
-                        <button class="btn btn-card secondary" onclick="exportData()">
-                            <i class="fas fa-file-csv me-2"></i>エクスポート
-                        </button>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- クイックフィルターセクション -->
-            <div class="filter-section">
-                <h2 class="filter-section-title">
-                    <i class="fas fa-filter me-2"></i>単元で検索
-                </h2>
-                <div class="filter-cards-grid">
-                    {% for unit in units %}
-                    <a href="/teacher/logs?unit={{ unit|urlencode }}" class="filter-card-link">
-                        <div class="filter-card">
-                            <div class="filter-icon">
-                                {% if '温度' in unit %}
-                                    <i class="fas fa-thermometer-half"></i>
-                                {% elif 'あたたまり' in unit %}
-                                    <i class="fas fa-fire"></i>
-                                {% elif 'ふっとう' in unit %}
-                                    <i class="fas fa-tint"></i>
-                                {% elif '冷やした' in unit %}
-                                    <i class="fas fa-snowflake"></i>
-                                {% else %}
-                                    <i class="fas fa-flask"></i>
-                                {% endif %}
-                            </div>
-                            <span class="filter-title">{{ unit }}</span>
-                        </div>
-                    </a>
-                    {% endfor %}
-                </div>
+    <main class="dashboard-main">
+        <!-- 機能カード -->
+        <section class="feature-cards">
+            <div class="feature-card primary-card">
+                <div class="card-icon"><i class="fas fa-chart-line"></i></div>
+                <h2>学習ログ</h2>
+                <p>学習者の対話履歴と学習過程を確認</p>
+                <a href="/teacher/logs" class="card-button"><i class="fas fa-eye"></i> ログを見る</a>
             </div>
 
-            <!-- フッター -->
-            <div class="dashboard-footer">
-                <a href="/" class="btn btn-outline-primary">
-                    <i class="fas fa-home me-2"></i>学習システムに戻る
-                </a>
+            <div class="feature-card">
+                <div class="card-icon"><i class="fas fa-download"></i></div>
+                <h2>データエクスポート</h2>
+                <p>学習データをCSVで出力</p>
+                <button onclick="exportData()" class="card-button"><i class="fas fa-file-csv"></i> エクスポート</button>
             </div>
-        </div>
-    </div>
+        </section>
+
+        <!-- 単元フィルター -->
+        <section class="unit-filters">
+            <h2><i class="fas fa-filter"></i> 単元で検索</h2>
+            <div class="unit-grid">
+                {% for unit in units %}
+                <a href="/teacher/logs?unit={{ unit|urlencode }}" class="unit-card">
+                    <div class="unit-icon">
+                        {% if '温度' in unit %}
+                            <i class="fas fa-thermometer-half"></i>
+                        {% elif 'あたたまり' in unit %}
+                            <i class="fas fa-fire"></i>
+                        {% elif 'ふっとう' in unit %}
+                            <i class="fas fa-tint"></i>
+                        {% elif '冷やした' in unit %}
+                            <i class="fas fa-snowflake"></i>
+                        {% else %}
+                            <i class="fas fa-flask"></i>
+                        {% endif %}
+                    </div>
+                    <span>{{ unit }}</span>
+                </a>
+                {% endfor %}
+            </div>
+        </section>
+
+        <!-- フッター -->
+        <footer class="dashboard-footer-section">
+            <a href="/" class="home-button"><i class="fas fa-home"></i> 学習システムに戻る</a>
+        </footer>
+    </main>
 </div>
 {% endblock %}
 
