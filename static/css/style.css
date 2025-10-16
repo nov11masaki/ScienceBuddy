@@ -1127,8 +1127,17 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    flex-wrap: wrap;
     gap: 20px;
+    width: 100%;
+}
+
+.header-content > div:first-child {
+    flex: 1;
+    min-width: 0;
+}
+
+.header-content > div:last-child {
+    flex-shrink: 0;
 }
 
 .dashboard-title {
@@ -1396,6 +1405,61 @@ body {
     margin-top: 60px;
     padding-top: 30px;
     border-top: 1px solid rgba(0,0,0,0.1);
+}
+
+/* ダッシュボードのレスポンシブ調整 */
+@media (max-width: 992px) {
+    .header-content {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .teacher-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+    
+    .dashboard-title {
+        font-size: 1.8rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .dashboard-header-section {
+        padding: 10px 0;
+    }
+    
+    .dashboard-title {
+        font-size: 1.5rem;
+        gap: 10px;
+    }
+    
+    .dashboard-title i {
+        font-size: 1.8rem;
+    }
+    
+    .dashboard-subtitle {
+        font-size: 0.9rem;
+    }
+    
+    .teacher-actions {
+        gap: 8px;
+        font-size: 0.85rem;
+    }
+    
+    .teacher-badge,
+    .btn-logout {
+        padding: 6px 12px;
+        font-size: 0.8rem;
+    }
+    
+    .card-body {
+        padding: 20px 15px !important;
+    }
+    
+    .filter-section {
+        padding: 20px;
+    }
 }
 
 .btn-outline-primary {
