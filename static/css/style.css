@@ -1109,7 +1109,6 @@ body {
 /* ===== 改善されたダッシュボードスタイル ===== */.teacher-dashboard {
     background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
     min-height: 100vh;
-    padding-bottom: 60px;
 }
 
 .dashboard-header-section {
@@ -1126,7 +1125,8 @@ body {
     grid-template-columns: 1fr auto;
     gap: 30px;
     align-items: center;
-    padding: 30px 20px;
+    padding: 30px 40px;
+    max-width: 100%;
 }
 
 .header-left {
@@ -1197,18 +1197,19 @@ body {
 
 /* ダッシュボードコンテンツ */
 .dashboard-content {
-    padding: 40px 20px;
+    padding: 40px;
 }
 
 .dashboard-content .container-fluid {
-    max-width: 1200px;
-    margin: 0 auto;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
 }
 
 /* カードグリッド */
 .cards-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
     gap: 30px;
     margin-bottom: 50px;
 }
@@ -1358,7 +1359,7 @@ body {
 
 .filter-cards-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
     gap: 20px;
 }
 
@@ -1437,11 +1438,25 @@ body {
 }
 
 /* レスポンシブ */
+@media (max-width: 1024px) {
+    .header-wrapper {
+        padding: 25px 30px;
+    }
+    
+    .dashboard-content {
+        padding: 30px;
+    }
+    
+    .cards-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 @media (max-width: 768px) {
     .header-wrapper {
         grid-template-columns: 1fr;
         gap: 15px;
-        padding: 20px 15px;
+        padding: 20px;
     }
     
     .header-right {
@@ -1460,6 +1475,10 @@ body {
     
     .dashboard-subtitle {
         font-size: 0.9rem;
+    }
+    
+    .dashboard-content {
+        padding: 20px;
     }
     
     .cards-grid {
