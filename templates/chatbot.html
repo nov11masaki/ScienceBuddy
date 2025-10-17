@@ -6,44 +6,60 @@
 <div class="container mt-4">
     <div class="row justify-content-center">
         <div class="col-lg-8">
-            <div class="card shadow">
-                <div class="card-header bg-success text-white">
-                    <h4 class="mb-0">
-                        <i class="fas fa-robot me-2"></i>
-                        理科のお助けチャット
-                    </h4>
-                    <p class="mb-0 small">理科の勉強でわからないことを聞いてね！</p>
+            <div class="card shadow-lg chatbot-card">
+                <div class="card-header bg-gradient-success text-white d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="mb-1">
+                            <i class="fas fa-robot me-2"></i>
+                            学しゅうサポートチャット
+                        </h4>
+                        <p class="mb-0 small opacity-90">学しゅうで困っていることを、なんでも聞いてね！</p>
+                    </div>
+                    <button class="btn btn-light btn-sm" id="clearButton" title="会話をリセット">
+                        <i class="fas fa-redo me-1"></i>
+                        リセット
+                    </button>
                 </div>
-                <div class="card-body" style="height: 500px; overflow-y: auto;" id="chatMessages">
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle me-2"></i>
-                        <strong>こんにちは！</strong><br>
-                        理科の勉強で困っていることや、わからないことがあったら何でも聞いてね。<br>
-                        例えば：<br>
-                        ・「金属はどうやって温まるの？」<br>
-                        ・「水が沸騰するってどういうこと？」<br>
-                        ・「空気を温めるとどうなるの？」
+                <div class="card-body chat-container" id="chatMessages">
+                    <div class="welcome-message">
+                        <div class="text-center mb-3">
+                            <i class="fas fa-robot fa-3x text-success mb-2"></i>
+                            <h5>こんにちは！</h5>
+                        </div>
+                        <p class="mb-2">学しゅうで困っていることがあったら、なんでも聞いてね。</p>
+                        <div class="example-questions">
+                            <p class="mb-1 fw-bold small text-muted">できること：</p>
+                            <button class="btn btn-outline-primary btn-sm mb-1 me-1 example-btn">作文を書くヒントがほしい</button>
+                            <button class="btn btn-outline-primary btn-sm mb-1 me-1 example-btn">係のキャッチコピーを考えたい</button>
+                            <button class="btn btn-outline-success btn-sm mb-1 me-1 example-btn">理科の実験について教えて</button>
+                            <button class="btn btn-outline-info btn-sm mb-1 me-1 example-btn">算数の問題のヒント</button>
+                            <button class="btn btn-outline-warning btn-sm mb-1 me-1 example-btn">読書感想文のアイデア</button>
+                        </div>
+                        <div class="alert alert-warning alert-sm mt-3 mb-0">
+                            <i class="fas fa-exclamation-triangle me-1"></i>
+                            <small><strong>注意:</strong> 学しゅうに関けいのない、ざつだんはできません。</small>
+                        </div>
                     </div>
                 </div>
-                <div class="card-footer">
+                <div class="card-footer bg-light">
                     <form id="chatForm">
-                        <div class="input-group">
+                        <div class="input-group input-group-lg">
                             <input type="text" 
-                                   class="form-control" 
+                                   class="form-control border-success" 
                                    id="userInput" 
-                                   placeholder="質問を入力してね..."
+                                   placeholder="ここに質問を入力してね..."
                                    autocomplete="off"
                                    required>
-                            <button type="submit" class="btn btn-success" id="sendButton">
+                            <button type="submit" class="btn btn-success px-4" id="sendButton">
                                 <i class="fas fa-paper-plane me-1"></i>
-                                送信
+                                送る
                             </button>
                         </div>
                     </form>
                 </div>
             </div>
             <div class="text-center mt-3">
-                <a href="/" class="btn btn-outline-secondary">
+                <a href="/" class="btn btn-outline-secondary btn-lg">
                     <i class="fas fa-home me-2"></i>
                     ホームに戻る
                 </a>
@@ -53,46 +69,184 @@
 </div>
 
 <style>
+.chatbot-card {
+    border: none;
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.bg-gradient-success {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+}
+
+.chat-container {
+    height: 550px;
+    overflow-y: auto;
+    background: linear-gradient(to bottom, #f8f9fa 0%, #ffffff 100%);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+}
+
+.welcome-message {
+    background: white;
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    animation: fadeIn 0.5s ease-in;
+}
+
+.example-questions {
+    margin-top: 15px;
+}
+
+.example-btn {
+    border-radius: 20px;
+    font-size: 0.85rem;
+    transition: all 0.3s ease;
+}
+
+.example-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+}
+
 .chat-message {
-    margin-bottom: 15px;
-    padding: 10px 15px;
-    border-radius: 10px;
-    max-width: 80%;
+    margin-bottom: 20px;
+    padding: 12px 18px;
+    border-radius: 18px;
+    max-width: 75%;
+    animation: slideIn 0.3s ease-out;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
 .user-message {
-    background-color: #e3f2fd;
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    color: white;
     margin-left: auto;
     text-align: right;
+    border-bottom-right-radius: 5px;
 }
 
 .ai-message {
-    background-color: #f5f5f5;
+    background: white;
+    border: 2px solid #e9ecef;
     margin-right: auto;
+    border-bottom-left-radius: 5px;
 }
 
 .message-label {
-    font-size: 0.85em;
+    font-size: 0.75em;
     font-weight: bold;
     margin-bottom: 5px;
-    color: #666;
+    opacity: 0.8;
 }
 
 .user-message .message-label {
-    color: #1976d2;
+    color: rgba(255,255,255,0.9);
 }
 
 .ai-message .message-label {
-    color: #388e3c;
+    color: #28a745;
 }
 
-#chatMessages {
-    display: flex;
-    flex-direction: column;
+.chat-message-content {
+    line-height: 1.6;
+    word-wrap: break-word;
+}
+
+#clearButton {
+    border-radius: 20px;
+    transition: all 0.3s ease;
+}
+
+#clearButton:hover {
+    transform: scale(1.05);
+}
+
+.input-group-lg .form-control {
+    border-radius: 25px 0 0 25px;
+    padding: 12px 20px;
+    font-size: 1rem;
+}
+
+.input-group-lg .btn {
+    border-radius: 0 25px 25px 0;
+    padding: 12px 25px;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* スクロールバーのスタイル */
+.chat-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.chat-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.chat-container::-webkit-scrollbar-thumb {
+    background: #28a745;
+    border-radius: 10px;
+}
+
+.chat-container::-webkit-scrollbar-thumb:hover {
+    background: #20c997;
 }
 </style>
 
 <script>
+// 例題ボタンのクリックイベント
+document.addEventListener('DOMContentLoaded', () => {
+    const exampleButtons = document.querySelectorAll('.example-btn');
+    exampleButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.getElementById('userInput').value = btn.textContent;
+            document.getElementById('userInput').focus();
+        });
+    });
+});
+
+// リセットボタン
+document.getElementById('clearButton').addEventListener('click', async () => {
+    if (confirm('会話をリセットしますか？これまでの会話が消えます。')) {
+        try {
+            const response = await fetch('/chatbot/reset', {
+                method: 'POST'
+            });
+            
+            if (response.ok) {
+                location.reload();
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            location.reload();
+        }
+    }
+});
+
 document.getElementById('chatForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     
@@ -100,6 +254,12 @@ document.getElementById('chatForm').addEventListener('submit', async (e) => {
     const message = input.value.trim();
     
     if (!message) return;
+    
+    // ウェルカムメッセージを削除
+    const welcomeMsg = document.querySelector('.welcome-message');
+    if (welcomeMsg) {
+        welcomeMsg.remove();
+    }
     
     // ユーザーメッセージを表示
     addMessage(message, 'user');
@@ -132,7 +292,7 @@ document.getElementById('chatForm').addEventListener('submit', async (e) => {
     } finally {
         // 送信ボタンを有効化
         sendButton.disabled = false;
-        sendButton.innerHTML = '<i class="fas fa-paper-plane me-1"></i>送信';
+        sendButton.innerHTML = '<i class="fas fa-paper-plane me-1"></i>送る';
         input.focus();
     }
 });
@@ -147,6 +307,7 @@ function addMessage(text, type) {
     label.textContent = type === 'user' ? 'あなた' : 'お助けAI';
     
     const content = document.createElement('div');
+    content.className = 'chat-message-content';
     content.textContent = text;
     
     messageDiv.appendChild(label);
