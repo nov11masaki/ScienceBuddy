@@ -45,20 +45,20 @@ def allowed_file(filename):
 
 # 教員認証情報（実際の運用では環境変数やデータベースに保存）
 TEACHER_CREDENTIALS = {
-    "teacher": "science2025",  # 全クラス管理者
-    "teacher_class1": "class1_2025",  # 1組担任
-    "teacher_class2": "class2_2025",  # 2組担任
-    "teacher_class3": "class3_2025",  # 3組担任
-    "teacher_class4": "class4_2025",  # 4組担任
+    "teacher": "science",  # 全クラス管理者
+    "4100": "science",  # 1組担任
+    "4200": "science",  # 2組担任
+    "4300": "science",  # 3組担任
+    "4400": "science",  # 4組担任
 }
 
 # 教員IDとクラスの対応
 TEACHER_CLASS_MAPPING = {
     "teacher": ["class1", "class2", "class3", "class4"],  # 全クラス管理可能
-    "teacher_class1": ["class1"],  # 1組のみ
-    "teacher_class2": ["class2"],  # 2組のみ
-    "teacher_class3": ["class3"],  # 3組のみ
-    "teacher_class4": ["class4"],  # 4組のみ
+    "4100": ["class1"],  # 1組のみ
+    "4200": ["class2"],  # 2組のみ
+    "4300": ["class3"],  # 3組のみ
+    "4400": ["class4"],  # 4組のみ
 }
 
 # 生徒IDとクラスの対応
