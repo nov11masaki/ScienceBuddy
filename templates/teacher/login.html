@@ -54,6 +54,40 @@
                             学習システムに戻る
                         </a>
                     </div>
+                    
+                    <!-- アカウント情報 -->
+                    <div class="account-info mt-4">
+                        <div class="info-header">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>利用可能なアカウント</strong>
+                        </div>
+                        <div class="account-list">
+                            <div class="account-item">
+                                <span class="account-id">teacher</span>
+                                <span class="account-role">全クラス管理者</span>
+                            </div>
+                            <div class="account-item">
+                                <span class="account-id">teacher_class1</span>
+                                <span class="account-role">1組担任</span>
+                            </div>
+                            <div class="account-item">
+                                <span class="account-id">teacher_class2</span>
+                                <span class="account-role">2組担任</span>
+                            </div>
+                            <div class="account-item">
+                                <span class="account-id">teacher_class3</span>
+                                <span class="account-role">3組担任</span>
+                            </div>
+                            <div class="account-item">
+                                <span class="account-id">teacher_class4</span>
+                                <span class="account-role">4組担任</span>
+                            </div>
+                        </div>
+                        <div class="info-note">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <small>担任アカウントは担当クラスのみ制御可能です</small>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -77,4 +111,68 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+{% endblock %}
+
+{% block styles %}
+<style>
+.account-info {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 15px;
+    border: 1px solid #dee2e6;
+}
+
+.info-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    color: #495057;
+    font-size: 0.9rem;
+}
+
+.account-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.account-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid #e9ecef;
+    font-size: 0.85rem;
+}
+
+.account-id {
+    font-family: monospace;
+    font-weight: bold;
+    color: #0d6efd;
+}
+
+.account-role {
+    color: #6c757d;
+    font-size: 0.8rem;
+}
+
+.info-note {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #856404;
+    background: #fff3cd;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid #ffeaa7;
+}
+
+.info-note i {
+    color: #ffc107;
+}
+</style>
 {% endblock %}

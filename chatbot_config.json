@@ -1,4 +1,22 @@
 {
-  "enabled": false,
-  "updated_at": "2025-10-17T14:56:47.449003"
+  "enabled": true,
+  "classes": {
+    "class1": {
+      "enabled": true,
+      "updated_at": "2025-10-17T00:00:00.000000"
+    },
+    "class2": {
+      "enabled": true,
+      "updated_at": "2025-10-17T00:00:00.000000"
+    },
+    "class3": {
+      "enabled": true,
+      "updated_at": "2025-10-17T00:00:00.000000"
+    },
+    "class4": {
+      "enabled": true,
+      "updated_at": "2025-10-17T00:00:00.000000"
+    }
+  },
+  "updated_at": "2025-10-17T00:00:00.000000"
 }

@@ -45,8 +45,28 @@ def allowed_file(filename):
 
 # 教員認証情報（実際の運用では環境変数やデータベースに保存）
 TEACHER_CREDENTIALS = {
-    "teacher": "science2025",  # ユーザー名: teacher, パスワード: science2025
-    # 本番運用時は適切な認証システムを実装してください
+    "teacher": "science2025",  # 全クラス管理者
+    "teacher_class1": "class1_2025",  # 1組担任
+    "teacher_class2": "class2_2025",  # 2組担任
+    "teacher_class3": "class3_2025",  # 3組担任
+    "teacher_class4": "class4_2025",  # 4組担任
+}
+
+# 教員IDとクラスの対応
+TEACHER_CLASS_MAPPING = {
+    "teacher": ["class1", "class2", "class3", "class4"],  # 全クラス管理可能
+    "teacher_class1": ["class1"],  # 1組のみ
+    "teacher_class2": ["class2"],  # 2組のみ
+    "teacher_class3": ["class3"],  # 3組のみ
+    "teacher_class4": ["class4"],  # 4組のみ
+}
+
+# 生徒IDとクラスの対応
+STUDENT_CLASS_MAPPING = {
+    "class1": list(range(4101, 4131)),  # 4101-4130
+    "class2": list(range(4201, 4231)),  # 4201-4230
+    "class3": list(range(4301, 4331)),  # 4301-4330
+    "class4": list(range(4401, 4431)),  # 4401-4430
 }
 
 # 認証チェック用デコレータ
@@ -531,26 +551,109 @@ def load_learning_logs(date=None):
 # チャットボット設定管理
 CHATBOT_CONFIG_FILE = 'chatbot_config.json'
 
-def get_chatbot_status():
-    """チャットボットの有効/無効状態を取得"""
+def get_chatbot_status(class_name=None):
+    """チャットボットの有効/無効状態を取得
+    
+    Args:
+        class_name: クラス名 ("class1", "class2", "class3", "class4")
+                   Noneの場合は全体の状態を返す
+    """
     if os.path.exists(CHATBOT_CONFIG_FILE):
         try:
             with open(CHATBOT_CONFIG_FILE, 'r', encoding='utf-8') as f:
                 config = json.load(f)
-                return config.get('enabled', True)  # デフォルトは有効
+                
+                # クラス指定がある場合
+                if class_name:
+                    return config.get('classes', {}).get(class_name, {}).get('enabled', True)
+                
+                # 全体の状態を返す（後方互換性）
+                return config.get('enabled', True)
         except:
             return True
     return True  # デフォルトは有効
 
-def set_chatbot_status(enabled):
-    """チャットボットの有効/無効状態を設定"""
+def set_chatbot_status(enabled, class_name=None):
+    """チャットボットの有効/無効状態を設定
+    
+    Args:
+        enabled: 有効/無効フラグ
+        class_name: クラス名 ("class1", "class2", "class3", "class4")
+                   Noneの場合は全体の設定を変更
+    """
     try:
-        config = {'enabled': enabled, 'updated_at': datetime.now().isoformat()}
+        # 既存の設定を読み込み
+        config = {'enabled': True, 'classes': {}}
+        if os.path.exists(CHATBOT_CONFIG_FILE):
+            try:
+                with open(CHATBOT_CONFIG_FILE, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+            except:
+                pass
+        
+        # クラス構造を初期化
+        if 'classes' not in config:
+            config['classes'] = {
+                'class1': {'enabled': True},
+                'class2': {'enabled': True},
+                'class3': {'enabled': True},
+                'class4': {'enabled': True}
+            }
+        
+        # クラス指定がある場合
+        if class_name:
+            if class_name not in config['classes']:
+                config['classes'][class_name] = {}
+            config['classes'][class_name]['enabled'] = enabled
+            config['classes'][class_name]['updated_at'] = datetime.now().isoformat()
+        else:
+            # 全体の設定を変更
+            config['enabled'] = enabled
+            config['updated_at'] = datetime.now().isoformat()
+        
+        # 保存
         with open(CHATBOT_CONFIG_FILE, 'w', encoding='utf-8') as f:
             json.dump(config, f, ensure_ascii=False, indent=2)
         return True
-    except:
+    except Exception as e:
+        print(f"Error saving chatbot config: {e}")
         return False
+
+def get_student_class(student_number):
+    """生徒番号からクラスを特定
+    
+    Args:
+        student_number: 生徒番号 (int or str)
+    
+    Returns:
+        クラス名 ("class1", "class2", "class3", "class4") または None
+    """
+    try:
+        student_num = int(student_number)
+        
+        # テストID 1111は全クラス利用可能
+        if student_num == 1111:
+            return "all"
+        
+        # 各クラスの範囲をチェック
+        for class_name, student_ids in STUDENT_CLASS_MAPPING.items():
+            if student_num in student_ids:
+                return class_name
+        
+        return None
+    except (ValueError, TypeError):
+        return None
+
+def get_teacher_classes(teacher_id):
+    """教員IDから管理可能なクラス一覧を取得
+    
+    Args:
+        teacher_id: 教員ID
+    
+    Returns:
+        クラス名のリスト ["class1", "class2", ...]
+    """
+    return TEACHER_CLASS_MAPPING.get(teacher_id, [])
 
 @app.route('/api/test')
 def api_test():
@@ -950,12 +1053,20 @@ def teacher_logout():
 @app.route('/teacher/chatbot/toggle', methods=['POST'])
 @require_teacher_auth
 def toggle_chatbot():
-    """チャットボットの表示制御"""
+    """チャットボットの表示制御（クラス別）"""
     data = request.json
     enabled = data.get('enabled', True)
+    class_name = data.get('class_name')  # "class1", "class2", etc.
     
-    if set_chatbot_status(enabled):
-        return jsonify({'success': True, 'enabled': enabled})
+    # 教員が該当クラスを管理できるかチェック
+    teacher_id = session.get('teacher_id')
+    teacher_classes = get_teacher_classes(teacher_id)
+    
+    if class_name and class_name not in teacher_classes:
+        return jsonify({'success': False, 'error': '権限がありません'}), 403
+    
+    if set_chatbot_status(enabled, class_name):
+        return jsonify({'success': True, 'enabled': enabled, 'class_name': class_name})
     else:
         return jsonify({'success': False, 'error': '設定の保存に失敗しました'}), 500
 
@@ -963,13 +1074,22 @@ def toggle_chatbot():
 @require_teacher_auth
 def teacher():
     """教員用ダッシュボード"""
-    # チャットボット設定を読み込み
-    chatbot_enabled = get_chatbot_status()
+    teacher_id = session.get('teacher_id')
+    teacher_classes = get_teacher_classes(teacher_id)
+    
+    # 各クラスのチャットボット設定を読み込み
+    chatbot_settings = {}
+    for class_name in ['class1', 'class2', 'class3', 'class4']:
+        chatbot_settings[class_name] = {
+            'enabled': get_chatbot_status(class_name),
+            'can_edit': class_name in teacher_classes
+        }
     
     return render_template('teacher/dashboard.html', 
                          units=UNITS, 
-                         teacher_id=session.get('teacher_id'),
-                         chatbot_enabled=chatbot_enabled)
+                         teacher_id=teacher_id,
+                         teacher_classes=teacher_classes,
+                         chatbot_settings=chatbot_settings)
 
 @app.route('/teacher/logs')
 @require_teacher_auth
@@ -1292,6 +1412,22 @@ def chatbot():
     if 'chatbot_student_id' not in session:
         return redirect(url_for('chatbot_login'))
     
+    # 生徒のクラスを特定
+    student_id = session.get('chatbot_student_id')
+    student_class = get_student_class(student_id)
+    
+    # チャットボットの表示状態をチェック
+    if student_class and student_class != "all":
+        # 通常の生徒：クラスごとの設定を確認
+        if not get_chatbot_status(student_class):
+            flash('現在、チャットボットは利用できません。', 'warning')
+            return redirect(url_for('select_number'))
+    elif student_class != "all":
+        # クラスが特定できない場合
+        flash('無効な生徒番号です。', 'error')
+        return redirect(url_for('chatbot_login'))
+    # student_class == "all" の場合（テストID 1111）は常に利用可能
+    
     # セッションにチャット履歴がない場合は初期化
     if 'chatbot_history' not in session:
         session['chatbot_history'] = []
@@ -1305,6 +1441,14 @@ def chatbot_chat():
     student_id = session.get('chatbot_student_id')
     if not student_id:
         return jsonify({'error': 'ログインしてください'}), 401
+    
+    # クラス別の表示制御チェック
+    student_class = get_student_class(student_id)
+    if student_class and student_class != "all":
+        if not get_chatbot_status(student_class):
+            return jsonify({'error': '現在、チャットボットは利用できません'}), 403
+    elif student_class != "all":
+        return jsonify({'error': '無効な生徒番号です'}), 403
     
     user_message = request.json.get('message', '')
     

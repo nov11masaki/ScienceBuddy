@@ -24,31 +24,54 @@
         <section class="chatbot-control-section">
             <div class="control-card">
                 <div class="card-icon"><i class="fas fa-robot"></i></div>
-                <h2>学習サポートチャットボット</h2>
-                <p>児童向けチャットボットの表示を制御します</p>
-                <div class="chatbot-toggle-container">
-                    <div class="toggle-status">
-                        <span class="status-label">現在の状態:</span>
-                        <span class="status-badge {% if chatbot_enabled %}enabled{% else %}disabled{% endif %}" id="statusBadge">
-                            {% if chatbot_enabled %}
-                                <i class="fas fa-check-circle"></i> 利用可能
-                            {% else %}
-                                <i class="fas fa-times-circle"></i> 利用不可
-                            {% endif %}
-                        </span>
+                <h2>学習サポートチャットボット - クラス別制御</h2>
+                <p>各クラスのチャットボット表示を個別に制御します</p>
+                
+                <!-- クラス別の制御 -->
+                <div class="class-controls-grid">
+                    {% for class_num in range(1, 5) %}
+                    {% set class_key = 'class' ~ class_num %}
+                    {% set setting = chatbot_settings[class_key] %}
+                    <div class="class-control-card {% if not setting.can_edit %}disabled{% endif %}">
+                        <div class="class-header">
+                            <h3><i class="fas fa-users"></i> {{ class_num }}組</h3>
+                            <span class="student-range">生徒番号: 4{{ class_num }}01-4{{ class_num }}30</span>
+                        </div>
+                        <div class="class-status">
+                            <span class="status-label">状態:</span>
+                            <span class="status-badge {% if setting.enabled %}enabled{% else %}disabled{% endif %}" id="statusBadge{{ class_num }}">
+                                {% if setting.enabled %}
+                                    <i class="fas fa-check-circle"></i> 利用可能
+                                {% else %}
+                                    <i class="fas fa-times-circle"></i> 利用不可
+                                {% endif %}
+                            </span>
+                        </div>
+                        {% if setting.can_edit %}
+                        <div class="class-toggle-buttons">
+                            <button onclick="setClassChatbotStatus('{{ class_key }}', true)" 
+                                    class="btn btn-sm btn-success {% if setting.enabled %}active{% endif %}" 
+                                    id="enableBtn{{ class_num }}">
+                                <i class="fas fa-toggle-on"></i> 有効
+                            </button>
+                            <button onclick="setClassChatbotStatus('{{ class_key }}', false)" 
+                                    class="btn btn-sm btn-danger {% if not setting.enabled %}active{% endif %}" 
+                                    id="disableBtn{{ class_num }}">
+                                <i class="fas fa-toggle-off"></i> 無効
+                            </button>
+                        </div>
+                        {% else %}
+                        <div class="no-permission">
+                            <i class="fas fa-lock"></i> 編集権限がありません
+                        </div>
+                        {% endif %}
                     </div>
-                    <div class="toggle-buttons">
-                        <button onclick="setChatbotStatus(true)" class="btn btn-success {% if chatbot_enabled %}active{% endif %}" id="enableBtn">
-                            <i class="fas fa-toggle-on"></i> 利用可能にする
-                        </button>
-                        <button onclick="setChatbotStatus(false)" class="btn btn-danger {% if not chatbot_enabled %}active{% endif %}" id="disableBtn">
-                            <i class="fas fa-toggle-off"></i> 利用不可にする
-                        </button>
-                    </div>
-                    <div class="toggle-description">
-                        <i class="fas fa-info-circle"></i>
-                        <small>児童がホーム画面からチャットボットにアクセスできるかどうかを制御します</small>
-                    </div>
+                    {% endfor %}
+                </div>
+                
+                <div class="toggle-description">
+                    <i class="fas fa-info-circle"></i>
+                    <small>各クラスの児童がチャットボットにアクセスできるかどうかを個別に制御できます。テストID (1111) は常に利用可能です。</small>
                 </div>
             </div>
         </section>
@@ -105,37 +128,48 @@
 
 {% block scripts %}
 <script>
-function setChatbotStatus(enabled) {
+// クラス別のチャットボット制御
+function setClassChatbotStatus(className, enabled) {
     fetch('/teacher/chatbot/toggle', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ enabled: enabled })
+        body: JSON.stringify({ 
+            enabled: enabled,
+            class_name: className 
+        })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            // クラス番号を取得 (class1 -> 1)
+            const classNum = className.replace('class', '');
+            
             // UI更新
-            const statusBadge = document.getElementById('statusBadge');
-            const enableBtn = document.getElementById('enableBtn');
-            const disableBtn = document.getElementById('disableBtn');
+            const statusBadge = document.getElementById('statusBadge' + classNum);
+            const enableBtn = document.getElementById('enableBtn' + classNum);
+            const disableBtn = document.getElementById('disableBtn' + classNum);
             
             if (enabled) {
                 statusBadge.className = 'status-badge enabled';
                 statusBadge.innerHTML = '<i class="fas fa-check-circle"></i> 利用可能';
                 enableBtn.classList.add('active');
                 disableBtn.classList.remove('active');
-                alert('チャットボットを利用可能にしました');
+                alert(`${classNum}組のチャットボットを利用可能にしました`);
             } else {
                 statusBadge.className = 'status-badge disabled';
                 statusBadge.innerHTML = '<i class="fas fa-times-circle"></i> 利用不可';
                 enableBtn.classList.remove('active');
                 disableBtn.classList.add('active');
-                alert('チャットボットを利用不可にしました');
+                alert(`${classNum}組のチャットボットを利用不可にしました`);
             }
         } else {
-            alert('設定の変更に失敗しました');
+            if (data.error === '権限がありません') {
+                alert('このクラスを制御する権限がありません');
+            } else {
+                alert('設定の変更に失敗しました');
+            }
         }
     })
     .catch(error => {
@@ -281,10 +315,131 @@ function exportData() {
     align-items: center;
     gap: 10px;
     opacity: 0.9;
+    margin-top: 20px;
 }
 
 .toggle-description i {
     font-size: 1.2rem;
+}
+
+/* クラス別制御のスタイル */
+.class-controls-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.class-control-card {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    padding: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+}
+
+.class-control-card:hover {
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.class-control-card.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.class-control-card.disabled:hover {
+    transform: none;
+}
+
+.class-header {
+    margin-bottom: 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 10px;
+}
+
+.class-header h3 {
+    margin: 0 0 5px 0;
+    font-size: 1.3rem;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.student-range {
+    font-size: 0.85rem;
+    opacity: 0.8;
+    display: block;
+}
+
+.class-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.class-toggle-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.class-toggle-buttons .btn {
+    flex: 1;
+    padding: 10px 15px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.class-toggle-buttons .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+}
+
+.class-toggle-buttons .btn.active {
+    border-color: white;
+    box-shadow: 0 0 15px rgba(255,255,255,0.3);
+}
+
+.class-toggle-buttons .btn-success {
+    background: rgba(16, 185, 129, 0.3);
+    color: white;
+}
+
+.class-toggle-buttons .btn-success.active {
+    background: #10b981;
+}
+
+.class-toggle-buttons .btn-danger {
+    background: rgba(239, 68, 68, 0.3);
+    color: white;
+}
+
+.class-toggle-buttons .btn-danger.active {
+    background: #ef4444;
+}
+
+.no-permission {
+    text-align: center;
+    padding: 15px;
+    background: rgba(255, 193, 7, 0.2);
+    border-radius: 8px;
+    color: #ffc107;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 </style>
 {% endblock %}
