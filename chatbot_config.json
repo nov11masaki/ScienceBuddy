@@ -1,22 +1,9 @@
 {
   "enabled": true,
   "classes": {
-    "class1": {
-      "enabled": true,
-      "updated_at": "2025-10-17T15:46:53.525091"
-    },
-    "class2": {
-      "enabled": false,
-      "updated_at": "2025-10-17T15:46:58.541237"
-    },
     "class3": {
-      "enabled": false,
-      "updated_at": "2025-10-17T15:47:00.658189"
-    },
-    "class4": {
-      "enabled": false,
-      "updated_at": "2025-10-17T15:47:02.758078"
+      "enabled": true,
+      "updated_at": "2025-10-17T16:55:56.585714"
     }
-  },
-  "updated_at": "2025-10-17T00:00:00.000000"
-}
+  }
+}}
