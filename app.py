@@ -345,8 +345,8 @@ def call_openai_with_retry(prompt, max_retries=3, delay=2, unit=None, stage=None
             
             if response.choices and response.choices[0].message.content:
                 content = response.choices[0].message.content
-                cleaned_response = remove_markdown_formatting(content)
-                return cleaned_response
+                # マークダウン除去を削除（MDファイルのプロンプトに従う）
+                return content
             else:
                 raise Exception("空の応答が返されました")
                 
@@ -395,35 +395,29 @@ def load_task_content(unit_name):
         return f"{unit_name}について実験を行います。どのような結果になると予想しますか？"
 
 def get_initial_ai_message(unit_name, stage='prediction'):
-    """段階と単元に応じた最初のAIメッセージを生成（課題文に基づく）"""
-    # 課題文を読み込む
-    task_content = load_task_content(unit_name)
-    
+    """段階と単元に応じた最初のAIメッセージを生成（プロンプトMDに従う）"""
     if stage == 'prediction':
-        # 課題文を質問形式に変換して自然な会話にする
-        # 「〜だろうか。」→「〜と思いますか？」
-        question = task_content.replace('だろうか。', 'と思いますか？').replace('だろうか', 'と思いますか')
-        
-        # 複数文がある場合は最初の文を使用
-        main_question = question.split('\n')[0].strip()
-        
-        # 「考えよう。」などの追加文がある場合の処理
-        if '\n' in task_content:
-            lines = task_content.split('\n')
-            main_question = lines[0].replace('だろうか。', 'と思いますか？').replace('だろうか', 'と思いますか')
-            return f"こんにちは！今日の課題は「{lines[0]}」です。\n\n{main_question}　あなたの予想を聞かせてください。"
+        # プロンプトMDの指示に従った最初の質問
+        if unit_name == "空気の温度と体積":
+            return "空気を温めると体積はどうなると思いますか？"
+        elif unit_name == "金属のあたたまり方":
+            return "金属を温めたとき、どのようにあたたまっていくと思いますか？"
+        elif unit_name == "水のあたたまり方":
+            return "水を温めたとき、どのようにあたたまっていくと思いますか？"
+        elif unit_name == "水を熱し続けた時の温度と様子":
+            return "水を熱し続けると、温度や様子はどうなると思いますか？"
         else:
-            return f"こんにちは！今日の課題は「{task_content}」です。\n\n{main_question}　あなたの予想を聞かせてください。"
+            # デフォルト
+            task_content = load_task_content(unit_name)
+            return f"{task_content.split('。')[0]}と思いますか？"
     
     elif stage == 'reflection':
         # 考察段階では実験結果について問う
-        main_task = task_content.split('\n')[0].strip()
-        return f"こんにちは！実験してみてどうでしたか？\n\n課題は「{main_task}」でしたね。実験の結果について教えてください。"
+        return "実験でどのような結果になりましたか？"
     
     else:
         # その他の段階
-        main_task = task_content.split('\n')[0].strip()
-        return f"こんにちは！課題は「{main_task}」です。あなたの考えを聞かせてください。"
+        return "あなたの考えを聞かせてください。"
 
 # 単元ごとのプロンプトを読み込む関数
 def load_unit_prompt(unit_name):
@@ -645,8 +639,8 @@ def chat():
         # JSON形式のレスポンスの場合は解析して純粋なメッセージを抽出
         ai_message = extract_message_from_json_response(ai_response)
         
-        # マークダウン記法を除去
-        ai_message = remove_markdown_formatting(ai_message)
+        # 予想・考察段階ではマークダウン除去をスキップ（MDファイルのプロンプトに従う）
+        # ai_message = remove_markdown_formatting(ai_message)
         
         conversation.append({'role': 'assistant', 'content': ai_message})
         session['conversation'] = conversation
@@ -797,8 +791,8 @@ def reflect_chat():
         # JSON形式のレスポンスの場合は解析して純粋なメッセージを抽出
         ai_message = extract_message_from_json_response(ai_response)
         
-        # マークダウン記法を除去
-        ai_message = remove_markdown_formatting(ai_message)
+        # 予想・考察段階ではマークダウン除去をスキップ（MDファイルのプロンプトに従う）
+        # ai_message = remove_markdown_formatting(ai_message)
         
         reflection_conversation.append({'role': 'assistant', 'content': ai_message})
         session['reflection_conversation'] = reflection_conversation
@@ -867,8 +861,8 @@ def final_summary():
         # JSON形式のレスポンスの場合は解析して純粋なメッセージを抽出
         final_summary_text = extract_message_from_json_response(final_summary_response)
         
-        # マークダウン記法を除去
-        final_summary_text = remove_markdown_formatting(final_summary_text)
+        # 要約段階ではマークダウン除去をスキップ（MDファイルのプロンプトに従う）
+        # final_summary_text = remove_markdown_formatting(final_summary_text)
         
         # 最終考察のログを保存
         save_learning_log(
