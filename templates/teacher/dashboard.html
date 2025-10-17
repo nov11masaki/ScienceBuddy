@@ -434,32 +434,38 @@ function exportData() {
 .toggle-text-off,
 .toggle-text-on {
     position: absolute;
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 16px;
+    font-weight: 700;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     transition: all 0.3s ease;
     z-index: 0;
-    color: rgba(255, 255, 255, 0.6);
+    color: rgba(255, 255, 255, 0.7);
+    letter-spacing: 0.5px;
 }
 
 .toggle-text-off {
-    left: 20px;
+    left: 18px;
 }
 
 .toggle-text-on {
-    right: 20px;
+    right: 18px;
+}
+
+.toggle-text-off i,
+.toggle-text-on i {
+    font-size: 18px;
 }
 
 .toggle-checkbox:checked + .toggle-label .toggle-text-on {
     color: #ffffff;
-    text-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+    text-shadow: 0 0 15px rgba(16, 185, 129, 0.6);
 }
 
 .toggle-checkbox:not(:checked) + .toggle-label .toggle-text-off {
     color: #ffffff;
-    text-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+    text-shadow: 0 0 15px rgba(239, 68, 68, 0.6);
 }
 
 /* グラスモーフィズム効果 */
