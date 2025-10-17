@@ -37,28 +37,25 @@
                             <h3><i class="fas fa-users"></i> {{ class_num }}組</h3>
                             <span class="student-range">生徒番号: 4{{ class_num }}01-4{{ class_num }}30</span>
                         </div>
-                        <div class="class-status">
-                            <span class="status-label">状態:</span>
-                            <span class="status-badge {% if setting.enabled %}enabled{% else %}disabled{% endif %}" id="statusBadge{{ class_num }}">
-                                {% if setting.enabled %}
-                                    <i class="fas fa-check-circle"></i> 利用可能
-                                {% else %}
-                                    <i class="fas fa-times-circle"></i> 利用不可
-                                {% endif %}
-                            </span>
-                        </div>
                         {% if setting.can_edit %}
-                        <div class="class-toggle-buttons">
-                            <button onclick="setClassChatbotStatus('{{ class_key }}', true)" 
-                                    class="btn btn-sm btn-success {% if setting.enabled %}active{% endif %}" 
-                                    id="enableBtn{{ class_num }}">
-                                <i class="fas fa-toggle-on"></i> 有効
-                            </button>
-                            <button onclick="setClassChatbotStatus('{{ class_key }}', false)" 
-                                    class="btn btn-sm btn-danger {% if not setting.enabled %}active{% endif %}" 
-                                    id="disableBtn{{ class_num }}">
-                                <i class="fas fa-toggle-off"></i> 無効
-                            </button>
+                        <div class="liquid-glass-toggle-container">
+                            <div class="toggle-switch" onclick="toggleClassChatbot('{{ class_key }}', {{ class_num }})">
+                                <input type="checkbox" 
+                                       id="toggle{{ class_num }}" 
+                                       class="toggle-checkbox" 
+                                       {% if setting.enabled %}checked{% endif %}>
+                                <label for="toggle{{ class_num }}" class="toggle-label">
+                                    <span class="toggle-inner">
+                                        <span class="toggle-switch-ball"></span>
+                                    </span>
+                                    <span class="toggle-text-off">
+                                        <i class="fas fa-times-circle"></i> 利用不可
+                                    </span>
+                                    <span class="toggle-text-on">
+                                        <i class="fas fa-check-circle"></i> 利用可能
+                                    </span>
+                                </label>
+                            </div>
                         </div>
                         {% else %}
                         <div class="no-permission">
@@ -128,8 +125,11 @@
 
 {% block scripts %}
 <script>
-// クラス別のチャットボット制御
-function setClassChatbotStatus(className, enabled) {
+// クラス別のチャットボット制御（リキッドグラストグル対応）
+function toggleClassChatbot(className, classNum) {
+    const checkbox = document.getElementById('toggle' + classNum);
+    const enabled = checkbox.checked;
+    
     fetch('/teacher/chatbot/toggle', {
         method: 'POST',
         headers: {
@@ -143,39 +143,47 @@ function setClassChatbotStatus(className, enabled) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // クラス番号を取得 (class1 -> 1)
-            const classNum = className.replace('class', '');
-            
-            // UI更新
-            const statusBadge = document.getElementById('statusBadge' + classNum);
-            const enableBtn = document.getElementById('enableBtn' + classNum);
-            const disableBtn = document.getElementById('disableBtn' + classNum);
-            
-            if (enabled) {
-                statusBadge.className = 'status-badge enabled';
-                statusBadge.innerHTML = '<i class="fas fa-check-circle"></i> 利用可能';
-                enableBtn.classList.add('active');
-                disableBtn.classList.remove('active');
-                alert(`${classNum}組のチャットボットを利用可能にしました`);
-            } else {
-                statusBadge.className = 'status-badge disabled';
-                statusBadge.innerHTML = '<i class="fas fa-times-circle"></i> 利用不可';
-                enableBtn.classList.remove('active');
-                disableBtn.classList.add('active');
-                alert(`${classNum}組のチャットボットを利用不可にしました`);
-            }
+            // 成功時のフィードバック
+            showToast(`${classNum}組のチャットボットを${enabled ? '利用可能' : '利用不可'}にしました`, 'success');
         } else {
+            // エラー時はチェックボックスを元に戻す
+            checkbox.checked = !enabled;
             if (data.error === '権限がありません') {
-                alert('このクラスを制御する権限がありません');
+                showToast('このクラスを制御する権限がありません', 'error');
             } else {
-                alert('設定の変更に失敗しました');
+                showToast('設定の変更に失敗しました', 'error');
             }
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('エラーが発生しました');
+        checkbox.checked = !enabled;
+        showToast('エラーが発生しました', 'error');
     });
+}
+
+// トースト通知を表示
+function showToast(message, type = 'success') {
+    // 既存のトーストを削除
+    const existingToast = document.querySelector('.toast-notification');
+    if (existingToast) {
+        existingToast.remove();
+    }
+    
+    const toast = document.createElement('div');
+    toast.className = `toast-notification toast-${type}`;
+    toast.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+        <span>${message}</span>
+    `;
+    document.body.appendChild(toast);
+    
+    // アニメーション
+    setTimeout(() => toast.classList.add('show'), 100);
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
 }
 
 function exportData() {
@@ -184,11 +192,11 @@ function exportData() {
     fetch(`/teacher/export?date=${today}`)
     .then(response => response.json())
     .then(data => {
-        alert(data.message);
+        showToast(data.message, 'success');
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('エクスポート中にエラーが発生しました。');
+        showToast('エクスポート中にエラーが発生しました', 'error');
     });
 }
 </script>
@@ -322,7 +330,221 @@ function exportData() {
     font-size: 1.2rem;
 }
 
-/* クラス別制御のスタイル */
+/* リキッドグラストグルスイッチ */
+.liquid-glass-toggle-container {
+    padding: 20px 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.toggle-switch {
+    position: relative;
+    cursor: pointer;
+}
+
+.toggle-checkbox {
+    display: none;
+}
+
+.toggle-label {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 280px;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    backdrop-filter: blur(10px);
+    box-shadow: 
+        0 4px 30px rgba(0, 0, 0, 0.1),
+        inset 0 0 20px rgba(255, 255, 255, 0.05);
+    overflow: hidden;
+}
+
+.toggle-label:hover {
+    box-shadow: 
+        0 6px 40px rgba(0, 0, 0, 0.15),
+        inset 0 0 25px rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.toggle-inner {
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    width: 130px;
+    height: 48px;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    border-radius: 50px;
+    transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    box-shadow: 
+        0 4px 20px rgba(239, 68, 68, 0.4),
+        inset 0 2px 10px rgba(255, 255, 255, 0.3),
+        inset 0 -2px 10px rgba(0, 0, 0, 0.2);
+    z-index: 1;
+}
+
+/* リキッドエフェクト */
+.toggle-inner::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+    border-radius: 50%;
+    animation: liquidPulse 2s ease-in-out infinite;
+}
+
+@keyframes liquidPulse {
+    0%, 100% {
+        transform: translate(-50%, -50%) scale(0.8);
+        opacity: 0.5;
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(1.2);
+        opacity: 0.8;
+    }
+}
+
+.toggle-switch-ball {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 35px;
+    height: 35px;
+    background: linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%);
+    border-radius: 50%;
+    box-shadow: 
+        0 2px 10px rgba(0, 0, 0, 0.3),
+        inset 0 2px 5px rgba(255, 255, 255, 0.8);
+    transition: all 0.3s ease;
+}
+
+/* ONの状態 */
+.toggle-checkbox:checked + .toggle-label .toggle-inner {
+    left: calc(100% - 135px);
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    box-shadow: 
+        0 4px 20px rgba(16, 185, 129, 0.4),
+        inset 0 2px 10px rgba(255, 255, 255, 0.3),
+        inset 0 -2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.toggle-checkbox:checked + .toggle-label {
+    border-color: rgba(16, 185, 129, 0.5);
+}
+
+/* テキスト */
+.toggle-text-off,
+.toggle-text-on {
+    position: absolute;
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.3s ease;
+    z-index: 0;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.toggle-text-off {
+    left: 20px;
+}
+
+.toggle-text-on {
+    right: 20px;
+}
+
+.toggle-checkbox:checked + .toggle-label .toggle-text-on {
+    color: #ffffff;
+    text-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+}
+
+.toggle-checkbox:not(:checked) + .toggle-label .toggle-text-off {
+    color: #ffffff;
+    text-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+}
+
+/* グラスモーフィズム効果 */
+.toggle-label::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.1) 0%,
+        rgba(255, 255, 255, 0) 50%,
+        rgba(255, 255, 255, 0.1) 100%
+    );
+    border-radius: 50px;
+    pointer-events: none;
+}
+
+/* ホバー時のリキッドエフェクト */
+.toggle-label:active .toggle-inner {
+    transform: scale(0.95);
+}
+
+.toggle-label:active .toggle-switch-ball {
+    width: 40px;
+    height: 30px;
+}
+
+/* トースト通知 */
+.toast-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 12px;
+    padding: 15px 25px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: white;
+    font-weight: 600;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    transform: translateX(400px);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    z-index: 9999;
+}
+
+.toast-notification.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.toast-success {
+    border-color: rgba(16, 185, 129, 0.5);
+    background: rgba(16, 185, 129, 0.2);
+}
+
+.toast-error {
+    border-color: rgba(239, 68, 68, 0.5);
+    background: rgba(239, 68, 68, 0.2);
+}
+
+.toast-notification i {
+    font-size: 1.5rem;
+}
+
+/* クラス別制御のスタイル更新 */
 .class-controls-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -372,61 +594,6 @@ function exportData() {
     font-size: 0.85rem;
     opacity: 0.8;
     display: block;
-}
-
-.class-status {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 15px;
-}
-
-.class-toggle-buttons {
-    display: flex;
-    gap: 10px;
-}
-
-.class-toggle-buttons .btn {
-    flex: 1;
-    padding: 10px 15px;
-    border: 2px solid rgba(255,255,255,0.3);
-    border-radius: 8px;
-    font-size: 0.9rem;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-}
-
-.class-toggle-buttons .btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 3px 10px rgba(0,0,0,0.3);
-}
-
-.class-toggle-buttons .btn.active {
-    border-color: white;
-    box-shadow: 0 0 15px rgba(255,255,255,0.3);
-}
-
-.class-toggle-buttons .btn-success {
-    background: rgba(16, 185, 129, 0.3);
-    color: white;
-}
-
-.class-toggle-buttons .btn-success.active {
-    background: #10b981;
-}
-
-.class-toggle-buttons .btn-danger {
-    background: rgba(239, 68, 68, 0.3);
-    color: white;
-}
-
-.class-toggle-buttons .btn-danger.active {
-    background: #ef4444;
 }
 
 .no-permission {
