@@ -1367,10 +1367,16 @@ def chatbot_verify():
         flash('4桁の数字を入力してください（例：4103）', 'error')
         return redirect(url_for('chatbot_login'))
     
+    # 教員IDのチェック（4100, 4200, 4300, 4400はチャットボットにアクセスできない）
+    teacher_ids = ['4100', '4200', '4300', '4400']
+    if student_id in teacher_ids:
+        flash('教員IDではチャットボットにアクセスできません。', 'error')
+        return redirect(url_for('chatbot_login'))
+    
     # 有効なIDリストを定義
     valid_ids = set()
     
-    # 教員用ID
+    # テストID
     valid_ids.add('1111')
     
     # 4年1組～4組（各1～30番）
@@ -1383,11 +1389,20 @@ def chatbot_verify():
         flash('無効なIDです。正しいIDを入力してください', 'error')
         return redirect(url_for('chatbot_login'))
     
+    # クラス別のチャットボット利用可否をチェック
+    student_class = get_student_class(student_id)
+    
+    # テストID (1111) 以外の場合、クラスのチャットボット設定を確認
+    if student_class and student_class != "all":
+        if not get_chatbot_status(student_class):
+            flash('申し訳ありません。現在、あなたのクラスではチャットボットが利用できません。担任の先生に確認してください。', 'warning')
+            return redirect(url_for('chatbot_login'))
+    
     # IDをパース
     if student_id == '1111':
-        # 教員用
+        # テストID
         session['chatbot_student_id'] = student_id
-        session['chatbot_grade'] = '教員'
+        session['chatbot_grade'] = 'テスト'
         session['chatbot_class'] = ''
         session['chatbot_number'] = ''
     else:
