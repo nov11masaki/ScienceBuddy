@@ -419,22 +419,62 @@ def get_initial_ai_message(unit_name, stage='prediction'):
         # その他の段階
         return "あなたの考えを聞かせてください。"
 
+# ソクラテス問答法ガイドを読み込む関数
+def load_socratic_method_guide():
+    """ソクラテス問答法のガイドを読み込む"""
+    try:
+        with open('docs/ソクラテス問答法とは.md', 'r', encoding='utf-8') as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        # ガイドファイルが見つからない場合は空文字を返す
+        return ""
+
 # 単元ごとのプロンプトを読み込む関数
 def load_unit_prompt(unit_name):
-    """単元専用のプロンプトファイルを読み込む"""
+    """単元専用のプロンプトファイルを読み込み、ソクラテス問答法ガイドと統合する"""
+    # 1. ソクラテス問答法の共通ガイドを読み込み
+    socratic_guide = load_socratic_method_guide()
+    
+    # 2. 単元固有のプロンプトを読み込み
     try:
         with open(f'prompts/{unit_name}.md', 'r', encoding='utf-8') as f:
-            content = f.read().strip()
-        
-        # 新しいプロンプト形式：ファイル内容をそのまま使用
-        if content:
-            return content
-        else:
-            # フォールバック：ファイルが空の場合
-            return "児童の発言をよく聞いて、適切な質問で考えを引き出してください。"
-    
+            unit_content = f.read().strip()
     except FileNotFoundError:
-        # フォールバック：ファイルが見つからない場合
+        unit_content = ""
+    
+    # 3. 統合プロンプトを作成
+    if socratic_guide and unit_content:
+        # 両方が存在する場合：統合して返す
+        integrated_prompt = f"""{socratic_guide}
+
+---
+
+# 単元固有の指示
+
+{unit_content}
+
+---
+
+# 統合指針
+
+上記のソクラテス問答法の原則と単元固有の知識を統合して、児童との対話を行ってください。
+
+- ソクラテス問答法の基本原則（答えを教えない、質問で導く、自分で気づかせる）を常に守る
+- 単元MDの経験例や質問手順を活用する
+- 自然な言い換えを適用し、小学生が理解できる表現を使う
+- 児童の発言に応じて柔軟に対応する"""
+        return integrated_prompt
+    
+    elif unit_content:
+        # 単元プロンプトのみ存在する場合
+        return unit_content
+    
+    elif socratic_guide:
+        # ソクラテスガイドのみ存在する場合
+        return socratic_guide
+    
+    else:
+        # どちらも存在しない場合：フォールバック
         return "児童の発言をよく聞いて、適切な質問で考えを引き出してください。"
 
 
