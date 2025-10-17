@@ -2,8 +2,12 @@
   "enabled": true,
   "classes": {
     "class3": {
-      "enabled": true,
-      "updated_at": "2025-10-17T16:55:56.585714"
+      "enabled": false,
+      "updated_at": "2025-10-17T17:02:38.784655"
+    },
+    "class4": {
+      "enabled": false,
+      "updated_at": "2025-10-17T17:02:39.566934"
     }
   }
-}}
+}
