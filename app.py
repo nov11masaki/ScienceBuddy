@@ -501,9 +501,15 @@ def load_unit_prompt(unit_name):
 # 学習ログを保存する関数
 def save_learning_log(student_number, unit, log_type, data):
     """学習ログをJSONファイルに保存"""
+    # 学生情報を解析
+    student_info = parse_student_info(student_number)
+    
     log_entry = {
         'timestamp': datetime.now().isoformat(),
         'student_number': student_number,
+        'class_num': student_info['class_num'] if student_info else None,
+        'seat_num': student_info['seat_num'] if student_info else None,
+        'class_display': student_info['display'] if student_info else str(student_number),
         'unit': unit,
         'log_type': log_type,  # 'prediction_chat', 'prediction_summary', 'reflection_chat', 'final_summary'
         'data': data
@@ -1206,7 +1212,7 @@ def teacher_export():
     # CSVファイルを作成
     output_file = f"export_{date}.csv"
     with open(output_file, 'w', newline='', encoding='utf-8') as csvfile:
-        fieldnames = ['timestamp', 'student_number', 'unit', 'log_type', 'content']
+        fieldnames = ['timestamp', 'class_display', 'student_number', 'class_num', 'seat_num', 'unit', 'log_type', 'content']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
         
@@ -1223,7 +1229,10 @@ def teacher_export():
             
             writer.writerow({
                 'timestamp': log.get('timestamp', ''),
+                'class_display': log.get('class_display', ''),
                 'student_number': log.get('student_number', ''),
+                'class_num': log.get('class_num', ''),
+                'seat_num': log.get('seat_num', ''),
                 'unit': log.get('unit', ''),
                 'log_type': log.get('log_type', ''),
                 'content': content
@@ -1234,9 +1243,15 @@ def teacher_export():
 # チャットボットのログ保存関数
 def save_chatbot_log(student_id, user_message, ai_response):
     """チャットボットの会話ログを保存"""
+    # 学生情報を解析
+    student_info = parse_student_info(student_id)
+    
     log_entry = {
         'timestamp': datetime.now().isoformat(),
         'student_id': student_id,
+        'class_num': student_info['class_num'] if student_info else None,
+        'seat_num': student_info['seat_num'] if student_info else None,
+        'class_display': student_info['display'] if student_info else str(student_id),
         'user_message': user_message,
         'ai_response': ai_response
     }
