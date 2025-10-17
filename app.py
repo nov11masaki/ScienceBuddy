@@ -644,6 +644,32 @@ def get_student_class(student_number):
     except (ValueError, TypeError):
         return None
 
+def parse_student_info(student_number):
+    """生徒番号からクラスと出席番号を取得
+    
+    Args:
+        student_number: 生徒番号 (str) 例: "4103" = 4年1組3番
+    
+    Returns:
+        dict: {'class_num': 1, 'seat_num': 3, 'display': '1組3番'} または None
+    """
+    try:
+        if student_number == '1111':
+            return {'class_num': 0, 'seat_num': 0, 'display': 'テスト'}
+        
+        student_str = str(student_number)
+        if len(student_str) == 4 and student_str.startswith('4'):
+            class_num = int(student_str[1])  # 2桁目がクラス番号
+            seat_num = int(student_str[2:])  # 3-4桁目が出席番号
+            return {
+                'class_num': class_num,
+                'seat_num': seat_num,
+                'display': f'{class_num}組{seat_num}番'
+            }
+        return None
+    except (ValueError, TypeError):
+        return None
+
 def get_teacher_classes(teacher_id):
     """教員IDから管理可能なクラス一覧を取得
     
@@ -1105,6 +1131,7 @@ def teacher_logs():
     
     date = request.args.get('date', default_date)
     unit = request.args.get('unit', '')
+    class_filter = request.args.get('class', '')
     student = request.args.get('student', '')
     
     logs = load_learning_logs(date)
@@ -1112,6 +1139,13 @@ def teacher_logs():
     # フィルタリング
     if unit:
         logs = [log for log in logs if log.get('unit') == unit]
+    
+    # クラスフィルター
+    if class_filter:
+        logs = [log for log in logs 
+                if parse_student_info(log.get('student_number')) 
+                and parse_student_info(log.get('student_number'))['class_num'] == int(class_filter)]
+    
     if student:
         logs = [log for log in logs if log.get('student_number') == student]
     
@@ -1120,8 +1154,11 @@ def teacher_logs():
     for log in logs:
         student_num = log.get('student_number')
         if student_num not in students_data:
+            # 学生情報を解析
+            student_info = parse_student_info(student_num)
             students_data[student_num] = {
                 'student_number': student_num,
+                'student_info': student_info,
                 'units': {}
             }
         
@@ -1144,11 +1181,17 @@ def teacher_logs():
         elif log_type == 'final_summary':
             students_data[student_num]['units'][unit_name]['final_summary'] = log
     
+    # クラスと番号でソート
+    students_data = dict(sorted(students_data.items(), 
+                                key=lambda x: (x[1]['student_info']['class_num'] if x[1]['student_info'] else 999, 
+                                             x[1]['student_info']['seat_num'] if x[1]['student_info'] else 999)))
+    
     return render_template('teacher/logs.html', 
                          students_data=students_data, 
                          units=UNITS,
                          current_date=date,
                          current_unit=unit,
+                         current_class=class_filter,
                          current_student=student,
                          available_dates=available_dates,
                          teacher_id=session.get('teacher_id'))

@@ -22,7 +22,7 @@
             <!-- フィルター -->
             <div class="filters-section mb-4">
                 <div class="row g-3">
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label class="form-label">日付</label>
                         <select class="form-select" id="dateFilter" onchange="applyFilters()">
                             {% for date_info in available_dates %}
@@ -43,7 +43,17 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
+                        <label class="form-label">クラス</label>
+                        <select class="form-control" id="classFilter" onchange="applyFilters()">
+                            <option value="">全て</option>
+                            <option value="1" {% if current_class == '1' %}selected{% endif %}>1組</option>
+                            <option value="2" {% if current_class == '2' %}selected{% endif %}>2組</option>
+                            <option value="3" {% if current_class == '3' %}selected{% endif %}>3組</option>
+                            <option value="4" {% if current_class == '4' %}selected{% endif %}>4組</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
                         <label class="form-label">出席番号</label>
                         <input type="number" class="form-control" id="studentFilter" 
                                placeholder="出席番号" min="1" max="30"
@@ -69,7 +79,12 @@
                 <div class="student-header">
                     <h4>
                         <i class="fas fa-user-graduate"></i>
-                        {{ student_number }}番
+                        {% if student_data.student_info %}
+                            {{ student_data.student_info.display }}
+                            <span class="student-id-badge">(ID: {{ student_number }})</span>
+                        {% else %}
+                            {{ student_number }}番
+                        {% endif %}
                     </h4>
                 </div>
                 
@@ -155,15 +170,17 @@
 {% block scripts %}
 <script>
 function applyFilters() {
-    const date = document.getElementById('dateFilter').value;
-    const unit = document.getElementById('unitFilter').value;
-    const student = document.getElementById('studentFilter').value;
-    
     let url = '/teacher/logs?';
     const params = [];
     
+    const date = document.getElementById('dateFilter').value;
+    const unit = document.getElementById('unitFilter').value;
+    const classNum = document.getElementById('classFilter').value;
+    const student = document.getElementById('studentFilter').value;
+    
     if (date) params.push(`date=${date}`);
     if (unit) params.push(`unit=${encodeURIComponent(unit)}`);
+    if (classNum) params.push(`class=${classNum}`);
     if (student) params.push(`student=${student}`);
     
     url += params.join('&');
@@ -176,6 +193,7 @@ function clearFilters() {
         dateSelect.selectedIndex = 0;
     }
     document.getElementById('unitFilter').value = '';
+    document.getElementById('classFilter').value = '';
     document.getElementById('studentFilter').value = '';
     applyFilters();
 }
