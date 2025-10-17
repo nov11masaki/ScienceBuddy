@@ -44,5 +44,29 @@
       },
       "conversation_history": []
     }
+  },
+  "1_30": {
+    "空気の温度と体積": {
+      "current_stage": "prediction",
+      "last_access": "2025-10-17T12:41:58.075163",
+      "stage_progress": {
+        "prediction": {
+          "started": true,
+          "conversation_count": 0,
+          "summary_created": false,
+          "last_message": ""
+        },
+        "experiment": {
+          "started": false,
+          "completed": false
+        },
+        "reflection": {
+          "started": false,
+          "conversation_count": 0,
+          "summary_created": false
+        }
+      },
+      "conversation_history": []
+    }
   }
 }

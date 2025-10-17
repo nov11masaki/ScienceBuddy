@@ -494,6 +494,30 @@ def load_learning_logs(date=None):
     except (json.JSONDecodeError, FileNotFoundError):
         return []
 
+# チャットボット設定管理
+CHATBOT_CONFIG_FILE = 'chatbot_config.json'
+
+def get_chatbot_status():
+    """チャットボットの有効/無効状態を取得"""
+    if os.path.exists(CHATBOT_CONFIG_FILE):
+        try:
+            with open(CHATBOT_CONFIG_FILE, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+                return config.get('enabled', True)  # デフォルトは有効
+        except:
+            return True
+    return True  # デフォルトは有効
+
+def set_chatbot_status(enabled):
+    """チャットボットの有効/無効状態を設定"""
+    try:
+        config = {'enabled': enabled, 'updated_at': datetime.now().isoformat()}
+        with open(CHATBOT_CONFIG_FILE, 'w', encoding='utf-8') as f:
+            json.dump(config, f, ensure_ascii=False, indent=2)
+        return True
+    except:
+        return False
+
 @app.route('/api/test')
 def api_test():
     """API接続テスト"""
@@ -513,7 +537,9 @@ def api_test():
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    # チャットボットの表示状態を取得
+    chatbot_enabled = get_chatbot_status()
+    return render_template('index.html', chatbot_enabled=chatbot_enabled)
 
 @app.route('/select_class')
 def select_class():
@@ -887,13 +913,29 @@ def teacher_logout():
     flash('ログアウトしました', 'info')
     return redirect(url_for('index'))
 
+@app.route('/teacher/chatbot/toggle', methods=['POST'])
+@require_teacher_auth
+def toggle_chatbot():
+    """チャットボットの表示制御"""
+    data = request.json
+    enabled = data.get('enabled', True)
+    
+    if set_chatbot_status(enabled):
+        return jsonify({'success': True, 'enabled': enabled})
+    else:
+        return jsonify({'success': False, 'error': '設定の保存に失敗しました'}), 500
+
 @app.route('/teacher')
 @require_teacher_auth
 def teacher():
     """教員用ダッシュボード"""
+    # チャットボット設定を読み込み
+    chatbot_enabled = get_chatbot_status()
+    
     return render_template('teacher/dashboard.html', 
                          units=UNITS, 
-                         teacher_id=session.get('teacher_id'))
+                         teacher_id=session.get('teacher_id'),
+                         chatbot_enabled=chatbot_enabled)
 
 @app.route('/teacher/logs')
 @require_teacher_auth
@@ -1149,11 +1191,21 @@ def student_detail(student_number):
 @app.route('/chatbot/login')
 def chatbot_login():
     """チャットボットログイン画面"""
+    # チャットボットが無効の場合はホームにリダイレクト
+    if not get_chatbot_status():
+        flash('チャットボットは現在利用できません', 'warning')
+        return redirect(url_for('index'))
+    
     return render_template('chatbot_login.html')
 
 @app.route('/chatbot/verify', methods=['POST'])
 def chatbot_verify():
     """学生IDの検証"""
+    # チャットボットが無効の場合はアクセス拒否
+    if not get_chatbot_status():
+        flash('チャットボットは現在利用できません', 'error')
+        return redirect(url_for('index'))
+    
     student_id = request.form.get('student_id', '').strip()
     
     # IDのバリデーション

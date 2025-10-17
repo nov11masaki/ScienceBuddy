@@ -20,6 +20,39 @@
 
     <!-- メインコンテンツ -->
     <main class="dashboard-main">
+        <!-- チャットボット制御セクション -->
+        <section class="chatbot-control-section">
+            <div class="control-card">
+                <div class="card-icon"><i class="fas fa-robot"></i></div>
+                <h2>学習サポートチャットボット</h2>
+                <p>児童向けチャットボットの表示を制御します</p>
+                <div class="chatbot-toggle-container">
+                    <div class="toggle-status">
+                        <span class="status-label">現在の状態:</span>
+                        <span class="status-badge {% if chatbot_enabled %}enabled{% else %}disabled{% endif %}" id="statusBadge">
+                            {% if chatbot_enabled %}
+                                <i class="fas fa-check-circle"></i> 利用可能
+                            {% else %}
+                                <i class="fas fa-times-circle"></i> 利用不可
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="toggle-buttons">
+                        <button onclick="setChatbotStatus(true)" class="btn btn-success {% if chatbot_enabled %}active{% endif %}" id="enableBtn">
+                            <i class="fas fa-toggle-on"></i> 利用可能にする
+                        </button>
+                        <button onclick="setChatbotStatus(false)" class="btn btn-danger {% if not chatbot_enabled %}active{% endif %}" id="disableBtn">
+                            <i class="fas fa-toggle-off"></i> 利用不可にする
+                        </button>
+                    </div>
+                    <div class="toggle-description">
+                        <i class="fas fa-info-circle"></i>
+                        <small>児童がホーム画面からチャットボットにアクセスできるかどうかを制御します</small>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- 機能カード -->
         <section class="feature-cards">
             <div class="feature-card primary-card">
@@ -72,6 +105,45 @@
 
 {% block scripts %}
 <script>
+function setChatbotStatus(enabled) {
+    fetch('/teacher/chatbot/toggle', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ enabled: enabled })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // UI更新
+            const statusBadge = document.getElementById('statusBadge');
+            const enableBtn = document.getElementById('enableBtn');
+            const disableBtn = document.getElementById('disableBtn');
+            
+            if (enabled) {
+                statusBadge.className = 'status-badge enabled';
+                statusBadge.innerHTML = '<i class="fas fa-check-circle"></i> 利用可能';
+                enableBtn.classList.add('active');
+                disableBtn.classList.remove('active');
+                alert('チャットボットを利用可能にしました');
+            } else {
+                statusBadge.className = 'status-badge disabled';
+                statusBadge.innerHTML = '<i class="fas fa-times-circle"></i> 利用不可';
+                enableBtn.classList.remove('active');
+                disableBtn.classList.add('active');
+                alert('チャットボットを利用不可にしました');
+            }
+        } else {
+            alert('設定の変更に失敗しました');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('エラーが発生しました');
+    });
+}
+
 function exportData() {
     const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
     
@@ -86,4 +158,133 @@ function exportData() {
     });
 }
 </script>
+
+<style>
+.chatbot-control-section {
+    margin-bottom: 30px;
+}
+
+.control-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 15px;
+    padding: 30px;
+    color: white;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.control-card .card-icon {
+    font-size: 3rem;
+    margin-bottom: 15px;
+    opacity: 0.9;
+}
+
+.control-card h2 {
+    margin-bottom: 10px;
+    font-size: 1.8rem;
+}
+
+.control-card p {
+    opacity: 0.9;
+    margin-bottom: 25px;
+}
+
+.chatbot-toggle-container {
+    background: rgba(255,255,255,0.15);
+    border-radius: 10px;
+    padding: 20px;
+    backdrop-filter: blur(10px);
+}
+
+.toggle-status {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.status-label {
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.status-badge {
+    padding: 8px 20px;
+    border-radius: 25px;
+    font-weight: bold;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1rem;
+}
+
+.status-badge.enabled {
+    background: #10b981;
+    color: white;
+}
+
+.status-badge.disabled {
+    background: #ef4444;
+    color: white;
+}
+
+.toggle-buttons {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.toggle-buttons .btn {
+    flex: 1;
+    padding: 15px 25px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.toggle-buttons .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+.toggle-buttons .btn.active {
+    border-color: white;
+    box-shadow: 0 0 20px rgba(255,255,255,0.5);
+}
+
+.toggle-buttons .btn-success {
+    background: rgba(16, 185, 129, 0.3);
+    color: white;
+}
+
+.toggle-buttons .btn-success.active {
+    background: #10b981;
+}
+
+.toggle-buttons .btn-danger {
+    background: rgba(239, 68, 68, 0.3);
+    color: white;
+}
+
+.toggle-buttons .btn-danger.active {
+    background: #ef4444;
+}
+
+.toggle-description {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    opacity: 0.9;
+}
+
+.toggle-description i {
+    font-size: 1.2rem;
+}
+</style>
 {% endblock %}
