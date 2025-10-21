@@ -48,11 +48,53 @@
                     </div>
                     
                     <div class="chat-input-section">
+                        <!-- 入力補助機能の切り替えスイッチ -->
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="inputAssistToggle">
+                                <label class="form-check-label" for="inputAssistToggle">
+                                    <i class="fas fa-keyboard"></i> 入力補助
+                                </label>
+                            </div>
+                            <div class="input-assist-icons" id="inputAssistIcons" style="display: none;">
+                                <button class="btn btn-sm btn-outline-primary me-1" id="toggleKeyboard" title="タッチキーボード">
+                                    <i class="fas fa-keyboard"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-primary" id="voiceInputBtn" title="音声入力">
+                                    <i class="fas fa-microphone"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- タッチキーボード -->
+                        <div class="touch-keyboard mb-2" id="touchKeyboard" style="display: none;">
+                            <div class="keyboard-section mb-2">
+                                <small class="text-muted d-block mb-1">よく使う言葉:</small>
+                                <div class="keyboard-buttons" id="commonWords">
+                                    <!-- JavaScriptで動的に生成 -->
+                                </div>
+                            </div>
+                            <div class="keyboard-section">
+                                <small class="text-muted d-block mb-1">ひらがな:</small>
+                                <div class="keyboard-buttons" id="hiraganaKeys">
+                                    <!-- JavaScriptで動的に生成 -->
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div class="input-group">
                             <input type="text" class="form-control" id="messageInput" placeholder="あなたの考えを入力してください...">
                             <button class="btn btn-primary" id="sendButton">
                                 <i class="fas fa-paper-plane"></i>
                             </button>
+                        </div>
+                        
+                        <!-- 音声入力状態表示 -->
+                        <div class="voice-input-status mt-2" id="voiceInputStatus" style="display: none;">
+                            <div class="alert alert-info mb-0">
+                                <i class="fas fa-microphone"></i>
+                                <span id="voiceStatusText">音声を認識中...</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -137,9 +179,43 @@ let inputBehaviorTracker = {
     }
 };
 
+// 入力補助用の設定
+const inputAssistConfig = {
+    commonWords: {
+        '金属のあたたまり方': ['温まる', '熱い', '冷たい', 'フライパン', 'スプーン', 'やかん', '取っ手'],
+        '水のあたたまり方': ['温まる', '上', '下', 'お風呂', '味噌汁', 'プール', '動く'],
+        '空気の温度と体積': ['大きくなる', '小さくなる', '風船', 'タイヤ', 'ペットボトル', '温める', '冷やす'],
+        '水を熱し続けた時の温度と様子': ['温度', '上がる', '止まる', 'ボコボコ', '湯気', 'やかん', 'ポット']
+    },
+    hiragana: [
+        'あ', 'い', 'う', 'え', 'お',
+        'か', 'き', 'く', 'け', 'こ',
+        'さ', 'し', 'す', 'せ', 'そ',
+        'た', 'ち', 'つ', 'て', 'と',
+        'な', 'に', 'ぬ', 'ね', 'の',
+        'は', 'ひ', 'ふ', 'へ', 'ほ',
+        'ま', 'み', 'む', 'め', 'も',
+        'や', 'ゆ', 'よ',
+        'ら', 'り', 'る', 'れ', 'ろ',
+        'わ', 'を', 'ん',
+        'が', 'ぎ', 'ぐ', 'げ', 'ご',
+        'ざ', 'じ', 'ず', 'ぜ', 'ぞ',
+        'だ', 'ぢ', 'づ', 'で', 'ど',
+        'ば', 'び', 'ぶ', 'べ', 'ぼ',
+        'ぱ', 'ぴ', 'ぷ', 'ぺ', 'ぽ',
+        'っ', 'ゃ', 'ゅ', 'ょ', '。', '、'
+    ]
+};
+
+const currentUnit = "{{ unit }}";
+let recognition = null;
+
 // ページ読み込み時にAPI接続をテスト
 document.addEventListener('DOMContentLoaded', function() {
     testApiConnection();
+    
+    // 入力補助の初期化
+    initializeInputAssist();
     
     // 入力フィールドにイベントリスナーを追加
     const messageInput = document.getElementById('messageInput');
@@ -151,7 +227,181 @@ document.addEventListener('DOMContentLoaded', function() {
     messageInput.addEventListener('keydown', function(e) {
         inputBehaviorTracker.recordKeystroke(e.key);
     });
+    
+    // 入力補助トグル
+    document.getElementById('inputAssistToggle').addEventListener('change', function(e) {
+        toggleInputAssist(e.target.checked);
+    });
+    
+    // タッチキーボードトグル
+    document.getElementById('toggleKeyboard').addEventListener('click', function() {
+        const keyboard = document.getElementById('touchKeyboard');
+        keyboard.style.display = keyboard.style.display === 'none' ? 'block' : 'none';
+    });
+    
+    // 音声入力ボタン
+    document.getElementById('voiceInputBtn').addEventListener('click', startVoiceInput);
 });
+
+// 入力補助の初期化
+function initializeInputAssist() {
+    // よく使う言葉を設定
+    const commonWords = inputAssistConfig.commonWords[currentUnit] || [];
+    const commonWordsContainer = document.getElementById('commonWords');
+    commonWordsContainer.innerHTML = '';
+    
+    commonWords.forEach(word => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-sm btn-outline-primary me-1 mb-1 touch-key';
+        btn.textContent = word;
+        btn.onclick = () => insertText(word);
+        commonWordsContainer.appendChild(btn);
+    });
+    
+    // ひらがなキーボードを設定
+    const hiraganaContainer = document.getElementById('hiraganaKeys');
+    hiraganaContainer.innerHTML = '';
+    
+    inputAssistConfig.hiragana.forEach(char => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-sm btn-light me-1 mb-1 touch-key';
+        btn.textContent = char;
+        btn.onclick = () => insertText(char);
+        hiraganaContainer.appendChild(btn);
+    });
+    
+    // バックスペースと消去ボタンを追加
+    const backspaceBtn = document.createElement('button');
+    backspaceBtn.type = 'button';
+    backspaceBtn.className = 'btn btn-sm btn-warning me-1 mb-1 touch-key';
+    backspaceBtn.innerHTML = '<i class="fas fa-backspace"></i>';
+    backspaceBtn.onclick = () => {
+        const input = document.getElementById('messageInput');
+        input.value = input.value.slice(0, -1);
+        input.focus();
+    };
+    hiraganaContainer.appendChild(backspaceBtn);
+    
+    const clearBtn = document.createElement('button');
+    clearBtn.type = 'button';
+    clearBtn.className = 'btn btn-sm btn-danger mb-1 touch-key';
+    clearBtn.innerHTML = '<i class="fas fa-times"></i> 消去';
+    clearBtn.onclick = () => {
+        document.getElementById('messageInput').value = '';
+        document.getElementById('messageInput').focus();
+    };
+    hiraganaContainer.appendChild(clearBtn);
+}
+
+// 入力補助の表示切り替え
+function toggleInputAssist(enabled) {
+    const iconsDiv = document.getElementById('inputAssistIcons');
+    iconsDiv.style.display = enabled ? 'flex' : 'none';
+    
+    if (!enabled) {
+        document.getElementById('touchKeyboard').style.display = 'none';
+        stopVoiceInput();
+    }
+}
+
+// テキストを挿入
+function insertText(text) {
+    const input = document.getElementById('messageInput');
+    input.value += text;
+    input.focus();
+}
+
+// 音声入力開始
+function startVoiceInput() {
+    // Web Speech API のサポート確認
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        alert('お使いのブラウザは音声入力に対応していません。Chrome、Edge、Safariをお使いください。');
+        return;
+    }
+    
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
+    if (recognition && recognition.isListening) {
+        stopVoiceInput();
+        return;
+    }
+    
+    recognition = new SpeechRecognition();
+    recognition.lang = 'ja-JP';
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    
+    const statusDiv = document.getElementById('voiceInputStatus');
+    const statusText = document.getElementById('voiceStatusText');
+    const voiceBtn = document.getElementById('voiceInputBtn');
+    
+    recognition.onstart = function() {
+        recognition.isListening = true;
+        statusDiv.style.display = 'block';
+        statusText.textContent = '音声を認識中...';
+        voiceBtn.classList.add('btn-danger');
+        voiceBtn.classList.remove('btn-outline-primary');
+    };
+    
+    recognition.onresult = function(event) {
+        let interimTranscript = '';
+        let finalTranscript = '';
+        
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+                finalTranscript += transcript;
+            } else {
+                interimTranscript += transcript;
+            }
+        }
+        
+        if (interimTranscript) {
+            statusText.textContent = '認識中: ' + interimTranscript;
+        }
+        
+        if (finalTranscript) {
+            const input = document.getElementById('messageInput');
+            input.value += finalTranscript;
+            statusText.textContent = '認識完了: ' + finalTranscript;
+        }
+    };
+    
+    recognition.onerror = function(event) {
+        console.error('音声認識エラー:', event.error);
+        statusDiv.style.display = 'none';
+        voiceBtn.classList.remove('btn-danger');
+        voiceBtn.classList.add('btn-outline-primary');
+        recognition.isListening = false;
+        
+        if (event.error === 'no-speech') {
+            alert('音声が検出されませんでした。もう一度お試しください。');
+        } else if (event.error === 'not-allowed') {
+            alert('マイクの使用が許可されていません。ブラウザの設定を確認してください。');
+        }
+    };
+    
+    recognition.onend = function() {
+        setTimeout(() => {
+            statusDiv.style.display = 'none';
+            voiceBtn.classList.remove('btn-danger');
+            voiceBtn.classList.add('btn-outline-primary');
+            recognition.isListening = false;
+        }, 1000);
+    };
+    
+    recognition.start();
+}
+
+// 音声入力停止
+function stopVoiceInput() {
+    if (recognition && recognition.isListening) {
+        recognition.stop();
+        recognition.isListening = false;
+    }
+}
 
 document.getElementById('sendButton').addEventListener('click', sendMessage);
 document.getElementById('messageInput').addEventListener('keypress', function(e) {

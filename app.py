@@ -407,29 +407,57 @@ def load_task_content(unit_name):
         return f"{unit_name}について実験を行います。どのような結果になると予想しますか？"
 
 def get_initial_ai_message(unit_name, stage='prediction'):
-    """段階と単元に応じた最初のAIメッセージを生成（プロンプトMDに従う）"""
-    if stage == 'prediction':
-        # プロンプトMDの指示に従った最初の質問
-        if unit_name == "空気の温度と体積":
-            return "空気を温めると体積はどうなると思いますか？"
-        elif unit_name == "金属のあたたまり方":
-            return "金属を温めたとき、どのようにあたたまっていくと思いますか？"
-        elif unit_name == "水のあたたまり方":
-            return "水を温めたとき、どのようにあたたまっていくと思いますか？"
-        elif unit_name == "水を熱し続けた時の温度と様子":
-            return "水を熱し続けると、温度や様子はどうなると思いますか？"
+    """プロンプトファイルから最初のAIメッセージを抽出する"""
+    try:
+        # プロンプトファイルを読み込み
+        with open(f'prompts/{unit_name}.md', 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        import re
+        
+        if stage == 'prediction':
+            # 予想段階の「初めの問いかけ」を探す
+            # パターン: ## 初めの問いかけ の後の「...」部分を抽出
+            match = re.search(r'# 予想段階での対話.*?## 初めの問いかけ\s*\n「(.+?)」', content, re.DOTALL)
+            if match:
+                # 「と開かれた質問から始める。」などの説明部分を除去
+                question = match.group(1).split('と開かれた質問')[0].split('と子どもの言葉')[0]
+                return question.strip()
+            
+            # 見つからない場合はデフォルト
+            return f"{unit_name}について、どう思いますか？"
+        
+        elif stage == 'reflection':
+            # 考察段階の「初めの問いかけ」を探す
+            match = re.search(r'# 考察段階での対話.*?## 初めの問いかけ\s*\n「(.+?)」', content, re.DOTALL)
+            if match:
+                # 「と子どもの言葉で語らせる。」などの説明部分を除去
+                question = match.group(1).split('と子どもの言葉')[0].split('と開かれた質問')[0]
+                return question.strip()
+            
+            # 見つからない場合はデフォルト
+            return "実験でどのような結果になりましたか？"
+        
         else:
-            # デフォルト
-            task_content = load_task_content(unit_name)
-            return f"{task_content.split('。')[0]}と思いますか？"
-    
-    elif stage == 'reflection':
-        # 考察段階では実験結果について問う
-        return "実験でどのような結果になりましたか？"
-    
-    else:
-        # その他の段階
-        return "あなたの考えを聞かせてください。"
+            return "あなたの考えを聞かせてください。"
+            
+    except FileNotFoundError:
+        # ファイルが見つからない場合のフォールバック
+        if stage == 'prediction':
+            return f"{unit_name}について、どう思いますか？"
+        elif stage == 'reflection':
+            return "実験でどのような結果になりましたか？"
+        else:
+            return "あなたの考えを聞かせてください。"
+    except Exception as e:
+        # その他のエラーの場合
+        print(f"初期メッセージ抽出エラー: {e}")
+        if stage == 'prediction':
+            return f"{unit_name}について、どう思いますか？"
+        elif stage == 'reflection':
+            return "実験でどのような結果になりましたか？"
+        else:
+            return "あなたの考えを聞かせてください。"
 
 # 単元ごとのプロンプトを読み込む関数
 def load_unit_prompt(unit_name):
