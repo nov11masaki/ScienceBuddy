@@ -271,17 +271,27 @@ document.addEventListener('DOMContentLoaded', function() {
     // 音声入力ボタン
     document.getElementById('voiceInputBtn').addEventListener('click', startVoiceInput);
     
-    // キーボードコントロールボタン
-    document.getElementById('backspaceBtn').addEventListener('click', function() {
-        const input = document.getElementById('messageInput');
-        input.value = input.value.slice(0, -1);
-        input.focus();
-    });
+    // キーボードコントロールボタン（タッチキーボード用）
+    const backspaceBtn = document.getElementById('backspaceBtn');
+    const clearBtn = document.getElementById('clearBtn');
     
-    document.getElementById('clearBtn').addEventListener('click', function() {
-        document.getElementById('messageInput').value = '';
-        document.getElementById('messageInput').focus();
-    });
+    if (backspaceBtn) {
+        backspaceBtn.addEventListener('click', function() {
+            const input = document.getElementById('messageInput');
+            if (input.value.length > 0) {
+                input.value = input.value.slice(0, -1);
+            }
+            input.focus();
+        });
+    }
+    
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function() {
+            const input = document.getElementById('messageInput');
+            input.value = '';
+            input.focus();
+        });
+    }
 });
 
 // 入力補助の初期化
@@ -827,16 +837,26 @@ function initializeFlickInput() {
     });
     
     // フリックキーボードのコントロールボタン
-    document.getElementById('flickBackspaceBtn').addEventListener('click', function() {
-        const input = document.getElementById('messageInput');
-        input.value = input.value.slice(0, -1);
-        input.focus();
-    });
+    const flickBackspaceBtn = document.getElementById('flickBackspaceBtn');
+    const flickClearBtn = document.getElementById('flickClearBtn');
     
-    document.getElementById('flickClearBtn').addEventListener('click', function() {
-        document.getElementById('messageInput').value = '';
-        document.getElementById('messageInput').focus();
-    });
+    if (flickBackspaceBtn) {
+        flickBackspaceBtn.addEventListener('click', function() {
+            const input = document.getElementById('messageInput');
+            if (input.value.length > 0) {
+                input.value = input.value.slice(0, -1);
+            }
+            input.focus();
+        });
+    }
+    
+    if (flickClearBtn) {
+        flickClearBtn.addEventListener('click', function() {
+            const input = document.getElementById('messageInput');
+            input.value = '';
+            input.focus();
+        });
+    }
 }
 
 </script>
