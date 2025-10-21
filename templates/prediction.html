@@ -93,11 +93,6 @@
                                 <label class="btn btn-outline-primary" for="modeFlick">
                                     <i class="fas fa-hand-pointer"></i> フリック
                                 </label>
-                                
-                                <input type="radio" class="btn-check" name="inputMode" id="modeHandwriting" autocomplete="off">
-                                <label class="btn btn-outline-primary" for="modeHandwriting">
-                                    <i class="fas fa-pen"></i> 手書き
-                                </label>
                             </div>
                         </div>
                     </div>
@@ -132,20 +127,6 @@
                         </div>
                     </div>
                     
-                    <!-- 手書き入力 -->
-                    <div class="handwriting-panel mb-2" id="handwritingPanel" style="display: none;">
-                        <canvas id="handwritingCanvas" width="280" height="200" style="border: 2px solid #ddd; border-radius: 8px; background: white; cursor: crosshair; display: block; margin: 0 auto;"></canvas>
-                        <div class="handwriting-controls mt-1">
-                            <button class="btn btn-sm btn-success flex-fill me-1" id="recognizeBtn">
-                                <i class="fas fa-check"></i> 認識
-                            </button>
-                            <button class="btn btn-sm btn-warning flex-fill me-1" id="clearCanvasBtn">
-                                <i class="fas fa-eraser"></i> 消す
-                            </button>
-                        </div>
-                        <div id="recognitionResult" class="mt-1 text-center" style="font-size: 0.85rem; color: #666;"></div>
-                    </div>
-                    
                     <!-- 音声入力ボタン -->
                     <div class="voice-input-section mb-2" id="voiceInputSection">
                         <button class="btn btn-outline-primary w-100 btn-sm" id="voiceInputBtn">
@@ -177,11 +158,6 @@
 <script>
 let conversationCount = 0;
 let lastMessage = '';
-
-// 手書き入力用変数
-let isDrawing = false;
-let canvas, ctx;
-
 
 // デジタル学習ツイン用の入力行動追跡
 let inputBehaviorTracker = {
@@ -291,7 +267,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // 入力補助の初期化
     initializeInputAssist();
     initializeFlickInput();
-    initializeHandwriting();
     
     // 入力モード切り替え
     document.querySelectorAll('input[name="inputMode"]').forEach(radio => {
@@ -726,14 +701,11 @@ function switchInputMode() {
     
     document.getElementById('touchKeyboard').style.display = 'none';
     document.getElementById('flickKeyboard').style.display = 'none';
-    document.getElementById('handwritingPanel').style.display = 'none';
     
     if (mode === 'modeKeyboard') {
         document.getElementById('touchKeyboard').style.display = 'block';
     } else if (mode === 'modeFlick') {
         document.getElementById('flickKeyboard').style.display = 'block';
-    } else if (mode === 'modeHandwriting') {
-        document.getElementById('handwritingPanel').style.display = 'block';
     }
 }
 
@@ -856,141 +828,6 @@ function initializeFlickInput() {
         document.getElementById('messageInput').value = '';
         document.getElementById('messageInput').focus();
     });
-}
-
-// 手書き入力の初期化
-let strokes = [];
-let currentStroke = [];
-
-function initializeHandwriting() {
-    canvas = document.getElementById('handwritingCanvas');
-    if (!canvas) return;
-    
-    ctx = canvas.getContext('2d');
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'round';
-    ctx.strokeStyle = '#000';
-    
-    strokes = [];
-    currentStroke = [];
-    
-    // タッチ＆マウスイベント
-    canvas.addEventListener('mousedown', startDrawing);
-    canvas.addEventListener('mousemove', draw);
-    canvas.addEventListener('mouseup', stopDrawing);
-    canvas.addEventListener('mouseout', stopDrawing);
-    
-    canvas.addEventListener('touchstart', handleTouchStart);
-    canvas.addEventListener('touchmove', handleTouchMove);
-    canvas.addEventListener('touchend', handleTouchEnd);
-    
-    // ボタンイベント
-    document.getElementById('recognizeBtn').addEventListener('click', recognizeHandwriting);
-    document.getElementById('clearCanvasBtn').addEventListener('click', clearCanvas);
-}
-
-function startDrawing(e) {
-    isDrawing = true;
-    currentStroke = [];
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    currentStroke.push({x, y});
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-}
-
-function draw(e) {
-    if (!isDrawing) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    currentStroke.push({x, y});
-    ctx.lineTo(x, y);
-    ctx.stroke();
-}
-
-function stopDrawing() {
-    if (isDrawing && currentStroke.length > 0) {
-        strokes.push([...currentStroke]);
-        currentStroke = [];
-    }
-    isDrawing = false;
-}
-
-function handleTouchStart(e) {
-    e.preventDefault();
-    isDrawing = true;
-    currentStroke = [];
-    const touch = e.touches[0];
-    const rect = canvas.getBoundingClientRect();
-    const x = touch.clientX - rect.left;
-    const y = touch.clientY - rect.top;
-    currentStroke.push({x, y});
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-}
-
-function handleTouchMove(e) {
-    e.preventDefault();
-    if (!isDrawing) return;
-    const touch = e.touches[0];
-    const rect = canvas.getBoundingClientRect();
-    const x = touch.clientX - rect.left;
-    const y = touch.clientY - rect.top;
-    currentStroke.push({x, y});
-    ctx.lineTo(x, y);
-    ctx.stroke();
-}
-
-function handleTouchEnd(e) {
-    e.preventDefault();
-    if (isDrawing && currentStroke.length > 0) {
-        strokes.push([...currentStroke]);
-        currentStroke = [];
-    }
-    isDrawing = false;
-}
-
-function clearCanvas() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    strokes = [];
-    currentStroke = [];
-    document.getElementById('recognitionResult').textContent = '';
-}
-
-// 手書き認識（簡易版：ストローク数とパターンから推測）
-function recognizeHandwriting() {
-    const resultDiv = document.getElementById('recognitionResult');
-    
-    if (strokes.length === 0) {
-        resultDiv.innerHTML = '<span class="text-warning">文字を書いてください</span>';
-        return;
-    }
-    
-    // ストローク数による簡易判定
-    const strokeCount = strokes.length;
-    let recognizedChar = '';
-    
-    // 簡易的なひらがな認識ルール
-    const strokePatterns = {
-        1: ['あ', 'い', 'う', 'え', 'お', 'の', 'る', 'を'],
-        2: ['か', 'き', 'こ', 'さ', 'し', 'て', 'に', 'は', 'ひ', 'へ', 'ま', 'や', 'よ', 'り', 'ん'],
-        3: ['く', 'け', 'せ', 'そ', 'た', 'ち', 'つ', 'と', 'な', 'ね', 'ふ', 'ほ', 'む', 'め', 'も', 'ら', 'れ', 'わ'],
-        4: ['す', 'ぬ', 'み', 'ゆ', 'ろ']
-    };
-    
-    const candidates = strokePatterns[Math.min(strokeCount, 4)] || strokePatterns[3];
-    recognizedChar = candidates[Math.floor(Math.random() * candidates.length)];
-    
-    // 結果表示と入力
-    insertText(recognizedChar);
-    resultDiv.innerHTML = `<span class="text-success">認識: <strong>${recognizedChar}</strong></span>`;
-    
-    // 認識後、2秒後にキャンバスをクリア
-    setTimeout(() => {
-        clearCanvas();
-    }, 1500);
 }
 
 </script>

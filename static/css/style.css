@@ -2681,32 +2681,6 @@ body {
     animation: fadeIn 0.2s ease;
 }
 
-/* 手書き入力 */
-.handwriting-panel {
-    background: linear-gradient(135deg, #f8f9fa, #ffffff);
-    border: 2px solid var(--border-color);
-    border-radius: 12px;
-    padding: 8px;
-}
-
-.handwriting-controls {
-    display: flex;
-    gap: 4px;
-    max-width: 280px;
-    margin: 0 auto;
-}
-
-.handwriting-controls .btn {
-    flex: 1;
-    font-size: 0.8rem;
-    padding: 5px 6px;
-}
-
-#handwritingCanvas {
-    touch-action: none;
-}
-
-
 .touch-key:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0,0,0,0.15);
