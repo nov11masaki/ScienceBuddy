@@ -118,7 +118,7 @@
                         </div>
                         
                         <div class="unit-actions">
-                            <a href="/teacher/student/{{ student_number }}?unit={{ unit_name|urlencode }}" 
+                            <a href="/teacher/student_detail?class={{ student_data.student_info.class_num }}&seat={{ student_data.student_info.seat_num }}&unit={{ unit_name|urlencode }}" 
                                class="btn btn-sm btn-outline-primary">
                                 <i class="fas fa-eye"></i> 詳細
                             </a>

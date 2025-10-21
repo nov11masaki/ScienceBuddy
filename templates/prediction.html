@@ -322,28 +322,6 @@ function sendMessageToAPI(message) {
     });
 }
 
-function displayTwinInsights(insights) {
-    // 開発・デバッグ用のインサイト表示
-    const insightDiv = document.createElement('div');
-    insightDiv.className = 'twin-insights mt-2 p-2 bg-light rounded small';
-    insightDiv.innerHTML = `
-        <strong>🧠 学習分析:</strong><br>
-        自信度: ${(insights.confidence_level * 100).toFixed(0)}%<br>
-        思考パターン: ${insights.thinking_pattern.join(', ')}<br>
-        ためらいレベル: ${insights.hesitation_level}
-    `;
-    
-    const chatContainer = document.querySelector('.chat-container');
-    chatContainer.appendChild(insightDiv);
-    
-    // 5秒後に削除
-    setTimeout(() => {
-        if (insightDiv.parentNode) {
-            insightDiv.parentNode.removeChild(insightDiv);
-        }
-    }, 5000);
-}
-
 function getSummary() {
     document.getElementById('summaryButton').disabled = true;
     

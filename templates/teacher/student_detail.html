@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}学生詳細ログ - {{ student_number }}番{% endblock %}
+{% block title %}学生詳細ログ - {{ student_display }}{% endblock %}
 
 {% block content %}
 <div class="teacher-student-detail">
@@ -9,7 +9,7 @@
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h2 class="mb-0">
                     <i class="fas fa-user text-primary"></i>
-                    学生詳細ログ - {{ student_number }}番
+                    学生詳細ログ - {{ student_display }}
                 </h2>
                 <div class="header-actions">
                     <a href="/teacher/logs" class="btn btn-outline-secondary btn-sm me-2">
@@ -291,14 +291,20 @@ function applyFilters() {
     const dateFilter = document.getElementById('dateFilter').value;
     const unitFilter = document.getElementById('unitFilter').value;
     
-    // 現在のURLパラメータを構築
+    // 現在のURLパラメータから class と seat を取得
+    const urlParams = new URLSearchParams(window.location.search);
+    const classNum = urlParams.get('class');
+    const seatNum = urlParams.get('seat');
+    
+    // 新しいURLパラメータを構築
     const params = new URLSearchParams();
+    if (classNum) params.append('class', classNum);
+    if (seatNum) params.append('seat', seatNum);
     if (unitFilter) params.append('unit', unitFilter);
     if (dateFilter) params.append('date', dateFilter);
     
     // ページをリロードして新しいフィルターを適用
-    const baseUrl = window.location.pathname;
-    const newUrl = params.toString() ? `${baseUrl}?${params.toString()}` : baseUrl;
+    const newUrl = `/teacher/student_detail?${params.toString()}`;
     window.location.href = newUrl;
 }
 

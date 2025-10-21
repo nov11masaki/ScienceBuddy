@@ -85,15 +85,6 @@ try:
 except Exception as e:
     client = None
 
-# Gemini APIの設定（チャットボット用）
-import google.generativeai as genai
-gemini_api_key = os.getenv('GEMINI_API_KEY')
-if gemini_api_key:
-    genai.configure(api_key=gemini_api_key)
-    gemini_model = genai.GenerativeModel('gemini-1.5-flash')  # 最新の利用可能なモデル
-else:
-    gemini_model = None
-
 # マークダウン記法を除去する関数
 def remove_markdown_formatting(text):
     """AIの応答からマークダウン記法を除去する"""
@@ -320,15 +311,6 @@ def extract_message_from_json_response(response):
     except (json.JSONDecodeError, Exception) as e:
         return response
 
-def load_markdown_content(file_path):
-    """Markdownファイルからテキストを読み込む"""
-    try:
-        with open(file_path, 'r', encoding='utf-8') as file:
-            content = file.read()
-        return content.strip()
-    except Exception as e:
-        return None
-
 # APIコール用のリトライ関数
 def call_openai_with_retry(prompt, max_retries=3, delay=2, unit=None, stage=None):
     """OpenAI APIを呼び出し、エラー時はリトライする
@@ -359,7 +341,7 @@ def call_openai_with_retry(prompt, max_retries=3, delay=2, unit=None, stage=None
                 model="gpt-4o-mini",
                 messages=messages,
                 max_tokens=2000,
-                temperature=0.3,
+                temperature=1.0,
                 timeout=30
             )
             
@@ -439,77 +421,43 @@ def get_initial_ai_message(unit_name, stage='prediction'):
         # その他の段階
         return "あなたの考えを聞かせてください。"
 
-# ソクラテス問答法ガイドを読み込む関数
-def load_socratic_method_guide():
-    """ソクラテス問答法のガイドを読み込む"""
-    try:
-        with open('docs/ソクラテス問答法とは.md', 'r', encoding='utf-8') as f:
-            return f.read().strip()
-    except FileNotFoundError:
-        # ガイドファイルが見つからない場合は空文字を返す
-        return ""
-
 # 単元ごとのプロンプトを読み込む関数
 def load_unit_prompt(unit_name):
-    """単元専用のプロンプトファイルを読み込み、ソクラテス問答法ガイドと統合する"""
-    # 1. ソクラテス問答法の共通ガイドを読み込み
-    socratic_guide = load_socratic_method_guide()
-    
-    # 2. 単元固有のプロンプトを読み込み
+    """単元専用のプロンプトファイルを読み込む"""
     try:
         with open(f'prompts/{unit_name}.md', 'r', encoding='utf-8') as f:
-            unit_content = f.read().strip()
+            return f.read().strip()
     except FileNotFoundError:
-        unit_content = ""
-    
-    # 3. 統合プロンプトを作成
-    if socratic_guide and unit_content:
-        # 両方が存在する場合：統合して返す
-        integrated_prompt = f"""{socratic_guide}
-
----
-
-# 単元固有の指示
-
-{unit_content}
-
----
-
-# 統合指針
-
-上記のソクラテス問答法の原則と単元固有の知識を統合して、児童との対話を行ってください。
-
-- ソクラテス問答法の基本原則（答えを教えない、質問で導く、自分で気づかせる）を常に守る
-- 単元MDの経験例や質問手順を活用する
-- 自然な言い換えを適用し、小学生が理解できる表現を使う
-- 児童の発言に応じて柔軟に対応する"""
-        return integrated_prompt
-    
-    elif unit_content:
-        # 単元プロンプトのみ存在する場合
-        return unit_content
-    
-    elif socratic_guide:
-        # ソクラテスガイドのみ存在する場合
-        return socratic_guide
-    
-    else:
-        # どちらも存在しない場合：フォールバック
         return "児童の発言をよく聞いて、適切な質問で考えを引き出してください。"
 
 
 # 学習ログを保存する関数
-def save_learning_log(student_number, unit, log_type, data):
-    """学習ログをJSONファイルに保存"""
-    # 学生情報を解析
-    student_info = parse_student_info(student_number)
+def save_learning_log(student_number, unit, log_type, data, class_number=None):
+    """学習ログをJSONファイルに保存
+    
+    Args:
+        student_number: 出席番号 (例: "3", "15")
+        unit: 単元名
+        log_type: ログタイプ
+        data: ログデータ
+        class_number: クラス番号 (例: "1", "2")
+    """
+    # クラス番号と出席番号を整数に変換
+    try:
+        class_num = int(class_number) if class_number else None
+        seat_num = int(student_number) if student_number else None
+        class_display = f'{class_num}組{seat_num}番' if class_num and seat_num else f'{student_number}'
+    except (ValueError, TypeError):
+        class_num = None
+        seat_num = None
+        class_display = str(student_number)
     
     log_entry = {
         'timestamp': datetime.now().isoformat(),
         'student_number': student_number,
-        'class_num': student_info['class_num'] if student_info else None,
-        'seat_num': student_info['seat_num'] if student_info else None,
-        'class_display': student_info['display'] if student_info else str(student_number),
+        'class_num': class_num,
+        'seat_num': seat_num,
+        'class_display': class_display,
         'unit': unit,
         'log_type': log_type,  # 'prediction_chat', 'prediction_summary', 'reflection_chat', 'final_summary'
         'data': data
@@ -553,102 +501,6 @@ def load_learning_logs(date=None):
             return json.load(f)
     except (json.JSONDecodeError, FileNotFoundError):
         return []
-
-# チャットボット設定管理
-CHATBOT_CONFIG_FILE = 'chatbot_config.json'
-
-def get_chatbot_status(class_name=None):
-    """チャットボットの有効/無効状態を取得
-    
-    Args:
-        class_name: クラス名 ("class1", "class2", "class3", "class4")
-                   Noneの場合は全体の状態を返す
-    """
-    if os.path.exists(CHATBOT_CONFIG_FILE):
-        try:
-            with open(CHATBOT_CONFIG_FILE, 'r', encoding='utf-8') as f:
-                config = json.load(f)
-                
-                # クラス指定がある場合
-                if class_name:
-                    return config.get('classes', {}).get(class_name, {}).get('enabled', True)
-                
-                # 全体の状態を返す（後方互換性）
-                return config.get('enabled', True)
-        except:
-            return True
-    return True  # デフォルトは有効
-
-def set_chatbot_status(enabled, class_name=None):
-    """チャットボットの有効/無効状態を設定
-    
-    Args:
-        enabled: 有効/無効フラグ
-        class_name: クラス名 ("class1", "class2", "class3", "class4")
-                   Noneの場合は全体の設定を変更
-    """
-    try:
-        # 既存の設定を読み込み
-        config = {'enabled': True, 'classes': {}}
-        if os.path.exists(CHATBOT_CONFIG_FILE):
-            try:
-                with open(CHATBOT_CONFIG_FILE, 'r', encoding='utf-8') as f:
-                    config = json.load(f)
-            except:
-                pass
-        
-        # クラス構造を初期化
-        if 'classes' not in config:
-            config['classes'] = {
-                'class1': {'enabled': True},
-                'class2': {'enabled': True},
-                'class3': {'enabled': True},
-                'class4': {'enabled': True}
-            }
-        
-        # クラス指定がある場合
-        if class_name:
-            if class_name not in config['classes']:
-                config['classes'][class_name] = {}
-            config['classes'][class_name]['enabled'] = enabled
-            config['classes'][class_name]['updated_at'] = datetime.now().isoformat()
-        else:
-            # 全体の設定を変更
-            config['enabled'] = enabled
-            config['updated_at'] = datetime.now().isoformat()
-        
-        # 保存
-        with open(CHATBOT_CONFIG_FILE, 'w', encoding='utf-8') as f:
-            json.dump(config, f, ensure_ascii=False, indent=2)
-        return True
-    except Exception as e:
-        print(f"Error saving chatbot config: {e}")
-        return False
-
-def get_student_class(student_number):
-    """生徒番号からクラスを特定
-    
-    Args:
-        student_number: 生徒番号 (int or str)
-    
-    Returns:
-        クラス名 ("class1", "class2", "class3", "class4") または None
-    """
-    try:
-        student_num = int(student_number)
-        
-        # テストID 1111は全クラス利用可能
-        if student_num == 1111:
-            return "all"
-        
-        # 各クラスの範囲をチェック
-        for class_name, student_ids in STUDENT_CLASS_MAPPING.items():
-            if student_num in student_ids:
-                return class_name
-        
-        return None
-    except (ValueError, TypeError):
-        return None
 
 def parse_student_info(student_number):
     """生徒番号からクラスと出席番号を取得
@@ -706,9 +558,7 @@ def api_test():
 
 @app.route('/')
 def index():
-    # チャットボットの表示状態を取得
-    chatbot_enabled = get_chatbot_status()
-    return render_template('index.html', chatbot_enabled=chatbot_enabled)
+    return render_template('index.html')
 
 @app.route('/select_class')
 def select_class():
@@ -831,7 +681,8 @@ def chat():
                 'conversation_count': len(conversation) // 2,
                 'used_suggestion': False,
                 'suggestion_index': None
-            }
+            },
+            class_number=session.get('class_number')
         )
         
         # 進行状況を更新
@@ -845,8 +696,11 @@ def chat():
             conversation_history=conversation[-10:]  # 最新10件のみ保存
         )
         
-        # 対話が1回以上あれば、いつでも予想のまとめを作成可能
-        suggest_summary = len(conversation) >= 2  # user + AI で最低1セット
+        # 対話が2回以上あれば、予想のまとめを作成可能
+        # user + AI で最低2セット（2往復）= 4メッセージ以上必要
+        # ただし、実際のユーザーとの往復回数をカウント(AIの初期メッセージは除外)
+        user_messages_count = sum(1 for msg in conversation if msg['role'] == 'user')
+        suggest_summary = user_messages_count >= 2  # ユーザーメッセージが2回以上
         
         response_data = {
             'response': ai_message,
@@ -870,11 +724,10 @@ def summary():
     summary_instruction = f"""{unit_prompt}
 
 #重要な指示
-これまでの対話内容をもとに、#要約フォーマットに従って予想をまとめてください。
-- 「話した内容をもとにして，まとめてみるね。」という前置きをつけること
+これまでの対話内容をもとに、予想をまとめてください。
 - 「〜と思う。なぜなら〜だから。」の形式でまとめること
 - 子どもが話した内容だけを使うこと
-- #要約のサンプルを参考にすること
+- マークダウン記法（**予想**などの見出し）は使わないこと
 """
     
     # メッセージフォーマットで構築
@@ -911,7 +764,8 @@ def summary():
             data={
                 'summary': summary_text,
                 'conversation': conversation
-            }
+            },
+            class_number=session.get('class_number')
         )
         
         return jsonify({'summary': summary_text})
@@ -981,10 +835,19 @@ def reflect_chat():
                 'user_message': user_message,
                 'ai_response': ai_message,
                 'conversation_count': len(reflection_conversation) // 2
-            }
+            },
+            class_number=session.get('class_number')
         )
         
-        return jsonify({'response': ai_message})
+        # 対話が2往復以上あれば、考察のまとめを作成可能
+        # ユーザーメッセージが2回以上必要
+        user_messages_count = sum(1 for msg in reflection_conversation if msg['role'] == 'user')
+        suggest_final_summary = user_messages_count >= 2
+        
+        return jsonify({
+            'response': ai_message,
+            'suggest_final_summary': suggest_final_summary
+        })
         
     except Exception as e:
         return jsonify({'error': f'AI接続エラーが発生しました。しばらく待ってから再度お試しください。'}), 500
@@ -1002,12 +865,13 @@ def final_summary():
     final_instruction = f"""{unit_prompt}
 
 #重要な指示
-これまでの対話内容と予想をもとに、#要約フォーマットに従って考察をまとめてください。
-- 「話した内容をもとにして，まとめてみるね。」という前置きをつけること
+これまでの対話内容と予想をもとに、考察をまとめてください。
+- #要約のサンプルの考察部分と同じ形式で出力すること
+- 「話した内容をもとにして，まとめてみるね。」という前置きの後に考察内容を書くこと
 - 「〜ことがわかった。〜からだと思う。〜にも言えると思った。」の形式でまとめること
 - 実験結果、予想との比較、日常生活とのつながりを含めること
 - 子どもが話した内容だけを使うこと
-- #要約のサンプル（考察）を参考にすること
+- マークダウン記法（**考察**などの見出し）は使わないこと
 
 学習者の予想: {prediction_summary}
 """
@@ -1048,7 +912,8 @@ def final_summary():
                 'final_summary': final_summary_text,
                 'prediction_summary': prediction_summary,
                 'reflection_conversation': reflection_conversation
-            }
+            },
+            class_number=session.get('class_number')
         )
         
         return jsonify({'summary': final_summary_text})
@@ -1082,46 +947,15 @@ def teacher_logout():
     flash('ログアウトしました', 'info')
     return redirect(url_for('index'))
 
-@app.route('/teacher/chatbot/toggle', methods=['POST'])
-@require_teacher_auth
-def toggle_chatbot():
-    """チャットボットの表示制御（クラス別）"""
-    data = request.json
-    enabled = data.get('enabled', True)
-    class_name = data.get('class_name')  # "class1", "class2", etc.
-    
-    # 教員が該当クラスを管理できるかチェック
-    teacher_id = session.get('teacher_id')
-    teacher_classes = get_teacher_classes(teacher_id)
-    
-    if class_name and class_name not in teacher_classes:
-        return jsonify({'success': False, 'error': '権限がありません'}), 403
-    
-    if set_chatbot_status(enabled, class_name):
-        return jsonify({'success': True, 'enabled': enabled, 'class_name': class_name})
-    else:
-        return jsonify({'success': False, 'error': '設定の保存に失敗しました'}), 500
-
 @app.route('/teacher')
 @require_teacher_auth
 def teacher():
     """教員用ダッシュボード"""
     teacher_id = session.get('teacher_id')
-    teacher_classes = get_teacher_classes(teacher_id)
-    
-    # 各クラスのチャットボット設定を読み込み
-    chatbot_settings = {}
-    for class_name in ['class1', 'class2', 'class3', 'class4']:
-        chatbot_settings[class_name] = {
-            'enabled': get_chatbot_status(class_name),
-            'can_edit': class_name in teacher_classes
-        }
     
     return render_template('teacher/dashboard.html', 
                          units=UNITS, 
-                         teacher_id=teacher_id,
-                         teacher_classes=teacher_classes,
-                         chatbot_settings=chatbot_settings)
+                         teacher_id=teacher_id)
 
 @app.route('/teacher/logs')
 @require_teacher_auth
@@ -1146,31 +980,47 @@ def teacher_logs():
     if unit:
         logs = [log for log in logs if log.get('unit') == unit]
     
-    # クラスフィルター
-    if class_filter:
+    # クラスと出席番号でフィルター（両方を組み合わせる）
+    if class_filter and student:
+        # クラスと出席番号の両方が指定された場合
         logs = [log for log in logs 
-                if parse_student_info(log.get('student_number')) 
-                and parse_student_info(log.get('student_number'))['class_num'] == int(class_filter)]
+                if log.get('class_num') == int(class_filter) 
+                and log.get('seat_num') == int(student)]
+    elif class_filter:
+        # クラスのみ指定された場合
+        logs = [log for log in logs 
+                if log.get('class_num') == int(class_filter)]
+    elif student:
+        # 出席番号のみ指定された場合（全クラスから該当番号を検索）
+        logs = [log for log in logs 
+                if log.get('seat_num') == int(student)]
     
-    if student:
-        logs = [log for log in logs if log.get('student_number') == student]
-    
-    # 学生ごとにグループ化
+    # 学生ごとにグループ化（クラスと出席番号の組み合わせで識別）
     students_data = {}
     for log in logs:
+        class_num = log.get('class_num')
+        seat_num = log.get('seat_num')
         student_num = log.get('student_number')
-        if student_num not in students_data:
-            # 学生情報を解析
-            student_info = parse_student_info(student_num)
-            students_data[student_num] = {
+        
+        # クラスと出席番号の組み合わせで一意のキーを生成
+        student_key = f"{class_num}_{seat_num}" if class_num and seat_num else student_num
+        
+        if student_key not in students_data:
+            # ログから直接クラスと出席番号の情報を取得
+            student_info = {
+                'class_num': class_num,
+                'seat_num': seat_num,
+                'display': log.get('class_display', f'{class_num}組{seat_num}番' if class_num and seat_num else str(student_num))
+            }
+            students_data[student_key] = {
                 'student_number': student_num,
                 'student_info': student_info,
                 'units': {}
             }
         
         unit_name = log.get('unit')
-        if unit_name not in students_data[student_num]['units']:
-            students_data[student_num]['units'][unit_name] = {
+        if unit_name not in students_data[student_key]['units']:
+            students_data[student_key]['units'][unit_name] = {
                 'prediction_chats': [],
                 'prediction_summary': None,
                 'reflection_chats': [],
@@ -1179,13 +1029,13 @@ def teacher_logs():
         
         log_type = log.get('log_type')
         if log_type == 'prediction_chat':
-            students_data[student_num]['units'][unit_name]['prediction_chats'].append(log)
+            students_data[student_key]['units'][unit_name]['prediction_chats'].append(log)
         elif log_type == 'prediction_summary':
-            students_data[student_num]['units'][unit_name]['prediction_summary'] = log
+            students_data[student_key]['units'][unit_name]['prediction_summary'] = log
         elif log_type == 'reflection_chat':
-            students_data[student_num]['units'][unit_name]['reflection_chats'].append(log)
+            students_data[student_key]['units'][unit_name]['reflection_chats'].append(log)
         elif log_type == 'final_summary':
-            students_data[student_num]['units'][unit_name]['final_summary'] = log
+            students_data[student_key]['units'][unit_name]['final_summary'] = log
     
     # クラスと番号でソート
     students_data = dict(sorted(students_data.items(), 
@@ -1240,101 +1090,6 @@ def teacher_export():
     
     return jsonify({'message': f'エクスポートが完了しました: {output_file}'})
 
-# チャットボットのログ保存関数
-def save_chatbot_log(student_id, user_message, ai_response):
-    """チャットボットの会話ログを保存"""
-    # 学生情報を解析
-    student_info = parse_student_info(student_id)
-    
-    log_entry = {
-        'timestamp': datetime.now().isoformat(),
-        'student_id': student_id,
-        'class_num': student_info['class_num'] if student_info else None,
-        'seat_num': student_info['seat_num'] if student_info else None,
-        'class_display': student_info['display'] if student_info else str(student_id),
-        'user_message': user_message,
-        'ai_response': ai_response
-    }
-    
-    log_file = f"logs/chatbot_log_{datetime.now().strftime('%Y%m%d')}.json"
-    
-    # 既存のログを読み込み
-    if os.path.exists(log_file):
-        with open(log_file, 'r', encoding='utf-8') as f:
-            logs = json.load(f)
-    else:
-        logs = []
-    
-    logs.append(log_entry)
-    
-    # ログを保存
-    with open(log_file, 'w', encoding='utf-8') as f:
-        json.dump(logs, f, ensure_ascii=False, indent=2)
-
-def is_inappropriate_content(message):
-    """学習に関係ない内容かどうかをチェック"""
-    # 小文字に変換
-    msg_lower = message.lower()
-    
-    # 学習関連のキーワード（これらが含まれていればOK）
-    learning_keywords = [
-        '作文', '読書', '感想', '日記', '文章', '書く', 'かんそう', 'さくぶん',
-        '理科', '実験', '観察', 'じっけん', 'かんさつ',
-        '算数', '計算', '問題', 'さんすう', 'けいさん',
-        '国語', '漢字', 'こくご', 'かんじ',
-        '社会', 'しゃかい',
-        '係', 'かかり', 'キャッチコピー',
-        '学級会', 'がっきゅうかい', 'クラス会', '話し合い', 'はなしあい',
-        '宿題', 'しゅくだい', '課題', 'かだい',
-        '教科', 'きょうか', '勉強', 'べんきょう', '学習', 'がくしゅう',
-        'テスト', 'しけん', '試験',
-        '発表', 'はっぴょう', 'スピーチ',
-        '調べる', 'しらべる', '研究', 'けんきゅう',
-        'どうして', 'なぜ', 'なんで', 'どうやって',
-        '教えて', 'おしえて', 'わからない', 'むずかしい',
-        'ヒント', 'アイデア', '考え', 'かんがえ',
-        '植物', '動物', '天気', '星', '月', '太陽',
-        'しょくぶつ', 'どうぶつ', 'てんき', 'ほし', 'つき', 'たいよう',
-        '水', '空気', '温度', '金属', 'きんぞく',
-        'まとめ', '要約', 'ようやく'
-    ]
-    
-    # 学習関連キーワードが含まれているかチェック
-    for keyword in learning_keywords:
-        if keyword in msg_lower or keyword in message:
-            return False  # 学習関連なのでOK
-    
-    # 不適切なキーワード（雑談や学習に無関係な内容）
-    inappropriate_keywords = [
-        'ゲーム', 'げーむ', 'game',
-        'アニメ', 'あにめ', 'anime',
-        'マンガ', 'まんが', '漫画', 'manga',
-        'youtube', 'ユーチューブ', 'ゆーちゅーぶ',
-        'tiktok', 'ティックトック',
-        '芸能', 'げいのう', 'アイドル', 'あいどる',
-        '恋', 'こい', '好き', 'すき' '彼氏', '彼女',
-        'お金', 'おかね', 'かね',
-        '買い物', 'かいもの', 'ショッピング',
-        '遊び', 'あそび', '遊ぶ', 'あそぶ'
-    ]
-    
-    # 不適切キーワードチェック
-    for keyword in inappropriate_keywords:
-        if keyword in msg_lower or keyword in message:
-            return True  # 不適切
-    
-    # 短すぎるメッセージ（「こんにちは」「hi」など）
-    if len(message.strip()) < 3:
-        return True
-    
-    # どちらにも該当しない場合は、メッセージの長さで判断
-    # あまりにも短い挨拶のみは不適切とする
-    greetings_only = ['こんにちは', 'おはよう', 'こんばんは', 'やあ', 'hi', 'hello', 'へろー']
-    if message.strip() in greetings_only:
-        return True
-    
-    return False  # その他は許可
-
 def get_available_log_dates():
     """利用可能なログファイルの日付一覧を取得"""
     import os
@@ -1360,11 +1115,18 @@ def get_available_log_dates():
 # プロンプト編集機能は削除されました
 # システムで自動的に最適化されたプロンプトを使用します
 
-@app.route('/teacher/student/<student_number>')
+@app.route('/teacher/student_detail')
 @require_teacher_auth
-def student_detail(student_number):
+def student_detail():
     """学生の詳細ログページ"""
+    # クラスと出席番号をクエリパラメータから取得
+    class_num = request.args.get('class', type=int)
+    seat_num = request.args.get('seat', type=int)
     unit = request.args.get('unit', '')
+    
+    if not class_num or not seat_num:
+        flash('クラスと出席番号が指定されていません。', 'error')
+        return redirect(url_for('teacher_logs'))
     
     # デフォルト日付を最新のログがある日付に設定
     available_dates = get_available_log_dates()
@@ -1374,20 +1136,25 @@ def student_detail(student_number):
     # 学習ログを読み込み
     logs = load_learning_logs(selected_date)
     
-    # 該当する学生のログを抽出
+    # 該当する学生のログを抽出（クラスと出席番号で絞り込み）
     student_logs = [log for log in logs if 
-                   log.get('student_number') == student_number and 
+                   log.get('class_num') == class_num and 
+                   log.get('seat_num') == seat_num and 
                    (not unit or log.get('unit') == unit)]
     
+    # 学生表示名
+    student_display = f"{class_num}組{seat_num}番"
     
     if not student_logs:
-        flash(f'学生{student_number}番のログがありません。日付や単元を変更してお試しください。', 'warning')
+        flash(f'{student_display}のログがありません。日付や単元を変更してお試しください。', 'warning')
     
     # 単元一覧を取得（フィルター用）
     all_units = list(set([log.get('unit') for log in logs if log.get('unit')]))
     
     return render_template('teacher/student_detail.html',
-                         student_number=student_number,
+                         class_num=class_num,
+                         seat_num=seat_num,
+                         student_display=student_display,
                          unit=unit,
                          current_unit=unit,
                          current_date=selected_date,
@@ -1395,313 +1162,6 @@ def student_detail(student_number):
                          available_dates=available_dates,
                          units_data={unit_name: {} for unit_name in all_units},
                          teacher_id=session.get('teacher_id', 'teacher'))
-
-# ========================================
-# チャットボット機能（Gemini API使用）
-# ========================================
-
-@app.route('/chatbot/login')
-def chatbot_login():
-    """チャットボットログイン画面"""
-    # チャットボットが無効の場合はホームにリダイレクト
-    if not get_chatbot_status():
-        flash('チャットボットは現在利用できません', 'warning')
-        return redirect(url_for('index'))
-    
-    return render_template('chatbot_login.html')
-
-@app.route('/chatbot/verify', methods=['POST'])
-def chatbot_verify():
-    """学生IDの検証"""
-    # チャットボットが無効の場合はアクセス拒否
-    if not get_chatbot_status():
-        flash('チャットボットは現在利用できません', 'error')
-        return redirect(url_for('index'))
-    
-    student_id = request.form.get('student_id', '').strip()
-    
-    # IDのバリデーション
-    if not student_id or len(student_id) != 4 or not student_id.isdigit():
-        flash('4桁の数字を入力してください（例：4103）', 'error')
-        return redirect(url_for('chatbot_login'))
-    
-    # 教員IDのチェック（4100, 4200, 4300, 4400はチャットボットにアクセスできない）
-    teacher_ids = ['4100', '4200', '4300', '4400']
-    if student_id in teacher_ids:
-        flash('教員IDではチャットボットにアクセスできません。', 'error')
-        return redirect(url_for('chatbot_login'))
-    
-    # 有効なIDリストを定義
-    valid_ids = set()
-    
-    # テストID
-    valid_ids.add('1111')
-    
-    # 4年1組～4組（各1～30番）
-    for class_num in range(1, 5):  # 1, 2, 3, 4組
-        for seat_num in range(1, 31):  # 1～30番
-            valid_ids.add(f"4{class_num}{seat_num:02d}")
-    
-    # IDの有効性チェック
-    if student_id not in valid_ids:
-        flash('無効なIDです。正しいIDを入力してください', 'error')
-        return redirect(url_for('chatbot_login'))
-    
-    # クラス別のチャットボット利用可否をチェック
-    student_class = get_student_class(student_id)
-    
-    # テストID (1111) 以外の場合、クラスのチャットボット設定を確認
-    if student_class and student_class != "all":
-        if not get_chatbot_status(student_class):
-            flash('申し訳ありません。現在、あなたのクラスではチャットボットが利用できません。担任の先生に確認してください。', 'warning')
-            return redirect(url_for('chatbot_login'))
-    
-    # IDをパース
-    if student_id == '1111':
-        # テストID
-        session['chatbot_student_id'] = student_id
-        session['chatbot_grade'] = 'テスト'
-        session['chatbot_class'] = ''
-        session['chatbot_number'] = ''
-    else:
-        # 学生用: 4103 = 学年:4, クラス:1, 出席番号:03
-        grade = student_id[0]
-        class_num = student_id[1]
-        seat_num = student_id[2:4]
-        
-        session['chatbot_student_id'] = student_id
-        session['chatbot_grade'] = grade
-        session['chatbot_class'] = class_num
-        session['chatbot_number'] = seat_num
-    
-    session['chatbot_history'] = []
-    
-    return redirect(url_for('chatbot'))
-
-@app.route('/chatbot')
-def chatbot():
-    """小学生総合学習支援チャットボット"""
-    # ログインチェック
-    if 'chatbot_student_id' not in session:
-        return redirect(url_for('chatbot_login'))
-    
-    # 生徒のクラスを特定
-    student_id = session.get('chatbot_student_id')
-    student_class = get_student_class(student_id)
-    
-    # チャットボットの表示状態をチェック
-    if student_class and student_class != "all":
-        # 通常の生徒：クラスごとの設定を確認
-        if not get_chatbot_status(student_class):
-            flash('現在、チャットボットは利用できません。', 'warning')
-            return redirect(url_for('select_number'))
-    elif student_class != "all":
-        # クラスが特定できない場合
-        flash('無効な生徒番号です。', 'error')
-        return redirect(url_for('chatbot_login'))
-    # student_class == "all" の場合（テストID 1111）は常に利用可能
-    
-    # セッションにチャット履歴がない場合は初期化
-    if 'chatbot_history' not in session:
-        session['chatbot_history'] = []
-    
-    return render_template('chatbot.html')
-
-@app.route('/chatbot/chat', methods=['POST'])
-def chatbot_chat():
-    """チャットボットとの対話処理（Gemini API使用）"""
-    # ログインチェック
-    student_id = session.get('chatbot_student_id')
-    if not student_id:
-        return jsonify({'error': 'ログインしてください'}), 401
-    
-    # クラス別の表示制御チェック
-    student_class = get_student_class(student_id)
-    if student_class and student_class != "all":
-        if not get_chatbot_status(student_class):
-            return jsonify({'error': '現在、チャットボットは利用できません'}), 403
-    elif student_class != "all":
-        return jsonify({'error': '無効な生徒番号です'}), 403
-    
-    user_message = request.json.get('message', '')
-    
-    if not user_message:
-        return jsonify({'error': '質問を入力してください'}), 400
-    
-    # フィルタリング: 学習に関係ない内容をチェック
-    if is_inappropriate_content(user_message):
-        return jsonify({
-            'response': 'ごめんね。学しゅうに関けいのある、しつもんをしてね。作文、理科、算数、国語、社会、がっきゅう活動など、学校の勉強について聞いてね！',
-            'filtered': True
-        })
-    
-    # チャット履歴を取得
-    chat_history = session.get('chatbot_history', [])
-    
-    # システムプロンプト（小学生総合学習支援）
-    system_prompt = """あなたは小学生の学しゅうをたすける、やさしいAIアシスタントです。
-
-【ぜったいに守るルール】
-1. **学しゅうのサポートのみ**: 学校の勉強に関けいすることだけ答える
-   - ゲーム、アニメ、ざつだんには答えない
-   - 「学しゅうについて聞いてね」と、やさしく言う
-
-2. **かんたんな言葉を使う**: 小学生がわかる言葉ではなす
-   - むずかしい漢字は使わない（ひらがなを多く使う）
-   - かんたんな言葉で、わかりやすく
-
-3. **みじかい文ではなす**: 1つの文は、とてもみじかく
-   - 1回に1つか2つのことだけ言う
-   - 長い文は、2〜3つにわける
-
-4. **考える力をのばす**: こたえを教えるだけでなく、考えるヒントを出す
-   - 「どう思う？」「なぜだと思う？」と問いかける
-   - 自分で考えられるように、サポートする
-   - 作文は、ぜんぶ書いてあげない。考えるヒントを出す
-
-5. **はげます言葉を入れる**:
-   - 「いいね！」「すごいね！」「よく気づいたね！」
-   - 「おもしろい考えだね！」「がんばっているね！」
-
-【できること】
-小学生の学しゅう全はんを、サポートします：
-
-**1. 作文・文しょうのサポート**
-- 作文のテーマやアイデアを考える
-- 文しょうの組み立てをたすける
-- かん想文や、日記のアドバイス
-- 【重要】ぜんぶ書いてあげるのではなく、考えるヒントを出す
-
-**2. がっきゅう活動のサポート**
-- 係のキャッチコピーを考える
-- がっきゅう会のないようを、まとめる（文字で入力されたもの）
-- クラスのもくひょうを考える
-- グループ活動のアイデア出し
-
-**3. 理科の学しゅう**
-- 実けんの予そうや、考察のサポート
-- 理科のしつもんに答える
-- しぜんのふしぎを、いっしょに考える
-
-**4. その他の学しゅう**
-- 国語、算数、社会などの、しつもん
-- じゅぎょうでわからなかったことの、説明
-- しゅくだいのヒント（こたえは教えない）
-- 読書かんそうのサポート
-
-【やってはいけないこと】
-❌ ゲームやアニメの話
-❌ ざつだん
-❌ 学しゅうに関けいのない話
-❌ 作文をぜんぶ書いてあげる
-❌ しゅくだいの答えを教える
-
-【音声データについて】
-- がっきゅう会の音声データは、みんなの許可をもらってから使うこと
-- 先生がOKと言ったら、文字にして入力してもらう
-
-【返とうの例】
-質問「作文のテーマが思いつかない」
-返答「どんなことを書きたいかな？さいきん、楽しかったことや、びっくりしたことはあった？それを教えてくれる？」
-
-質問「係のキャッチコピーを考えたい」  
-返答「どんな係かな？その係は、クラスのために、どんないいことをしているか教えてくれる？」
-
-質問「学級会の内容をまとめたい」
-返答「どんなことについて話し合ったの？どんな意見が出たか、教えてくれる？」
-
-質問「ゲームについて教えて」
-返答「ごめんね。学しゅうに関けいすることを聞いてね。作文や、理科、算数など、学校の勉強について、なんでも聞いてね！」"""
-    
-    try:
-        # Gemini APIが利用可能かチェック
-        if not gemini_model:
-            # Gemini APIが使えない場合はOpenAI APIにフォールバック
-            return fallback_to_openai(system_prompt, user_message, chat_history)
-        
-        # Gemini APIで応答を生成
-        # チャット履歴を含めたコンテキストを作成
-        full_context = system_prompt + "\n\n"
-        for msg in chat_history[-6:]:  # 最新3往復のみ使用
-            role = "ユーザー" if msg['role'] == 'user' else "AI"
-            full_context += f"{role}: {msg['content']}\n"
-        full_context += f"ユーザー: {user_message}\nAI: "
-        
-        response = gemini_model.generate_content(full_context)
-        ai_response = response.text
-        
-        # チャット履歴を更新
-        chat_history.append({'role': 'user', 'content': user_message})
-        chat_history.append({'role': 'assistant', 'content': ai_response})
-        
-        # 履歴が長くなりすぎないように制限（最新10往復まで）
-        if len(chat_history) > 20:
-            chat_history = chat_history[-20:]
-        
-        session['chatbot_history'] = chat_history
-        
-        # チャットログを保存
-        save_chatbot_log(student_id, user_message, ai_response)
-        
-        return jsonify({'response': ai_response})
-        
-    except Exception as e:
-        print(f"Gemini API Error: {e}")
-        # エラー時はOpenAI APIにフォールバック
-        return fallback_to_openai(system_prompt, user_message, chat_history, student_id)
-
-@app.route('/chatbot/reset', methods=['POST'])
-def chatbot_reset():
-    """チャットボットの会話履歴をリセット"""
-    session['chatbot_history'] = []
-    return jsonify({'status': 'success'})
-
-def fallback_to_openai(system_prompt, user_message, chat_history, student_id):
-    """Gemini APIが使えない場合のOpenAI APIフォールバック"""
-    try:
-        if not client:
-            return jsonify({'error': 'APIが利用できません'}), 500
-        
-        # OpenAI API用のメッセージ形式に変換
-        messages = [{"role": "system", "content": system_prompt}]
-        
-        # チャット履歴を追加（最新3往復）
-        for msg in chat_history[-6:]:
-            messages.append({
-                "role": msg['role'],
-                "content": msg['content']
-            })
-        
-        # ユーザーメッセージを追加
-        messages.append({"role": "user", "content": user_message})
-        
-        # OpenAI APIで応答を生成
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=messages,
-            max_tokens=500,
-            temperature=0.7
-        )
-        
-        ai_response = response.choices[0].message.content
-        
-        # チャット履歴を更新
-        chat_history.append({'role': 'user', 'content': user_message})
-        chat_history.append({'role': 'assistant', 'content': ai_response})
-        
-        if len(chat_history) > 20:
-            chat_history = chat_history[-20:]
-        
-        session['chatbot_history'] = chat_history
-        
-        # チャットログを保存
-        save_chatbot_log(student_id, user_message, ai_response)
-        
-        return jsonify({'response': ai_response})
-        
-    except Exception as e:
-        print(f"OpenAI API Error: {e}")
-        return jsonify({'error': 'エラーが発生しました。もう一度試してください。'}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5014)

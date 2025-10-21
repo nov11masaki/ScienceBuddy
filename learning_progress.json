@@ -1,14 +1,14 @@
 {
-  "1_29": {
+  "3_30": {
     "金属のあたたまり方": {
       "current_stage": "prediction",
-      "last_access": "2025-10-17T07:21:48.129050",
+      "last_access": "2025-10-17T17:15:59.507096",
       "stage_progress": {
         "prediction": {
           "started": true,
-          "conversation_count": 3,
+          "conversation_count": 1,
           "summary_created": false,
-          "last_message": "わかんない"
+          "last_message": "あああああああああああああああ"
         },
         "experiment": {
           "started": false,
@@ -21,16 +21,18 @@
         }
       },
       "conversation_history": []
-    },
-    "空気の温度と体積": {
+    }
+  },
+  "1_29": {
+    "金属のあたたまり方": {
       "current_stage": "prediction",
-      "last_access": "2025-10-17T14:58:43.585730",
+      "last_access": "2025-10-18T09:44:02.849533",
       "stage_progress": {
         "prediction": {
           "started": true,
           "conversation_count": 4,
           "summary_created": false,
-          "last_message": "膨らみそう"
+          "last_message": "温かいところから，持ち手の冷たい方へ"
         },
         "experiment": {
           "started": false,
@@ -48,37 +50,13 @@
   "1_30": {
     "空気の温度と体積": {
       "current_stage": "prediction",
-      "last_access": "2025-10-17T12:41:58.075163",
+      "last_access": "2025-10-21T11:15:33.822480",
       "stage_progress": {
         "prediction": {
           "started": true,
-          "conversation_count": 0,
+          "conversation_count": 3,
           "summary_created": false,
-          "last_message": ""
-        },
-        "experiment": {
-          "started": false,
-          "completed": false
-        },
-        "reflection": {
-          "started": false,
-          "conversation_count": 0,
-          "summary_created": false
-        }
-      },
-      "conversation_history": []
-    }
-  },
-  "4_30": {
-    "水のあたたまり方": {
-      "current_stage": "prediction",
-      "last_access": "2025-10-17T17:07:19.952247",
-      "stage_progress": {
-        "prediction": {
-          "started": true,
-          "conversation_count": 1,
-          "summary_created": false,
-          "last_message": "saa"
+          "last_message": "ない"
         },
         "experiment": {
           "started": false,

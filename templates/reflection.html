@@ -130,8 +130,9 @@ function sendReflection() {
             addReflectionMessage(data.response, 'ai');
             reflectionCount++;
             
-            // 十分な対話が行われた場合、まとめボタンを表示
-            if (reflectionCount >= 3) {
+            // サーバーからの判定に基づいて、まとめボタンを表示
+            // 最低2往復の対話が行われた場合のみ表示
+            if (data.suggest_final_summary) {
                 document.getElementById('finalSummaryButton').style.display = 'block';
             }
         }
