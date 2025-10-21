@@ -76,24 +76,38 @@
             <!-- 右側: 入力画面 -->
             <div class="col-lg-5 input-column">
                 <div class="input-panel">
-                    <div class="input-header mb-3">
-                        <h4 class="mb-2">
+                    <div class="input-header mb-2">
+                        <h4 class="mb-2" style="font-size: 1.1rem;">
                             <i class="fas fa-edit"></i> 入力エリア
                         </h4>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="inputAssistToggle">
-                            <label class="form-check-label" for="inputAssistToggle">
-                                <i class="fas fa-keyboard"></i> タッチ入力
-                            </label>
+                        
+                        <!-- 入力モード選択 -->
+                        <div class="input-mode-selector mb-2">
+                            <div class="btn-group btn-group-sm w-100" role="group">
+                                <input type="radio" class="btn-check" name="inputMode" id="modeKeyboard" autocomplete="off" checked>
+                                <label class="btn btn-outline-primary" for="modeKeyboard">
+                                    <i class="fas fa-keyboard"></i> キーボード
+                                </label>
+                                
+                                <input type="radio" class="btn-check" name="inputMode" id="modeFlick" autocomplete="off">
+                                <label class="btn btn-outline-primary" for="modeFlick">
+                                    <i class="fas fa-hand-pointer"></i> フリック
+                                </label>
+                                
+                                <input type="radio" class="btn-check" name="inputMode" id="modeHandwriting" autocomplete="off">
+                                <label class="btn btn-outline-primary" for="modeHandwriting">
+                                    <i class="fas fa-pen"></i> 手書き
+                                </label>
+                            </div>
                         </div>
                     </div>
                     
                     <!-- タッチキーボード -->
-                    <div class="touch-keyboard-panel mb-3" id="touchKeyboard" style="display: none;">
+                    <div class="touch-keyboard-panel mb-2" id="touchKeyboard" style="display: block;">
                         <div class="keyboard-grid" id="hiraganaKeys">
                             <!-- JavaScriptで動的に生成 -->
                         </div>
-                        <div class="keyboard-controls mt-2">
+                        <div class="keyboard-controls mt-1">
                             <button class="btn btn-sm btn-warning flex-fill me-1" id="backspaceBtn">
                                 <i class="fas fa-backspace"></i> 消す
                             </button>
@@ -103,13 +117,42 @@
                         </div>
                     </div>
                     
+                    <!-- フリック入力 -->
+                    <div class="flick-keyboard-panel mb-2" id="flickKeyboard" style="display: none;">
+                        <div class="flick-grid" id="flickKeys">
+                            <!-- JavaScriptで動的に生成 -->
+                        </div>
+                        <div class="keyboard-controls mt-1">
+                            <button class="btn btn-sm btn-warning flex-fill me-1" id="flickBackspaceBtn">
+                                <i class="fas fa-backspace"></i> 消す
+                            </button>
+                            <button class="btn btn-sm btn-danger flex-fill" id="flickClearBtn">
+                                <i class="fas fa-times"></i> 全消去
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 手書き入力 -->
+                    <div class="handwriting-panel mb-2" id="handwritingPanel" style="display: none;">
+                        <canvas id="handwritingCanvas" width="280" height="200" style="border: 2px solid #ddd; border-radius: 8px; background: white; cursor: crosshair; display: block; margin: 0 auto;"></canvas>
+                        <div class="handwriting-controls mt-1">
+                            <button class="btn btn-sm btn-success flex-fill me-1" id="recognizeBtn">
+                                <i class="fas fa-check"></i> 認識
+                            </button>
+                            <button class="btn btn-sm btn-warning flex-fill me-1" id="clearCanvasBtn">
+                                <i class="fas fa-eraser"></i> 消す
+                            </button>
+                        </div>
+                        <div id="recognitionResult" class="mt-1 text-center" style="font-size: 0.85rem; color: #666;"></div>
+                    </div>
+                    
                     <!-- 音声入力ボタン -->
-                    <div class="voice-input-section mb-3" id="voiceInputSection" style="display: none;">
-                        <button class="btn btn-outline-primary w-100" id="voiceInputBtn">
+                    <div class="voice-input-section mb-2" id="voiceInputSection">
+                        <button class="btn btn-outline-primary w-100 btn-sm" id="voiceInputBtn">
                             <i class="fas fa-microphone"></i> 音声で入力
                         </button>
                         <div class="voice-input-status mt-2" id="voiceInputStatus" style="display: none;">
-                            <div class="alert alert-info mb-0">
+                            <div class="alert alert-info mb-0 py-1">
                                 <i class="fas fa-microphone"></i>
                                 <span id="voiceStatusText">音声を認識中...</span>
                             </div>
@@ -118,8 +161,8 @@
                     
                     <!-- テキスト入力 -->
                     <div class="text-input-section">
-                        <textarea class="form-control mb-2" id="messageInput" rows="4" placeholder="あなたの考えを入力してください..."></textarea>
-                        <button class="btn btn-primary w-100" id="sendButton">
+                        <textarea class="form-control mb-2" id="messageInput" rows="3" placeholder="あなたの考えを入力してください..." style="font-size: 0.95rem;"></textarea>
+                        <button class="btn btn-primary w-100 btn-sm" id="sendButton">
                             <i class="fas fa-paper-plane me-2"></i>送信
                         </button>
                     </div>
@@ -134,6 +177,11 @@
 <script>
 let conversationCount = 0;
 let lastMessage = '';
+
+// 手書き入力用変数
+let isDrawing = false;
+let canvas, ctx;
+
 
 // デジタル学習ツイン用の入力行動追跡
 let inputBehaviorTracker = {
@@ -214,7 +262,23 @@ const inputAssistConfig = {
         // 小文字・記号
         ['っ', 'ゃ', 'ゅ', 'ょ', 'を'],
         ['。', '、', ' ', '', '']
-    ]
+    ],
+    flick: {
+        'あ': ['あ', 'い', 'う', 'え', 'お'],
+        'か': ['か', 'き', 'く', 'け', 'こ'],
+        'さ': ['さ', 'し', 'す', 'せ', 'そ'],
+        'た': ['た', 'ち', 'つ', 'て', 'と'],
+        'な': ['な', 'に', 'ぬ', 'ね', 'の'],
+        'は': ['は', 'ひ', 'ふ', 'へ', 'ほ'],
+        'ま': ['ま', 'み', 'む', 'め', 'も'],
+        'や': ['や', '(', 'ゆ', ')', 'よ'],
+        'ら': ['ら', 'り', 'る', 'れ', 'ろ'],
+        'わ': ['わ', 'を', 'ん', 'ー', '〜'],
+        '゛': ['゛', 'が', 'ぎ', 'ぐ', 'げ', 'ご', 'ざ', 'じ', 'ず', 'ぜ', 'ぞ', 'だ', 'ぢ', 'づ', 'で', 'ど', 'ば', 'び', 'ぶ', 'べ', 'ぼ'],
+        '゜': ['゜', 'ぱ', 'ぴ', 'ぷ', 'ぺ', 'ぽ'],
+        '、': ['、', '。', '!', '?', '…'],
+        '☆': ['っ', 'ゃ', 'ゅ', 'ょ', 'ゎ']
+    }
 };
 
 const currentUnit = "{{ unit }}";
@@ -226,6 +290,13 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 入力補助の初期化
     initializeInputAssist();
+    initializeFlickInput();
+    initializeHandwriting();
+    
+    // 入力モード切り替え
+    document.querySelectorAll('input[name="inputMode"]').forEach(radio => {
+        radio.addEventListener('change', switchInputMode);
+    });
     
     // 入力フィールドにイベントリスナーを追加
     const messageInput = document.getElementById('messageInput');
@@ -648,5 +719,159 @@ window.sendMessage = function() {
         return originalSendMessage();
     }
 };
+
+// 入力モード切り替え
+function switchInputMode() {
+    const mode = document.querySelector('input[name="inputMode"]:checked').id;
+    
+    document.getElementById('touchKeyboard').style.display = 'none';
+    document.getElementById('flickKeyboard').style.display = 'none';
+    document.getElementById('handwritingPanel').style.display = 'none';
+    
+    if (mode === 'modeKeyboard') {
+        document.getElementById('touchKeyboard').style.display = 'block';
+    } else if (mode === 'modeFlick') {
+        document.getElementById('flickKeyboard').style.display = 'block';
+    } else if (mode === 'modeHandwriting') {
+        document.getElementById('handwritingPanel').style.display = 'block';
+    }
+}
+
+// フリック入力の初期化
+function initializeFlickInput() {
+    const flickContainer = document.getElementById('flickKeys');
+    flickContainer.innerHTML = '';
+    flickContainer.style.display = 'grid';
+    flickContainer.style.gridTemplateColumns = 'repeat(4, 1fr)';
+    flickContainer.style.gap = '6px';
+    flickContainer.style.maxWidth = '240px';
+    flickContainer.style.margin = '0 auto';
+    
+    const keys = ['あ', 'か', 'さ', 'た', 'な', 'は', 'ま', 'や', 'ら', 'わ', '゛', '゜', '、', '☆'];
+    
+    keys.forEach(key => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-outline-primary';
+        btn.style.cssText = 'min-width: 50px; height: 50px; font-size: 1.1rem; font-weight: 500;';
+        btn.textContent = key;
+        btn.onclick = () => showFlickOptions(key, btn);
+        flickContainer.appendChild(btn);
+    });
+    
+    // フリックキーボードのコントロールボタン
+    document.getElementById('flickBackspaceBtn').addEventListener('click', function() {
+        const input = document.getElementById('messageInput');
+        input.value = input.value.slice(0, -1);
+        input.focus();
+    });
+    
+    document.getElementById('flickClearBtn').addEventListener('click', function() {
+        document.getElementById('messageInput').value = '';
+        document.getElementById('messageInput').focus();
+    });
+}
+
+// フリックオプション表示（簡易版：クリックで次の文字を表示）
+let flickIndex = {};
+function showFlickOptions(key, btn) {
+    const options = inputAssistConfig.flick[key];
+    if (!options) return;
+    
+    if (!flickIndex[key]) flickIndex[key] = 0;
+    
+    const char = options[flickIndex[key] % options.length];
+    if (char && char !== '(' && char !== ')') {
+        insertText(char);
+    }
+    
+    flickIndex[key]++;
+}
+
+// 手書き入力の初期化
+function initializeHandwriting() {
+    canvas = document.getElementById('handwritingCanvas');
+    if (!canvas) return;
+    
+    ctx = canvas.getContext('2d');
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#000';
+    
+    // タッチ＆マウスイベント
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseout', stopDrawing);
+    
+    canvas.addEventListener('touchstart', handleTouchStart);
+    canvas.addEventListener('touchmove', handleTouchMove);
+    canvas.addEventListener('touchend', stopDrawing);
+    
+    // ボタンイベント
+    document.getElementById('recognizeBtn').addEventListener('click', recognizeHandwriting);
+    document.getElementById('clearCanvasBtn').addEventListener('click', clearCanvas);
+}
+
+function startDrawing(e) {
+    isDrawing = true;
+    const rect = canvas.getBoundingClientRect();
+    ctx.beginPath();
+    ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+}
+
+function draw(e) {
+    if (!isDrawing) return;
+    const rect = canvas.getBoundingClientRect();
+    ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+    ctx.stroke();
+}
+
+function stopDrawing() {
+    isDrawing = false;
+}
+
+function handleTouchStart(e) {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    isDrawing = true;
+    ctx.beginPath();
+    ctx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
+}
+
+function handleTouchMove(e) {
+    e.preventDefault();
+    if (!isDrawing) return;
+    const touch = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    ctx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
+    ctx.stroke();
+}
+
+function clearCanvas() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    document.getElementById('recognitionResult').textContent = '';
+}
+
+// 手書き認識（簡易版：ランダムにひらがなを返す）
+function recognizeHandwriting() {
+    const imageData = canvas.toDataURL('image/png');
+    
+    // 実際の認識は外部APIが必要ですが、ここでは簡易的にメッセージを表示
+    const resultDiv = document.getElementById('recognitionResult');
+    resultDiv.innerHTML = '<span class="text-info">手書き認識機能は開発中です。<br>ひらがなを書いて「認識」ボタンを押してください。</span>';
+    
+    // デモ用：ランダムな文字を挿入（実装時は削除）
+    // const demoChars = ['あ', 'い', 'う', 'え', 'お', 'か', 'き', 'く', 'け', 'こ'];
+    // const randomChar = demoChars[Math.floor(Math.random() * demoChars.length)];
+    // insertText(randomChar);
+    // resultDiv.innerHTML = `<span class="text-success">認識: ${randomChar}</span>`;
+}
+
+</script>
+{% endblock %}
+
+```
 </script>
 {% endblock %}

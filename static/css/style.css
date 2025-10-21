@@ -2570,7 +2570,7 @@ body {
     background: linear-gradient(135deg, #f8f9fa, #ffffff);
     border: 2px solid var(--border-color);
     border-radius: var(--border-radius);
-    padding: 15px;
+    padding: 12px;
     box-shadow: var(--shadow-medium);
     height: 100%;
     overflow-y: auto;
@@ -2588,18 +2588,18 @@ body {
     background: linear-gradient(135deg, #f8f9fa, #ffffff);
     border: 2px solid var(--border-color);
     border-radius: 12px;
-    padding: 12px;
+    padding: 8px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-    margin-bottom: 12px;
+    margin-bottom: 8px;
 }
 
 /* キーボードグリッド（ひらがなボタン）*/
 .keyboard-grid {
     display: grid;
     grid-template-columns: repeat(5, 1fr); /* 5列固定（あいうえお） */
-    gap: 5px;
-    margin-bottom: 8px;
-    max-width: 280px; /* キーボードの最大幅をさらに縮小 */
+    gap: 4px;
+    margin-bottom: 6px;
+    max-width: 240px; /* さらに縮小 */
     margin-left: auto;
     margin-right: auto;
 }
@@ -2607,18 +2607,18 @@ body {
 /* キーボードコントロール（バックスペース、消去） */
 .keyboard-controls {
     display: flex;
-    gap: 6px;
+    gap: 4px;
     justify-content: center;
-    max-width: 280px;
+    max-width: 240px;
     margin-left: auto;
     margin-right: auto;
 }
 
 .keyboard-controls .btn {
     flex: 1;
-    max-width: 135px;
-    font-size: 0.85rem;
-    padding: 6px 8px;
+    max-width: 118px;
+    font-size: 0.8rem;
+    padding: 5px 6px;
 }
 
 .keyboard-section {
@@ -2636,18 +2636,61 @@ body {
 }
 
 .touch-key {
-    min-width: 42px;
-    height: 42px;
-    padding: 6px;
-    font-size: 1rem;
+    min-width: 38px;
+    height: 38px;
+    padding: 4px;
+    font-size: 0.95rem;
     font-weight: 500;
-    border-radius: 6px;
+    border-radius: 5px;
     transition: all 0.2s ease;
     user-select: none;
     display: flex;
     align-items: center;
     justify-content: center;
 }
+
+/* 入力モードセレクター */
+.input-mode-selector .btn-group {
+    font-size: 0.8rem;
+}
+
+.input-mode-selector .btn {
+    padding: 4px 8px;
+}
+
+/* フリック入力 */
+.flick-keyboard-panel {
+    background: linear-gradient(135deg, #f8f9fa, #ffffff);
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    padding: 8px;
+}
+
+/* 手書き入力 */
+.handwriting-panel {
+    background: linear-gradient(135deg, #f8f9fa, #ffffff);
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    padding: 8px;
+}
+
+.handwriting-controls {
+    display: flex;
+    gap: 4px;
+    max-width: 280px;
+    margin: 0 auto;
+}
+
+.handwriting-controls .btn {
+    flex: 1;
+    font-size: 0.8rem;
+    padding: 5px 6px;
+}
+
+#handwritingCanvas {
+    touch-action: none;
+}
+
 
 .touch-key:hover {
     transform: translateY(-2px);
