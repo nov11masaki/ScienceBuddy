@@ -2666,6 +2666,21 @@ body {
     padding: 8px;
 }
 
+.flick-key-container {
+    position: relative;
+}
+
+.flick-key {
+    touch-action: none;
+    user-select: none;
+}
+
+.flick-tooltip {
+    pointer-events: none;
+    white-space: nowrap;
+    animation: fadeIn 0.2s ease;
+}
+
 /* 手書き入力 */
 .handwriting-panel {
     background: linear-gradient(135deg, #f8f9fa, #ffffff);

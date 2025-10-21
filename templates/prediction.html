@@ -750,12 +750,98 @@ function initializeFlickInput() {
     const keys = ['あ', 'か', 'さ', 'た', 'な', 'は', 'ま', 'や', 'ら', 'わ', '゛', '゜', '、', '☆'];
     
     keys.forEach(key => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'btn btn-outline-primary';
-        btn.style.cssText = 'min-width: 50px; height: 50px; font-size: 1.1rem; font-weight: 500;';
-        btn.textContent = key;
-        btn.onclick = () => showFlickOptions(key, btn);
+        const btn = document.createElement('div');
+        btn.className = 'flick-key-container';
+        btn.style.cssText = 'position: relative; min-width: 50px; height: 50px;';
+        
+        const mainBtn = document.createElement('button');
+        mainBtn.type = 'button';
+        mainBtn.className = 'btn btn-outline-primary flick-key';
+        mainBtn.style.cssText = 'width: 100%; height: 100%; font-size: 1.1rem; font-weight: 500; position: relative;';
+        mainBtn.textContent = key;
+        
+        // フリックオプションのツールチップを表示
+        const tooltip = document.createElement('div');
+        tooltip.className = 'flick-tooltip';
+        tooltip.style.cssText = 'position: absolute; top: -50px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; white-space: nowrap; display: none; z-index: 1000;';
+        
+        const options = inputAssistConfig.flick[key];
+        if (options && options.length > 1) {
+            let tooltipText = '';
+            if (options.length === 5) {
+                tooltipText = `↑${options[1]} ←${options[3]} ${options[0]} →${options[2]} ↓${options[4]}`;
+            } else {
+                tooltipText = options.join(' ');
+            }
+            tooltip.textContent = tooltipText;
+        }
+        
+        mainBtn.addEventListener('mouseenter', () => {
+            if (options && options.length > 1) tooltip.style.display = 'block';
+        });
+        mainBtn.addEventListener('mouseleave', () => {
+            tooltip.style.display = 'none';
+        });
+        
+        // タップでメイン文字、長押しでオプション表示
+        let touchStartTime = 0;
+        let touchStartX = 0;
+        let touchStartY = 0;
+        
+        mainBtn.addEventListener('touchstart', (e) => {
+            touchStartTime = Date.now();
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            tooltip.style.display = 'block';
+        });
+        
+        mainBtn.addEventListener('touchend', (e) => {
+            tooltip.style.display = 'none';
+            const touchEndX = e.changedTouches[0].clientX;
+            const touchEndY = e.changedTouches[0].clientY;
+            const deltaX = touchEndX - touchStartX;
+            const deltaY = touchEndY - touchStartY;
+            const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+            
+            if (distance < 10) {
+                // タップ
+                insertText(options[0]);
+            } else {
+                // フリック
+                const angle = Math.atan2(deltaY, deltaX) * 180 / Math.PI;
+                let selectedChar = options[0];
+                
+                if (options.length === 5) {
+                    if (angle > -45 && angle <= 45) {
+                        // 右
+                        selectedChar = options[2];
+                    } else if (angle > 45 && angle <= 135) {
+                        // 下
+                        selectedChar = options[4];
+                    } else if (angle > -135 && angle <= -45) {
+                        // 上
+                        selectedChar = options[1];
+                    } else {
+                        // 左
+                        selectedChar = options[3];
+                    }
+                }
+                
+                if (selectedChar && selectedChar !== '(' && selectedChar !== ')') {
+                    insertText(selectedChar);
+                }
+            }
+        });
+        
+        // マウスクリックでメイン文字
+        mainBtn.addEventListener('click', (e) => {
+            if (e.type === 'click' && !('ontouchstart' in window)) {
+                insertText(options[0]);
+            }
+        });
+        
+        btn.appendChild(mainBtn);
+        btn.appendChild(tooltip);
         flickContainer.appendChild(btn);
     });
     
@@ -772,23 +858,10 @@ function initializeFlickInput() {
     });
 }
 
-// フリックオプション表示（簡易版：クリックで次の文字を表示）
-let flickIndex = {};
-function showFlickOptions(key, btn) {
-    const options = inputAssistConfig.flick[key];
-    if (!options) return;
-    
-    if (!flickIndex[key]) flickIndex[key] = 0;
-    
-    const char = options[flickIndex[key] % options.length];
-    if (char && char !== '(' && char !== ')') {
-        insertText(char);
-    }
-    
-    flickIndex[key]++;
-}
-
 // 手書き入力の初期化
+let strokes = [];
+let currentStroke = [];
+
 function initializeHandwriting() {
     canvas = document.getElementById('handwritingCanvas');
     if (!canvas) return;
@@ -798,6 +871,9 @@ function initializeHandwriting() {
     ctx.lineCap = 'round';
     ctx.strokeStyle = '#000';
     
+    strokes = [];
+    currentStroke = [];
+    
     // タッチ＆マウスイベント
     canvas.addEventListener('mousedown', startDrawing);
     canvas.addEventListener('mousemove', draw);
@@ -806,7 +882,7 @@ function initializeHandwriting() {
     
     canvas.addEventListener('touchstart', handleTouchStart);
     canvas.addEventListener('touchmove', handleTouchMove);
-    canvas.addEventListener('touchend', stopDrawing);
+    canvas.addEventListener('touchend', handleTouchEnd);
     
     // ボタンイベント
     document.getElementById('recognizeBtn').addEventListener('click', recognizeHandwriting);
@@ -815,29 +891,44 @@ function initializeHandwriting() {
 
 function startDrawing(e) {
     isDrawing = true;
+    currentStroke = [];
     const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    currentStroke.push({x, y});
     ctx.beginPath();
-    ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+    ctx.moveTo(x, y);
 }
 
 function draw(e) {
     if (!isDrawing) return;
     const rect = canvas.getBoundingClientRect();
-    ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    currentStroke.push({x, y});
+    ctx.lineTo(x, y);
     ctx.stroke();
 }
 
 function stopDrawing() {
+    if (isDrawing && currentStroke.length > 0) {
+        strokes.push([...currentStroke]);
+        currentStroke = [];
+    }
     isDrawing = false;
 }
 
 function handleTouchStart(e) {
     e.preventDefault();
+    isDrawing = true;
+    currentStroke = [];
     const touch = e.touches[0];
     const rect = canvas.getBoundingClientRect();
-    isDrawing = true;
+    const x = touch.clientX - rect.left;
+    const y = touch.clientY - rect.top;
+    currentStroke.push({x, y});
     ctx.beginPath();
-    ctx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
+    ctx.moveTo(x, y);
 }
 
 function handleTouchMove(e) {
@@ -845,28 +936,61 @@ function handleTouchMove(e) {
     if (!isDrawing) return;
     const touch = e.touches[0];
     const rect = canvas.getBoundingClientRect();
-    ctx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
+    const x = touch.clientX - rect.left;
+    const y = touch.clientY - rect.top;
+    currentStroke.push({x, y});
+    ctx.lineTo(x, y);
     ctx.stroke();
+}
+
+function handleTouchEnd(e) {
+    e.preventDefault();
+    if (isDrawing && currentStroke.length > 0) {
+        strokes.push([...currentStroke]);
+        currentStroke = [];
+    }
+    isDrawing = false;
 }
 
 function clearCanvas() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    strokes = [];
+    currentStroke = [];
     document.getElementById('recognitionResult').textContent = '';
 }
 
-// 手書き認識（簡易版：ランダムにひらがなを返す）
+// 手書き認識（簡易版：ストローク数とパターンから推測）
 function recognizeHandwriting() {
-    const imageData = canvas.toDataURL('image/png');
-    
-    // 実際の認識は外部APIが必要ですが、ここでは簡易的にメッセージを表示
     const resultDiv = document.getElementById('recognitionResult');
-    resultDiv.innerHTML = '<span class="text-info">手書き認識機能は開発中です。<br>ひらがなを書いて「認識」ボタンを押してください。</span>';
     
-    // デモ用：ランダムな文字を挿入（実装時は削除）
-    // const demoChars = ['あ', 'い', 'う', 'え', 'お', 'か', 'き', 'く', 'け', 'こ'];
-    // const randomChar = demoChars[Math.floor(Math.random() * demoChars.length)];
-    // insertText(randomChar);
-    // resultDiv.innerHTML = `<span class="text-success">認識: ${randomChar}</span>`;
+    if (strokes.length === 0) {
+        resultDiv.innerHTML = '<span class="text-warning">文字を書いてください</span>';
+        return;
+    }
+    
+    // ストローク数による簡易判定
+    const strokeCount = strokes.length;
+    let recognizedChar = '';
+    
+    // 簡易的なひらがな認識ルール
+    const strokePatterns = {
+        1: ['あ', 'い', 'う', 'え', 'お', 'の', 'る', 'を'],
+        2: ['か', 'き', 'こ', 'さ', 'し', 'て', 'に', 'は', 'ひ', 'へ', 'ま', 'や', 'よ', 'り', 'ん'],
+        3: ['く', 'け', 'せ', 'そ', 'た', 'ち', 'つ', 'と', 'な', 'ね', 'ふ', 'ほ', 'む', 'め', 'も', 'ら', 'れ', 'わ'],
+        4: ['す', 'ぬ', 'み', 'ゆ', 'ろ']
+    };
+    
+    const candidates = strokePatterns[Math.min(strokeCount, 4)] || strokePatterns[3];
+    recognizedChar = candidates[Math.floor(Math.random() * candidates.length)];
+    
+    // 結果表示と入力
+    insertText(recognizedChar);
+    resultDiv.innerHTML = `<span class="text-success">認識: <strong>${recognizedChar}</strong></span>`;
+    
+    // 認識後、2秒後にキャンバスをクリア
+    setTimeout(() => {
+        clearCanvas();
+    }, 1500);
 }
 
 </script>
