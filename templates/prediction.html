@@ -209,35 +209,14 @@ let inputBehaviorTracker = {
 // 入力補助用の設定（シンプルなひらがなのみ）
 const inputAssistConfig = {
     hiragana: [
-        // あ行
-        ['あ', 'い', 'う', 'え', 'お'],
-        // か行
-        ['か', 'き', 'く', 'け', 'こ'],
-        // さ行
-        ['さ', 'し', 'す', 'せ', 'そ'],
-        // た行
-        ['た', 'ち', 'つ', 'て', 'と'],
-        // な行
-        ['な', 'に', 'ぬ', 'ね', 'の'],
-        // は行
-        ['は', 'ひ', 'ふ', 'へ', 'ほ'],
-        // ま行
-        ['ま', 'み', 'む', 'め', 'も'],
-        // や行
-        ['や', '', 'ゆ', '', 'よ'],
-        // ら行
-        ['ら', 'り', 'る', 'れ', 'ろ'],
-        // わ行
-        ['わ', '', '', '', 'ん'],
-        // 濁音・半濁音
-        ['が', 'ぎ', 'ぐ', 'げ', 'ご'],
-        ['ざ', 'じ', 'ず', 'ぜ', 'ぞ'],
-        ['だ', 'ぢ', 'づ', 'で', 'ど'],
-        ['ば', 'び', 'ぶ', 'べ', 'ぼ'],
-        ['ぱ', 'ぴ', 'ぷ', 'ぺ', 'ぽ'],
-        // 小文字・記号
-        ['っ', 'ゃ', 'ゅ', 'ょ', 'を'],
-        ['。', '、', ' ', '', '']
+        // 縦5行、右から「あいうえお」順
+        ['わ', 'ら', 'や', 'ま', 'は', 'な', 'た', 'さ', 'か', 'あ'],
+        ['を', 'り', '', 'み', 'ひ', 'に', 'ち', 'し', 'き', 'い'],
+        ['ん', 'る', 'ゆ', 'む', 'ふ', 'ぬ', 'つ', 'す', 'く', 'う'],
+        ['', 'れ', '', 'め', 'へ', 'ね', 'て', 'せ', 'け', 'え'],
+        ['', 'ろ', 'よ', 'も', 'ほ', 'の', 'と', 'そ', 'こ', 'お'],
+        // 特殊文字行
+        ['゛', '゜', 'っ', 'ゃ', 'ゅ', 'ょ', '、', '。', ' ', '']
     ],
     flick: {
         'あ': ['あ', 'い', 'う', 'え', 'お'],
@@ -320,6 +299,15 @@ function initializeInputAssist() {
                 // 空白セル
                 btn.style.visibility = 'hidden';
                 btn.textContent = ' ';
+            } else if (char === '゛') {
+                // 濁点ボタン
+                btn.textContent = '゛゜';
+                btn.style.fontSize = '0.9rem';
+                btn.onclick = () => addDakuten();
+            } else if (char === '゜') {
+                // 半濁音ボタン（濁点と統合したので非表示）
+                btn.style.visibility = 'hidden';
+                btn.textContent = ' ';
             } else {
                 btn.textContent = char;
                 btn.onclick = () => insertText(char);
@@ -327,6 +315,27 @@ function initializeInputAssist() {
             hiraganaContainer.appendChild(btn);
         });
     });
+}
+
+// 濁点・半濁音を追加
+function addDakuten() {
+    const input = document.getElementById('messageInput');
+    const text = input.value;
+    if (text.length === 0) return;
+    
+    const lastChar = text[text.length - 1];
+    const dakutenMap = {
+        'か': 'が', 'き': 'ぎ', 'く': 'ぐ', 'け': 'げ', 'こ': 'ご',
+        'さ': 'ざ', 'し': 'じ', 'す': 'ず', 'せ': 'ぜ', 'そ': 'ぞ',
+        'た': 'だ', 'ち': 'ぢ', 'つ': 'づ', 'て': 'で', 'と': 'ど',
+        'は': 'ば', 'ひ': 'び', 'ふ': 'ぶ', 'へ': 'べ', 'ほ': 'ぼ',
+        'ば': 'ぱ', 'び': 'ぴ', 'ぶ': 'ぷ', 'べ': 'ぺ', 'ぼ': 'ぽ'
+    };
+    
+    if (dakutenMap[lastChar]) {
+        input.value = text.slice(0, -1) + dakutenMap[lastChar];
+        input.focus();
+    }
 }
 
 // 入力補助の表示切り替え

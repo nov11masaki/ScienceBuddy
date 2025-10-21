@@ -2596,10 +2596,10 @@ body {
 /* キーボードグリッド（ひらがなボタン）*/
 .keyboard-grid {
     display: grid;
-    grid-template-columns: repeat(5, 1fr); /* 5列固定（あいうえお） */
-    gap: 4px;
+    grid-template-columns: repeat(10, 1fr); /* 10列固定（わ〜あの縦並び） */
+    gap: 3px;
     margin-bottom: 6px;
-    max-width: 240px; /* さらに縮小 */
+    max-width: 320px; /* 10列分の幅 */
     margin-left: auto;
     margin-right: auto;
 }
@@ -2609,14 +2609,14 @@ body {
     display: flex;
     gap: 4px;
     justify-content: center;
-    max-width: 240px;
+    max-width: 320px;
     margin-left: auto;
     margin-right: auto;
 }
 
 .keyboard-controls .btn {
     flex: 1;
-    max-width: 118px;
+    max-width: 158px;
     font-size: 0.8rem;
     padding: 5px 6px;
 }
@@ -2636,12 +2636,12 @@ body {
 }
 
 .touch-key {
-    min-width: 38px;
-    height: 38px;
-    padding: 4px;
-    font-size: 0.95rem;
+    min-width: 28px;
+    height: 36px;
+    padding: 2px;
+    font-size: 0.9rem;
     font-weight: 500;
-    border-radius: 5px;
+    border-radius: 4px;
     transition: all 0.2s ease;
     user-select: none;
     display: flex;
@@ -2726,16 +2726,16 @@ body {
 
 @media (max-width: 768px) {
     .touch-key {
-        min-width: 45px;
-        height: 45px;
-        padding: 8px;
-        font-size: 1rem;
+        min-width: 26px;
+        height: 34px;
+        padding: 2px;
+        font-size: 0.85rem;
     }
     
     .keyboard-grid {
-        grid-template-columns: repeat(5, 1fr); /* モバイルでも5列固定 */
-        gap: 6px;
-        max-width: 300px; /* モバイルで少し小さく */
+        grid-template-columns: repeat(10, 1fr); /* モバイルでも10列 */
+        gap: 2px;
+        max-width: 280px;
     }
     
     .keyboard-buttons {
