@@ -229,8 +229,6 @@ const inputAssistConfig = {
         'や': ['や', '(', 'ゆ', ')', 'よ'],
         'ら': ['ら', 'り', 'る', 'れ', 'ろ'],
         'わ': ['わ', 'を', 'ん', 'ー', '〜'],
-        '゛': ['゛', 'が', 'ぎ', 'ぐ', 'げ', 'ご', 'ざ', 'じ', 'ず', 'ぜ', 'ぞ', 'だ', 'ぢ', 'づ', 'で', 'ど', 'ば', 'び', 'ぶ', 'べ', 'ぼ'],
-        '゜': ['゜', 'ぱ', 'ぴ', 'ぷ', 'ぺ', 'ぽ'],
         '、': ['、', '。', '!', '?', '…'],
         '☆': ['っ', 'ゃ', 'ゅ', 'ょ', 'ゎ']
     }
@@ -733,17 +731,23 @@ function initializeFlickInput() {
     const flickContainer = document.getElementById('flickKeys');
     flickContainer.innerHTML = '';
     flickContainer.style.display = 'grid';
-    flickContainer.style.gridTemplateColumns = 'repeat(4, 1fr)';
-    flickContainer.style.gap = '6px';
-    flickContainer.style.maxWidth = '240px';
+    flickContainer.style.gridTemplateColumns = 'repeat(3, 1fr)';
+    flickContainer.style.gap = '8px';
+    flickContainer.style.maxWidth = '220px';
     flickContainer.style.margin = '0 auto';
     
-    const keys = ['あ', 'か', 'さ', 'た', 'な', 'は', 'ま', 'や', 'ら', 'わ', '゛', '゜', '、', '☆'];
+    // 4行×3列のレイアウト: あかさ / たなは / まやら / わ、。
+    const keys = [
+        'あ', 'か', 'さ',
+        'た', 'な', 'は',
+        'ま', 'や', 'ら',
+        'わ', '、', '☆'
+    ];
     
     keys.forEach(key => {
         const btn = document.createElement('div');
         btn.className = 'flick-key-container';
-        btn.style.cssText = 'position: relative; min-width: 50px; height: 50px;';
+        btn.style.cssText = 'position: relative; min-width: 60px; height: 60px;';
         
         const mainBtn = document.createElement('button');
         mainBtn.type = 'button';
