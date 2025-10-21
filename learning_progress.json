@@ -2,13 +2,37 @@
   "1_29": {
     "金属のあたたまり方": {
       "current_stage": "prediction",
-      "last_access": "2025-10-21T13:43:27.925880",
+      "last_access": "2025-10-21T14:52:57.766211",
       "stage_progress": {
         "prediction": {
           "started": true,
           "conversation_count": 1,
           "summary_created": false,
           "last_message": "はしっこから"
+        },
+        "experiment": {
+          "started": false,
+          "completed": false
+        },
+        "reflection": {
+          "started": false,
+          "conversation_count": 0,
+          "summary_created": false
+        }
+      },
+      "conversation_history": []
+    }
+  },
+  "1_30": {
+    "空気の温度と体積": {
+      "current_stage": "prediction",
+      "last_access": "2025-10-21T15:33:48.501296",
+      "stage_progress": {
+        "prediction": {
+          "started": true,
+          "conversation_count": 6,
+          "summary_created": false,
+          "last_message": "なる"
         },
         "experiment": {
           "started": false,

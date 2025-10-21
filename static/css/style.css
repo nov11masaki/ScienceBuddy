@@ -2595,7 +2595,7 @@ body {
 /* キーボードグリッド（ひらがなボタン）*/
 .keyboard-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(45px, 1fr));
+    grid-template-columns: repeat(5, 1fr); /* 5列固定（あいうえお） */
     gap: 6px;
     margin-bottom: 10px;
 }
@@ -2691,7 +2691,7 @@ body {
     }
     
     .keyboard-grid {
-        grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+        grid-template-columns: repeat(5, 1fr); /* モバイルでも5列固定 */
         gap: 4px;
     }
     
