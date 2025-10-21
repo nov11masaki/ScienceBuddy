@@ -337,11 +337,21 @@ def call_openai_with_retry(prompt, max_retries=3, delay=2, unit=None, stage=None
             import time
             start_time = time.time()
             
+            # stage（学習段階）に応じてtemperatureを設定
+            # 予想段階: より創造的な回答 (0.8)
+            # 考察段階: より一貫性のある回答 (0.3)
+            if stage == 'prediction':
+                temperature = 0.8
+            elif stage == 'reflection':
+                temperature = 0.3
+            else:
+                temperature = 0.5  # デフォルト
+            
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=messages,
                 max_tokens=2000,
-                temperature=1.0,
+                temperature=temperature,
                 timeout=30
             )
             
