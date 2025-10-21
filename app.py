@@ -407,51 +407,24 @@ def load_task_content(unit_name):
         return f"{unit_name}について実験を行います。どのような結果になると予想しますか？"
 
 def get_initial_ai_message(unit_name, stage='prediction'):
-    """プロンプトファイルから最初のAIメッセージを抽出する"""
+    """tasksファイルから最初のAIメッセージを取得する"""
     try:
-        # プロンプトファイルを読み込み
-        with open(f'prompts/{unit_name}.md', 'r', encoding='utf-8') as f:
-            content = f.read()
-        
-        import re
-        
         if stage == 'prediction':
-            # 予想段階の「初めの問いかけ」を探す
-            # パターン: ## 初めの問いかけ の後の「...」部分を抽出
-            match = re.search(r'# 予想段階での対話.*?## 初めの問いかけ\s*\n「(.+?)」', content, re.DOTALL)
-            if match:
-                # 「と開かれた質問から始める。」などの説明部分を除去
-                question = match.group(1).split('と開かれた質問')[0].split('と子どもの言葉')[0]
-                return question.strip()
-            
-            # 見つからない場合はデフォルト
-            return f"{unit_name}について、どう思いますか？"
+            # tasksファイルから課題文を読み込む
+            task_content = load_task_content(unit_name)
+            # 課題文の最初の文をそのまま質問として使用
+            return task_content.split('\n')[0].strip()
         
         elif stage == 'reflection':
-            # 考察段階の「初めの問いかけ」を探す
-            match = re.search(r'# 考察段階での対話.*?## 初めの問いかけ\s*\n「(.+?)」', content, re.DOTALL)
-            if match:
-                # 「と子どもの言葉で語らせる。」などの説明部分を除去
-                question = match.group(1).split('と子どもの言葉')[0].split('と開かれた質問')[0]
-                return question.strip()
-            
-            # 見つからない場合はデフォルト
-            return "実験でどのような結果になりましたか？"
+            # 考察段階では実験結果について問う
+            return "実験でどんな結果になった？"
         
         else:
             return "あなたの考えを聞かせてください。"
             
-    except FileNotFoundError:
-        # ファイルが見つからない場合のフォールバック
-        if stage == 'prediction':
-            return f"{unit_name}について、どう思いますか？"
-        elif stage == 'reflection':
-            return "実験でどのような結果になりましたか？"
-        else:
-            return "あなたの考えを聞かせてください。"
     except Exception as e:
-        # その他のエラーの場合
-        print(f"初期メッセージ抽出エラー: {e}")
+        # エラーの場合のフォールバック
+        print(f"初期メッセージ取得エラー: {e}")
         if stage == 'prediction':
             return f"{unit_name}について、どう思いますか？"
         elif stage == 'reflection':
