@@ -2,13 +2,13 @@
   "1_29": {
     "金属のあたたまり方": {
       "current_stage": "prediction",
-      "last_access": "2025-10-21T14:52:57.766211",
+      "last_access": "2025-10-23T10:06:24.893671",
       "stage_progress": {
         "prediction": {
           "started": true,
-          "conversation_count": 1,
+          "conversation_count": 4,
           "summary_created": false,
-          "last_message": "はしっこから"
+          "last_message": "めっちゃ"
         },
         "experiment": {
           "started": false,
@@ -33,6 +33,28 @@
           "conversation_count": 4,
           "summary_created": false,
           "last_message": "空気の体積が大きくなったから"
+        },
+        "experiment": {
+          "started": false,
+          "completed": false
+        },
+        "reflection": {
+          "started": false,
+          "conversation_count": 0,
+          "summary_created": false
+        }
+      },
+      "conversation_history": []
+    },
+    "金属のあたたまり方": {
+      "current_stage": "prediction",
+      "last_access": "2025-10-23T10:03:34.737161",
+      "stage_progress": {
+        "prediction": {
+          "started": true,
+          "conversation_count": 4,
+          "summary_created": false,
+          "last_message": "20分くらい"
         },
         "experiment": {
           "started": false,
