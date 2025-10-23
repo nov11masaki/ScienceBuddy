@@ -370,35 +370,47 @@ function insertText(text) {
 
 // 音声入力開始
 function startVoiceInput() {
+    console.log('音声入力開始ボタンがクリックされました');
+    
     // Web Speech API のサポート確認
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
         alert('お使いのブラウザは音声入力に対応していません。Chrome、Edge、Safariをお使いください。');
+        console.error('Web Speech API not supported');
         return;
     }
+    
+    console.log('Web Speech API サポート確認OK');
     
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     
     if (recognition && recognition.isListening) {
+        console.log('既に音声認識中のため停止します');
         stopVoiceInput();
         return;
     }
     
-    recognition = new SpeechRecognition();
-    recognition.lang = 'ja-JP';
-    recognition.continuous = false;
-    recognition.interimResults = true;
-    
-    const statusDiv = document.getElementById('voiceInputStatus');
-    const statusText = document.getElementById('voiceStatusText');
-    const voiceBtn = document.getElementById('voiceInputBtn');
-    
-    recognition.onstart = function() {
-        recognition.isListening = true;
-        statusDiv.style.display = 'block';
-        statusText.textContent = '音声を認識中...';
-        voiceBtn.classList.add('btn-danger');
-        voiceBtn.classList.remove('btn-outline-primary');
-    };
+    try {
+        recognition = new SpeechRecognition();
+        recognition.lang = 'ja-JP';
+        recognition.continuous = false;
+        recognition.interimResults = true;
+        
+        console.log('SpeechRecognition オブジェクト作成完了');
+        
+        const statusDiv = document.getElementById('voiceInputStatus');
+        const statusText = document.getElementById('voiceStatusText');
+        const voiceBtn = document.getElementById('voiceInputBtn');
+        
+        console.log('DOM要素取得:', {statusDiv, statusText, voiceBtn});
+        
+        recognition.onstart = function() {
+            console.log('音声認識開始');
+            recognition.isListening = true;
+            statusDiv.style.display = 'block';
+            statusText.textContent = '音声を認識中...';
+            voiceBtn.classList.add('btn-danger');
+            voiceBtn.classList.remove('btn-outline-primary');
+        };
     
     recognition.onresult = function(event) {
         let interimTranscript = '';
@@ -439,6 +451,7 @@ function startVoiceInput() {
     };
     
     recognition.onend = function() {
+        console.log('音声認識終了');
         setTimeout(() => {
             statusDiv.style.display = 'none';
             voiceBtn.classList.remove('btn-danger');
@@ -447,7 +460,12 @@ function startVoiceInput() {
         }, 1000);
     };
     
-    recognition.start();
+        console.log('音声認識を開始します');
+        recognition.start();
+    } catch (error) {
+        console.error('音声認識エラー:', error);
+        alert('音声認識の初期化に失敗しました: ' + error.message);
+    }
 }
 
 // 音声入力停止
