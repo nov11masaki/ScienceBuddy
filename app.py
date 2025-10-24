@@ -728,22 +728,12 @@ def summary():
     conversation = session.get('conversation', [])
     unit = session.get('unit')
     
-    # 単元のプロンプトを読み込み、要約指示を追加
+    # 単元のプロンプトを読み込み（要約の指示は既にプロンプトファイルに含まれている）
     unit_prompt = load_unit_prompt(unit)
-    
-    # 要約専用のプロンプトを作成
-    summary_instruction = f"""{unit_prompt}
-
-#重要な指示
-これまでの対話内容をもとに、予想をまとめてください。
-- 「〜と思う。なぜなら〜だから。」の形式でまとめること
-- 子どもが話した内容だけを使うこと
-- マークダウン記法（**予想**などの見出し）は使わないこと
-"""
     
     # メッセージフォーマットで構築
     messages = [
-        {"role": "system", "content": summary_instruction}
+        {"role": "system", "content": unit_prompt}
     ]
     
     # 対話履歴をメッセージフォーマットで追加

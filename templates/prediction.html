@@ -160,52 +160,6 @@ let conversationCount = 0;
 let lastMessage = '';
 
 // デジタル学習ツイン用の入力行動追跡
-let inputBehaviorTracker = {
-    startTime: null,
-    keystrokes: [],
-    pauses: 0,
-    backspaces: 0,
-    
-    startTracking: function() {
-        this.startTime = Date.now();
-        this.keystrokes = [];
-        this.pauses = 0;
-        this.backspaces = 0;
-    },
-    
-    recordKeystroke: function(key) {
-        const now = Date.now();
-        
-        if (this.keystrokes.length > 0) {
-            const timeSinceLastKey = now - this.keystrokes[this.keystrokes.length - 1].timestamp;
-            if (timeSinceLastKey > 2000) { // 2秒以上の間隔はためらいとみなす
-                this.pauses++;
-            }
-        }
-        
-        if (key === 'Backspace') {
-            this.backspaces++;
-        }
-        
-        this.keystrokes.push({
-            key: key,
-            timestamp: now
-        });
-    },
-    
-    getMetadata: function() {
-        const totalTime = this.startTime ? (Date.now() - this.startTime) / 1000 : 0;
-        const typingSpeed = this.keystrokes.length > 0 ? this.keystrokes.length / totalTime : 0;
-        
-        return {
-            typing_speed: typingSpeed,
-            pause_count: this.pauses,
-            backspace_count: this.backspaces,
-            thinking_time: totalTime
-        };
-    }
-};
-
 // 入力補助用の設定（シンプルなひらがなのみ）
 const inputAssistConfig = {
     hiragana: [
@@ -239,6 +193,8 @@ let recognition = null;
 
 // ページ読み込み時にAPI接続をテスト
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOMContentLoaded イベント発火');
+    
     testApiConnection();
     
     // 入力補助の初期化
@@ -250,24 +206,19 @@ document.addEventListener('DOMContentLoaded', function() {
         radio.addEventListener('change', switchInputMode);
     });
     
-    // 入力フィールドにイベントリスナーを追加
-    const messageInput = document.getElementById('messageInput');
-    
-    messageInput.addEventListener('focus', function() {
-        inputBehaviorTracker.startTracking();
-    });
-    
-    messageInput.addEventListener('keydown', function(e) {
-        inputBehaviorTracker.recordKeystroke(e.key);
-    });
-    
-    // 入力補助トグル
-    document.getElementById('inputAssistToggle').addEventListener('change', function(e) {
-        toggleInputAssist(e.target.checked);
-    });
-    
     // 音声入力ボタン
-    document.getElementById('voiceInputBtn').addEventListener('click', startVoiceInput);
+    const voiceInputBtn = document.getElementById('voiceInputBtn');
+    console.log('voiceInputBtn要素:', voiceInputBtn);
+    if (voiceInputBtn) {
+        // 既存のイベントリスナーを削除してから新しいものを追加
+        voiceInputBtn.onclick = function() {
+            console.log('voiceInputBtnがクリックされました');
+            startVoiceInput();
+        };
+        console.log('voiceInputBtnにイベントリスナーを設定しました');
+    } else {
+        console.error('voiceInputBtn要素が見つかりません');
+    }
     
     // キーボードコントロールボタン（タッチキーボード用）
     const backspaceBtn = document.getElementById('backspaceBtn');
@@ -290,6 +241,18 @@ document.addEventListener('DOMContentLoaded', function() {
             input.focus();
         });
     }
+    
+    // 送信ボタンとEnterキー
+    document.getElementById('sendButton').addEventListener('click', sendMessage);
+    document.getElementById('messageInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+    
+    // まとめボタン
+    document.getElementById('summaryButton').addEventListener('click', getSummary);
 });
 
 // 入力補助の初期化
@@ -368,9 +331,16 @@ function insertText(text) {
     input.focus();
 }
 
-// 音声入力開始
+// 音声入力開始/停止
 function startVoiceInput() {
-    console.log('音声入力開始ボタンがクリックされました');
+    console.log('音声入力ボタンがクリックされました');
+    
+    // 既に認識中なら停止
+    if (recognition && recognition.isListening) {
+        console.log('音声認識を停止します');
+        stopVoiceInput();
+        return;
+    }
     
     // Web Speech API のサポート確認
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
@@ -383,31 +353,31 @@ function startVoiceInput() {
     
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     
-    if (recognition && recognition.isListening) {
-        console.log('既に音声認識中のため停止します');
-        stopVoiceInput();
-        return;
-    }
-    
     try {
         recognition = new SpeechRecognition();
         recognition.lang = 'ja-JP';
-        recognition.continuous = false;
-        recognition.interimResults = true;
+        recognition.continuous = true;  // 継続的に認識
+        recognition.interimResults = true;  // 途中結果も取得
         
         console.log('SpeechRecognition オブジェクト作成完了');
         
         const statusDiv = document.getElementById('voiceInputStatus');
         const statusText = document.getElementById('voiceStatusText');
         const voiceBtn = document.getElementById('voiceInputBtn');
+        const input = document.getElementById('messageInput');
+        
+        // 認識開始時の入力欄の位置を記憶
+        let startPosition = 0;
         
         console.log('DOM要素取得:', {statusDiv, statusText, voiceBtn});
         
         recognition.onstart = function() {
             console.log('音声認識開始');
             recognition.isListening = true;
+            startPosition = input.value.length;  // 現在の入力位置を記憶
             statusDiv.style.display = 'block';
             statusText.textContent = '音声を認識中...';
+            voiceBtn.innerHTML = '<i class="fas fa-stop"></i> 停止';
             voiceBtn.classList.add('btn-danger');
             voiceBtn.classList.remove('btn-outline-primary');
         };
@@ -416,6 +386,7 @@ function startVoiceInput() {
         let interimTranscript = '';
         let finalTranscript = '';
         
+        // 全ての結果を処理
         for (let i = event.resultIndex; i < event.results.length; i++) {
             const transcript = event.results[i][0].transcript;
             if (event.results[i].isFinal) {
@@ -425,20 +396,30 @@ function startVoiceInput() {
             }
         }
         
+        // リアルタイムで入力欄に反映
         if (interimTranscript) {
+            // 途中結果を表示（確定していない部分）
+            input.value = input.value.substring(0, startPosition) + finalTranscript + interimTranscript;
             statusText.textContent = '認識中: ' + interimTranscript;
+            console.log('途中結果:', interimTranscript);
         }
         
         if (finalTranscript) {
-            const input = document.getElementById('messageInput');
-            input.value += finalTranscript;
+            // 確定した結果を入力欄に追加
+            input.value = input.value.substring(0, startPosition) + finalTranscript;
+            startPosition = input.value.length;  // 新しい開始位置を更新
             statusText.textContent = '認識完了: ' + finalTranscript;
+            console.log('確定結果:', finalTranscript);
         }
+        
+        // 入力欄を最後までスクロール
+        input.scrollTop = input.scrollHeight;
     };
     
     recognition.onerror = function(event) {
         console.error('音声認識エラー:', event.error);
         statusDiv.style.display = 'none';
+        voiceBtn.innerHTML = '<i class="fas fa-microphone"></i> 音声で入力';
         voiceBtn.classList.remove('btn-danger');
         voiceBtn.classList.add('btn-outline-primary');
         recognition.isListening = false;
@@ -447,17 +428,19 @@ function startVoiceInput() {
             alert('音声が検出されませんでした。もう一度お試しください。');
         } else if (event.error === 'not-allowed') {
             alert('マイクの使用が許可されていません。ブラウザの設定を確認してください。');
+        } else if (event.error !== 'aborted') {
+            // aborted エラー（手動停止）以外はアラート表示
+            alert('音声認識エラー: ' + event.error);
         }
     };
     
     recognition.onend = function() {
         console.log('音声認識終了');
-        setTimeout(() => {
-            statusDiv.style.display = 'none';
-            voiceBtn.classList.remove('btn-danger');
-            voiceBtn.classList.add('btn-outline-primary');
-            recognition.isListening = false;
-        }, 1000);
+        statusDiv.style.display = 'none';
+        voiceBtn.innerHTML = '<i class="fas fa-microphone"></i> 音声で入力';
+        voiceBtn.classList.remove('btn-danger');
+        voiceBtn.classList.add('btn-outline-primary');
+        recognition.isListening = false;
     };
     
         console.log('音声認識を開始します');
@@ -470,20 +453,12 @@ function startVoiceInput() {
 
 // 音声入力停止
 function stopVoiceInput() {
+    console.log('音声入力停止');
     if (recognition && recognition.isListening) {
         recognition.stop();
         recognition.isListening = false;
     }
 }
-
-document.getElementById('sendButton').addEventListener('click', sendMessage);
-document.getElementById('messageInput').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-        sendMessage();
-    }
-});
-
-document.getElementById('summaryButton').addEventListener('click', getSummary);
 
 function testApiConnection() {
     fetch('/api/test')
@@ -581,13 +556,9 @@ function sendMessageToAPI(message) {
     const loadingMessage = addMessage('考え中...', 'ai');
     loadingMessage.classList.add('loading-message');
     
-    // 入力行動メタデータを取得
-    const inputMetadata = inputBehaviorTracker.getMetadata();
-    
     // APIリクエストデータ
     const requestData = { 
-        message: message,
-        metadata: inputMetadata  // デジタル学習ツイン用データ
+        message: message
     };
     
     // AIの応答を取得
@@ -671,64 +642,6 @@ function getSummary() {
         document.getElementById('summaryButton').disabled = false;
     });
 }
-
-// デジタル学習ツイン統合
-class LearningTwinIntegration {
-    constructor() {
-        this.messageStartTime = null;
-        this.isTyping = false;
-        this.setupTypingDetection();
-    }
-    
-    setupTypingDetection() {
-        const messageInput = document.getElementById('messageInput');
-        if (messageInput) {
-            messageInput.addEventListener('focus', () => {
-                this.messageStartTime = Date.now();
-            });
-            
-            messageInput.addEventListener('input', () => {
-                this.isTyping = true;
-            });
-            
-            messageInput.addEventListener('blur', () => {
-                this.isTyping = false;
-            });
-        }
-    }
-    
-    getResponseTime() {
-        if (this.messageStartTime) {
-            return (Date.now() - this.messageStartTime) / 1000;
-        }
-        return 5.0; // デフォルト値
-    }
-    
-    getStudentId() {
-        // セッションから学習者IDを取得（実装により異なる）
-        return document.body.dataset.studentId || '1';
-    }
-    
-    getCurrentUnit() {
-        const unitBadge = document.querySelector('.badge');
-        return unitBadge ? unitBadge.textContent : '';
-    }
-}
-
-// 学習ツイン統合を初期化
-const twinIntegration = new LearningTwinIntegration();
-
-// 既存のsendMessage関数を拡張
-const originalSendMessage = window.sendMessage;
-window.sendMessage = function() {
-    const messageInput = document.getElementById('messageInput');
-    const message = messageInput.value.trim();
-    
-    // 元の関数を実行
-    if (originalSendMessage) {
-        return originalSendMessage();
-    }
-};
 
 // 入力モード切り替え
 function switchInputMode() {
