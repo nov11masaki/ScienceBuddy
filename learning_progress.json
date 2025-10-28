@@ -2,7 +2,7 @@
   "1_29": {
     "金属のあたたまり方": {
       "current_stage": "prediction",
-      "last_access": "2025-10-23T10:13:17.196105",
+      "last_access": "2025-10-23T14:53:17.013138",
       "stage_progress": {
         "prediction": {
           "started": true,
@@ -26,13 +26,13 @@
   "1_30": {
     "空気の温度と体積": {
       "current_stage": "prediction",
-      "last_access": "2025-10-22T15:50:12.792802",
+      "last_access": "2025-10-24T12:52:00.877975",
       "stage_progress": {
         "prediction": {
           "started": true,
           "conversation_count": 4,
           "summary_created": false,
-          "last_message": "空気の体積が大きくなったから"
+          "last_message": "タイヤの中の空気が温められたから"
         },
         "experiment": {
           "started": false,
@@ -48,13 +48,35 @@
     },
     "金属のあたたまり方": {
       "current_stage": "prediction",
-      "last_access": "2025-10-23T10:03:34.737161",
+      "last_access": "2025-10-24T09:28:22.187848",
       "stage_progress": {
         "prediction": {
           "started": true,
           "conversation_count": 4,
           "summary_created": false,
-          "last_message": "20分くらい"
+          "last_message": "飲み口"
+        },
+        "experiment": {
+          "started": false,
+          "completed": false
+        },
+        "reflection": {
+          "started": false,
+          "conversation_count": 0,
+          "summary_created": false
+        }
+      },
+      "conversation_history": []
+    },
+    "水のあたたまり方": {
+      "current_stage": "prediction",
+      "last_access": "2025-10-28T21:52:35.583101",
+      "stage_progress": {
+        "prediction": {
+          "started": true,
+          "conversation_count": 1,
+          "summary_created": false,
+          "last_message": "ねは"
         },
         "experiment": {
           "started": false,

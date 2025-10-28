@@ -67,21 +67,50 @@ body {
 /* 選択ページ - 明るく親しみやすく */
 .selection-page {
     min-height: 100vh;
-    padding: 40px 0;
+    max-height: 100vh;
+    padding: 15px 0;
     background: var(--light-bg);
     display: flex;
     align-items: center;
     box-sizing: border-box;
+    overflow: hidden;
 }
 
 .selection-page .container {
     background: var(--white-color);
     border-radius: var(--border-radius);
-    padding: 40px;
+    padding: 20px;
     color: var(--dark-color);
     box-shadow: var(--shadow-medium);
-    max-height: 90vh;
+    max-height: calc(100vh - 30px);
     overflow-y: auto;
+}
+
+.selection-page h2 {
+    font-size: 1.5rem;
+    margin-bottom: 5px;
+}
+
+.selection-page .text-muted {
+    font-size: 0.9rem;
+    margin-bottom: 5px;
+}
+
+.selection-page .mb-4 {
+    margin-bottom: 8px !important;
+}
+
+.selection-page .mb-3 {
+    margin-bottom: 5px !important;
+}
+
+.selection-page .mt-5 {
+    margin-top: 15px !important;
+}
+
+.selection-page .row.g-3 {
+    --bs-gutter-x: 0.5rem;
+    --bs-gutter-y: 0.5rem;
 }
 
 /* 出席番号カード - 小学生に優しいデザイン */
@@ -90,12 +119,12 @@ body {
     color: var(--dark-color);
     border: 2px solid var(--primary-color);
     border-radius: var(--border-radius);
-    padding: 24px 16px;
+    padding: 12px 8px;
     text-align: center;
     cursor: pointer;
     transition: var(--transition);
     box-shadow: var(--shadow-light);
-    height: 100px;
+    height: 70px;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -134,14 +163,14 @@ body {
 }
 
 .number-display {
-    font-size: 2.2rem;
+    font-size: 1.8rem;
     font-weight: 700;
     line-height: 1;
-    margin-bottom: 4px;
+    margin-bottom: 3px;
 }
 
 .number-label {
-    font-size: 0.9rem;
+    font-size: 0.75rem;
     opacity: 0.8;
     font-weight: 500;
 }
@@ -218,15 +247,16 @@ body {
 /* クラス情報バナー */
 .class-info-banner {
     display: inline-block;
-    padding: 8px 0;
+    padding: 5px 0;
+    margin-bottom: 5px;
 }
 
 .class-badge {
     background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
     color: var(--white-color);
-    padding: 12px 24px;
-    border-radius: 25px;
-    font-size: 1.1rem;
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-size: 1rem;
     font-weight: 600;
     box-shadow: var(--shadow-light);
     display: inline-block;
@@ -307,33 +337,42 @@ body {
 /* チャットページ - 明るく読みやすく */
 .chat-page {
     min-height: 100vh;
-    padding: 30px 0;
+    max-height: 100vh;
+    padding: 15px 0;
     background: var(--light-bg);
     display: flex;
     align-items: center;
     box-sizing: border-box;
+    overflow: hidden;
 }
 
-.chat-page .container {
-    background: var(--white-color);
-    border-radius: var(--border-radius);
-    padding: 30px;
-    color: var(--dark-color);
-    box-shadow: var(--shadow-medium);
-    height: 95vh;
-    max-height: 95vh;
+.chat-page .container-fluid {
+    height: calc(100vh - 30px);
+    max-height: calc(100vh - 30px);
+    overflow: hidden;
+    padding: 10px;
+}
+
+.chat-page .row {
+    height: 100%;
+    margin: 0;
+}
+
+.chat-column, .input-column {
+    height: 100%;
+    padding: 5px;
     display: flex;
     flex-direction: column;
 }
 
 .chat-header h2 {
     color: var(--dark-color);
-    font-size: 2.2rem;
-    margin-bottom: 25px;
-    font-weight: 700;
-    text-align: center;
-    position: relative;
-    padding-bottom: 15px;
+    font-size: 1.5rem;
+    margin-bottom: 8px;
+}
+
+.chat-header .unit-display {
+    margin-bottom: 8px;
 }
 
 .chat-header h2::after {
@@ -371,9 +410,9 @@ body {
     background: linear-gradient(135deg, var(--white-color), var(--light-color));
     border: 2px solid var(--primary-color);
     border-radius: var(--border-radius);
-    padding: 25px;
+    padding: 12px;
     box-shadow: var(--shadow-light);
-    margin-bottom: 25px;
+    margin-bottom: 10px;
     position: relative;
     overflow: hidden;
 }
@@ -384,46 +423,24 @@ body {
     top: 0;
     left: 0;
     right: 0;
-    height: 5px;
-    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
-}
-
-.task-card h4 {
-    color: var(--primary-color);
-    font-weight: 700;
-    margin-bottom: 15px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.task-card h4::before {
-    content: '🔬';
-    font-size: 1.3rem;
-}
-
-.task-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 5px;
+    height: 3px;
     background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
 }
 
 .task-title {
-    color: var(--primary-dark);
-    margin-bottom: 12px;
+    color: var(--primary-color);
     font-weight: 700;
-    font-size: 1.2rem;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1rem;
 }
 
 .task-content {
-    font-size: 1rem;
-    line-height: 1.6;
     margin: 0;
-    color: var(--dark-color);
+    font-size: 0.95rem;
+    line-height: 1.5;
 }
 
 /* 実験フォームのスタイル */
@@ -465,19 +482,18 @@ body {
     flex: 1;
     display: flex;
     flex-direction: column;
-    min-height: 400px;
-    max-height: 800px;
+    min-height: 300px;
+    max-height: calc(100vh - 350px);
     border: 1px solid var(--border-color);
-    resize: vertical;
     min-width: 300px;
     position: relative;
 }
 
 .chat-messages {
     height: 100%;
-    min-height: 350px;
+    min-height: 250px;
     overflow-y: auto;
-    padding: 25px;
+    padding: 15px;
     background: linear-gradient(135deg, #fafafa, #ffffff);
     flex: 1;
     border-radius: 15px 15px 0 0;
@@ -2570,16 +2586,19 @@ body {
     background: linear-gradient(135deg, #f8f9fa, #ffffff);
     border: 2px solid var(--border-color);
     border-radius: var(--border-radius);
-    padding: 12px;
+    padding: 10px;
     box-shadow: var(--shadow-medium);
-    height: 100%;
+    height: calc(100vh - 100px);
+    max-height: calc(100vh - 100px);
     overflow-y: auto;
+    display: flex;
+    flex-direction: column;
 }
 
 .input-panel h5 {
     color: var(--primary-dark);
-    margin-bottom: 10px;
-    font-size: 1rem;
+    margin-bottom: 8px;
+    font-size: 0.95rem;
     font-weight: 600;
 }
 
@@ -2649,7 +2668,7 @@ body {
     justify-content: center;
 }
 
-/* 入力モードセレクター */
+/* 入力モードセレクター（旧式・削除予定） */
 .input-mode-selector .btn-group {
     font-size: 0.8rem;
 }
@@ -2657,6 +2676,49 @@ body {
 .input-mode-selector .btn {
     padding: 4px 8px;
 }
+
+/* 入力モード切り替えスイッチ（新式） */
+.input-mode-switches {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 2px 4px;  /* パディングをさらに小さく */
+    background: var(--light-bg);
+    border-radius: 4px;
+}
+
+.input-mode-switches .form-check {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.input-mode-switches .form-check-label {
+    font-size: 0.75rem;  /* フォントサイズをさらに小さく */
+    font-weight: 600;
+    color: var(--dark-color);
+    cursor: pointer;
+    user-select: none;
+}
+
+.input-mode-switches .form-check-input {
+    width: 2rem;  /* 幅を小さく */
+    height: 1.1rem;  /* 高さを小さく */
+    cursor: pointer;
+    border: 1.5px solid var(--primary-color);
+    background-color: white;
+}
+
+.input-mode-switches .form-check-input:checked {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.input-mode-switches .form-check-input:focus {
+    box-shadow: 0 0 0 0.1rem rgba(79, 195, 247, 0.25);
+}
+
 
 /* フリック入力 */
 .flick-keyboard-panel {
@@ -2743,3 +2805,471 @@ body {
     }
 }
 
+/* ========================================
+   新しい上下分割レイアウト
+   ======================================== */
+   
+/* 全体レイアウト: 上下2分割 */
+.chat-page-vertical {
+    height: 100vh;
+    overflow: hidden;
+}
+
+.chat-page-vertical .container-fluid {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+}
+
+/* 上半分: チャット画面 */
+.chat-section {
+    height: 50vh;  /* 50%に調整 */
+    display: flex;
+    flex-direction: column;
+    padding: 8px;
+    background: var(--white-color);
+    border-bottom: 3px solid var(--primary-color);
+    overflow: hidden;
+}
+
+.chat-section .chat-header {
+    flex-shrink: 0;
+}
+
+.chat-section .task-section {
+    flex-shrink: 0;
+}
+
+.chat-section .chat-container {
+    flex: 1;
+    overflow-y: auto;
+    margin-bottom: 5px;
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-section .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+}
+
+/* チャット入力エリア */
+.chat-input-area {
+    flex-shrink: 0;
+    padding: 8px 10px;
+    background: linear-gradient(135deg, rgba(79, 195, 247, 0.08) 0%, rgba(79, 195, 247, 0.03) 100%);
+    border-top: 2px solid rgba(79, 195, 247, 0.3);
+    border-radius: 8px;
+    margin: 5px 0;
+}
+
+.input-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.chat-input-area textarea {
+    font-size: 1rem;
+    resize: none;
+    border: 2px solid var(--primary-color);
+    border-radius: 8px;
+    padding: 10px 12px;
+    background: white;
+    box-shadow: 0 2px 6px rgba(79, 195, 247, 0.15);
+    transition: all 0.2s ease;
+}
+
+.chat-input-area textarea:focus {
+    box-shadow: 0 0 0 0.25rem rgba(79, 195, 247, 0.25);
+    border-color: var(--primary-dark);
+    outline: none;
+}
+
+.chat-input-area .btn {
+    font-size: 0.95rem;
+    padding: 8px 12px;
+    font-weight: 600;
+}
+
+.chat-section .action-buttons,
+.chat-section .summary-section {
+    flex-shrink: 0;
+}
+
+/* 下半分: 入力補助エリア */
+.input-assist-section {
+    height: 50vh;  /* 50%に調整 */
+    display: flex;
+    flex-direction: column;
+    padding: 4px;  /* パディングを小さく */
+    background: var(--light-bg);
+    overflow: hidden;
+}
+
+.input-assist-header {
+    flex-shrink: 0;
+    margin-bottom: 2px;  /* マージンを最小限に */
+}
+
+.input-assist-header h5 {
+    font-size: 0.85rem;  /* ヘッダーのフォントサイズをさらに小さく */
+    font-weight: 600;
+    margin-bottom: 0;
+}
+
+.input-assist-header .form-check-label {
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.input-assist-header .input-mode-selector .btn {
+    font-size: 1.1rem;
+    padding: 10px 15px;
+    font-weight: 600;
+}
+
+/* 50音表エリア（可変高さ） */
+.keyboard-area,
+.keyboard-area-fullscreen {
+    flex: 1;
+    overflow: hidden;  /* スクロールを完全に無効化 */
+    margin-bottom: 3px;
+    padding: 2px;  /* パディングを最小限に */
+    background: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-light);
+    width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 全画面表示用の50音表エリア（下半分全体を使用） */
+.keyboard-area-fullscreen {
+    padding: 2px;  /* パディングを最小限に */
+}
+
+/* 入力コントロールエリア（固定高さ） */
+.input-controls-area {
+    flex-shrink: 0;
+    padding: 2px 0;  /* パディングを最小限に */
+}
+
+.input-controls-area .btn {
+    font-size: 0.75rem;  /* ボタンのフォントサイズをさらに小さく */
+    padding: 4px 8px;  /* パディングをさらに小さく */
+    font-weight: 600;
+}
+
+.input-controls-area .voice-input-section {
+    margin-bottom: 2px;  /* マージンを小さく */
+}
+
+.input-controls-area .voice-input-section .btn {
+    font-size: 0.75rem;
+    padding: 5px;
+}
+
+/* 50音表キーボードのスタイル調整 */
+.keyboard-area .touch-keyboard-panel,
+.keyboard-area-fullscreen .touch-keyboard-panel {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.keyboard-area .keyboard-grid,
+.keyboard-area .keyboard-grid-vertical,
+.keyboard-area-fullscreen .keyboard-grid,
+.keyboard-area-fullscreen .keyboard-grid-vertical {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);  /* 10列グリッド（右から左へ5文字×2段） */
+    gap: 2px;  /* ギャップを最小限に */
+    margin-bottom: 3px;
+    padding: 2px;
+    height: 100%;  /* 高さを100%に固定 */
+    max-height: 100%;
+    overflow: hidden;  /* スクロールを完全に無効化 */
+    width: 100%;  /* 幅を100%に */
+    box-sizing: border-box;  /* パディングを含めたサイズ計算 */
+}
+
+/* 縦書き50音表（右から左への伝統的配置） */
+.keyboard-grid-vertical {
+    grid-template-rows: repeat(6, 1fr);  /* 6行（あ行～ん行+特殊文字） */
+    max-width: 100%;  /* 親要素の幅を超えないように */
+}
+
+.keyboard-area .touch-key,
+.keyboard-area-fullscreen .touch-key {
+    min-width: auto;
+    width: 100%;
+    height: 100%;  /* 高さを100%に（グリッドセルに合わせる） */
+    min-height: 0;  /* 最小高さ制約を削除 */
+    font-size: 0.95rem;  /* フォントサイズをさらに小さく */
+    font-weight: 600;  /* 少し細く */
+    border-radius: 3px;  /* 角をさらに小さく */
+    border: 1px solid var(--primary-color);  /* ボーダーを細く */
+    background: white;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.08);  /* 影をさらに軽く */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    padding: 1px;  /* パディングを最小限に */
+}
+
+.keyboard-area .touch-key:hover,
+.keyboard-area-fullscreen .touch-key:hover {
+    background: var(--primary-color);
+    color: white;
+    transform: translateY(-3px) scale(1.05);  /* ホバー時に少し拡大 */
+    box-shadow: 0 6px 12px rgba(79, 195, 247, 0.4);
+}
+
+.keyboard-area .touch-key:active,
+.keyboard-area-fullscreen .touch-key:active {
+    transform: translateY(0) scale(0.98);  /* タップ時に少し縮小 */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+
+.keyboard-area .touch-key.special-key,
+.keyboard-area-fullscreen .touch-key.special-key {
+    background: #fff3cd;
+    border-color: var(--warning-color);
+    font-size: 0.8rem;  /* 濁点ボタンはさらに小さめ */
+}
+
+.keyboard-area .touch-key.special-key:hover,
+.keyboard-area-fullscreen .touch-key.special-key:hover {
+    background: var(--warning-color);
+    color: white;
+}
+
+.keyboard-area .touch-key.space-key,
+.keyboard-area-fullscreen .touch-key.space-key {
+    background: #e3f2fd;
+    border-color: var(--info-color);
+    font-size: 0.7rem;  /* スペースボタンも小さめ */
+    font-weight: 600;
+}
+
+.keyboard-area .touch-key.space-key:hover,
+.keyboard-area-fullscreen .touch-key.space-key:hover {
+    background: var(--info-color);
+    color: white;
+}
+
+.keyboard-area .keyboard-controls,
+.keyboard-area-fullscreen .keyboard-controls {
+    display: flex;
+    gap: 4px;  /* ギャップをさらに小さく */
+    padding: 0 2px;
+}
+
+.keyboard-area .keyboard-controls .btn,
+.keyboard-area-fullscreen .keyboard-controls .btn {
+    font-size: 0.75rem;  /* フォントサイズを小さく */
+    padding: 4px 8px;  /* パディングを小さく */
+    font-weight: 600;
+}
+
+/* 入力欄とボタンのスタイル */
+.input-controls-area textarea {
+    resize: none;
+    font-size: 1.1rem;
+    padding: 12px;
+}
+
+/* スイッチのスタイル */
+.form-check-input:checked {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+/* レスポンシブ対応 - スマホ */
+@media (max-width: 768px) {
+    .chat-section {
+        height: 50vh;
+        padding: 4px;
+    }
+    
+    .input-assist-section {
+        height: 50vh;
+        padding: 3px;
+    }
+    
+    .input-label {
+        font-size: 0.75rem;
+        margin-bottom: 4px;
+    }
+    
+    .chat-input-area {
+        padding: 6px 8px;
+        margin: 3px 0;
+    }
+    
+    .chat-input-area textarea {
+        font-size: 0.9rem;
+        padding: 8px 10px;
+    }
+    
+    .chat-input-area .btn {
+        font-size: 0.85rem;
+        padding: 6px 10px;
+    }
+    
+    .chat-input-area textarea {
+        font-size: 0.9rem;
+        padding: 5px 8px;
+    }
+    
+    .chat-input-area .btn {
+        font-size: 0.85rem;
+        padding: 5px 10px;
+    }
+    
+    .keyboard-area .keyboard-grid,
+    .keyboard-area .keyboard-grid-vertical,
+    .keyboard-area-fullscreen .keyboard-grid,
+    .keyboard-area-fullscreen .keyboard-grid-vertical {
+        gap: 1.5px;
+        padding: 1px;
+    }
+    
+    .keyboard-area .touch-key,
+    .keyboard-area-fullscreen .touch-key {
+        font-size: 0.85rem;
+        border-width: 0.5px;
+    }
+    
+    .keyboard-area .touch-key.special-key,
+    .keyboard-area-fullscreen .touch-key.special-key {
+        font-size: 0.7rem;
+    }
+    
+    .keyboard-area .touch-key.space-key,
+    .keyboard-area-fullscreen .touch-key.space-key {
+        font-size: 0.6rem;
+    }
+    
+    .input-mode-switches {
+        gap: 6px;
+        padding: 2px 3px;
+    }
+    
+    .input-mode-switches .form-check-label {
+        font-size: 0.7rem;
+    }
+    
+    .input-mode-switches .form-check-input {
+        width: 1.8rem;
+        height: 1rem;
+    }
+    
+    .input-assist-header h5 {
+        font-size: 0.75rem;
+    }
+}
+
+/* タブレット縦向き */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .chat-section {
+        height: 50vh;
+    }
+    
+    .input-assist-section {
+        height: 50vh;
+    }
+    
+    .keyboard-area .touch-key,
+    .keyboard-area-fullscreen .touch-key {
+        font-size: 0.9rem;
+    }
+}
+
+/* 小さいスマホ（iPhone SE等） */
+@media (max-width: 375px) {
+    .chat-section {
+        height: 48vh;
+        padding: 3px;
+    }
+    
+    .input-assist-section {
+        height: 52vh;
+        padding: 2px;
+    }
+    
+    .input-label {
+        font-size: 0.7rem;
+        margin-bottom: 3px;
+    }
+    
+    .chat-input-area {
+        padding: 5px 6px;
+        margin: 2px 0;
+    }
+    
+    .chat-input-area textarea {
+        font-size: 0.85rem;
+        padding: 6px 8px;
+    }
+    
+    .chat-input-area .btn {
+        font-size: 0.8rem;
+        padding: 5px 8px;
+    }
+    
+    .keyboard-area .touch-key,
+    .keyboard-area-fullscreen .touch-key {
+        font-size: 0.75rem;
+    }
+    
+    .keyboard-area .touch-key.special-key,
+    .keyboard-area-fullscreen .touch-key.special-key {
+        font-size: 0.6rem;
+    }
+    
+    .keyboard-area .touch-key.space-key,
+    .keyboard-area-fullscreen .touch-key.space-key {
+        font-size: 0.55rem;
+    }
+    
+    .chat-input-area textarea {
+        font-size: 0.85rem;
+    }
+}
+
+/* タブレット縦向きでは比率を調整 */
+@media (max-width: 992px) and (orientation: portrait) {
+    .chat-section {
+        height: 40vh;
+    }
+    
+    .input-assist-section {
+        height: 60vh;
+    }
+}
+
+/* スマートフォン横向き */
+@media (max-width: 768px) and (orientation: landscape) {
+    .chat-section {
+        height: 35vh;
+    }
+    
+    .input-assist-section {
+        height: 65vh;
+    }
+    
+    .keyboard-area .touch-key {
+        font-size: 1.2rem;
+        min-height: 40px;
+    }
+}

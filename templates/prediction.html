@@ -3,150 +3,140 @@
 {% block title %}予想を立てよう{% endblock %}
 
 {% block content %}
-<div class="chat-page">
-    <div class="container-fluid">
-        <div class="row">
-            <!-- 左側: 対話画面 -->
-            <div class="col-lg-7 chat-column">
-                <div class="chat-header text-center mb-3">
-                    <h2 class="mb-2">
-                        <i class="fas fa-brain text-primary"></i>
-                        予想を立てよう
-                    </h2>
-                    <div class="unit-display">
-                        <span class="badge bg-primary fs-6">{{ unit }}</span>
+<div class="chat-page-vertical">
+    <div class="container-fluid h-100">
+        <!-- 上半分: 対話画面 -->
+        <div class="chat-section">
+            <div class="chat-header text-center mb-2">
+                <h2 class="mb-2">
+                    <i class="fas fa-brain text-primary"></i>
+                    予想を立てよう
+                </h2>
+                <div class="unit-display">
+                    <span class="badge bg-primary fs-6">{{ unit }}</span>
+                </div>
+            </div>
+            
+            <div class="task-section mb-2">
+                <div class="task-card">
+                    <h5 class="task-title">
+                        <i class="fas fa-clipboard-list"></i>
+                        課題
+                    </h5>
+                    <p class="task-content">{{ task_content }}</p>
+                </div>
+            </div>
+            
+            <div class="chat-container">
+                <div class="api-status" id="apiStatus" style="display: none;">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span id="apiStatusMessage">AI接続を確認中...</span>
+                        <button class="btn btn-sm btn-outline-secondary ms-2" onclick="testApiConnection()">
+                            <i class="fas fa-sync"></i> 再テスト
+                        </button>
                     </div>
                 </div>
                 
-                <div class="task-section mb-3">
-                    <div class="task-card">
-                        <h5 class="task-title">
-                            <i class="fas fa-clipboard-list"></i>
-                            課題
-                        </h5>
-                        <p class="task-content">{{ task_content }}</p>
-                    </div>
-                </div>
-                
-                <div class="chat-container">
-                    <div class="api-status" id="apiStatus" style="display: none;">
-                        <div class="alert alert-warning">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <span id="apiStatusMessage">AI接続を確認中...</span>
-                            <button class="btn btn-sm btn-outline-secondary ms-2" onclick="testApiConnection()">
-                                <i class="fas fa-sync"></i> 再テスト
-                            </button>
+                <div class="chat-messages" id="chatMessages">
+                    <div class="message ai-message">
+                        <div class="message-avatar"></div>
+                        <div class="message-content">
+                            {{ initial_ai_message }}
                         </div>
                     </div>
-                    
-                    <div class="chat-messages" id="chatMessages">
-                        <div class="message ai-message">
-                            <div class="message-avatar"></div>
-                            <div class="message-content">
-                                {{ initial_ai_message }}
-                            </div>
-                        </div>
-                    </div>
                 </div>
                 
-                <div class="action-buttons text-center mt-3">
-                    <button class="btn btn-success" id="summaryButton" style="display: none;">
-                        <i class="fas fa-check me-2"></i>
-                        予想をまとめる
+                <!-- 入力エリア（直接入力可能） -->
+                <div class="chat-input-area">
+                    <div class="input-label">入力中:</div>
+                    <textarea class="form-control" id="messageInput" rows="2" placeholder="ここに入力してください..."></textarea>
+                    <button class="btn btn-primary w-100 mt-1" id="sendButton">
+                        <i class="fas fa-paper-plane me-2"></i>送信
                     </button>
                 </div>
-                
-                <div class="summary-section" id="summarySection" style="display: none;">
-                    <div class="summary-card">
-                        <h5 class="summary-title">
-                            <i class="fas fa-lightbulb"></i>
-                            あなたの予想
-                        </h5>
-                        <div class="summary-content" id="summaryContent"></div>
-                        <div class="text-center mt-3">
-                            <a href="/experiment" class="btn btn-primary">
-                                <i class="fas fa-flask me-2"></i>
-                                実験を始める
-                            </a>
+            </div>
+            
+            <div class="action-buttons text-center mt-2">
+                <button class="btn btn-success" id="summaryButton" style="display: none;">
+                    <i class="fas fa-check me-2"></i>
+                    予想をまとめる
+                </button>
+            </div>
+            
+            <div class="summary-section" id="summarySection" style="display: none;">
+                <div class="summary-card">
+                    <h5 class="summary-title">
+                        <i class="fas fa-lightbulb"></i>
+                        あなたの予想
+                    </h5>
+                    <div class="summary-content" id="summaryContent"></div>
+                    <div class="text-center mt-3">
+                        <a href="/experiment" class="btn btn-primary">
+                            <i class="fas fa-flask me-2"></i>
+                            実験を始める
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 下半分: 入力補助エリア -->
+        <div class="input-assist-section" id="inputAssistSection">
+            <div class="input-assist-header">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="mb-0">
+                        <i class="fas fa-edit"></i> 入力エリア
+                    </h5>
+                    <div class="input-mode-switches">
+                        <div class="form-check form-switch d-inline-block me-3">
+                            <input class="form-check-input" type="checkbox" id="toggle50on" checked>
+                            <label class="form-check-label" for="toggle50on">
+                                50音表
+                            </label>
+                        </div>
+                        <div class="form-check form-switch d-inline-block">
+                            <input class="form-check-input" type="checkbox" id="toggleVoice">
+                            <label class="form-check-label" for="toggleVoice">
+                                音声入力
+                            </label>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <!-- 右側: 入力画面 -->
-            <div class="col-lg-5 input-column">
-                <div class="input-panel">
-                    <div class="input-header mb-2">
-                        <h4 class="mb-2" style="font-size: 1.1rem;">
-                            <i class="fas fa-edit"></i> 入力エリア
-                        </h4>
-                        
-                        <!-- 入力モード選択 -->
-                        <div class="input-mode-selector mb-2">
-                            <div class="btn-group btn-group-sm w-100" role="group">
-                                <input type="radio" class="btn-check" name="inputMode" id="modeKeyboard" autocomplete="off" checked>
-                                <label class="btn btn-outline-primary" for="modeKeyboard">
-                                    <i class="fas fa-keyboard"></i> キーボード
-                                </label>
-                                
-                                <input type="radio" class="btn-check" name="inputMode" id="modeFlick" autocomplete="off">
-                                <label class="btn btn-outline-primary" for="modeFlick">
-                                    <i class="fas fa-hand-pointer"></i> フリック
-                                </label>
-                            </div>
+            <!-- 50音表キーボード -->
+            <div class="keyboard-area-fullscreen" id="keyboardArea">
+                <div class="touch-keyboard-panel" id="touchKeyboard">
+                    <div class="keyboard-grid-vertical" id="hiraganaKeys">
+                        <!-- JavaScriptで動的に生成 -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 入力コントロールエリア -->
+            <div class="input-controls-area">
+                <!-- 音声入力ボタン -->
+                <div class="voice-input-section mb-2" id="voiceInputSection" style="display: none;">
+                    <button class="btn btn-outline-primary w-100" id="voiceInputBtn">
+                        <i class="fas fa-microphone"></i> 音声で入力
+                    </button>
+                    <div class="voice-input-status mt-2" id="voiceInputStatus" style="display: none;">
+                        <div class="alert alert-info mb-0 py-2">
+                            <i class="fas fa-microphone"></i>
+                            <span id="voiceStatusText">音声を認識中...</span>
                         </div>
                     </div>
-                    
-                    <!-- タッチキーボード -->
-                    <div class="touch-keyboard-panel mb-2" id="touchKeyboard" style="display: block;">
-                        <div class="keyboard-grid" id="hiraganaKeys">
-                            <!-- JavaScriptで動的に生成 -->
-                        </div>
-                        <div class="keyboard-controls mt-1">
-                            <button class="btn btn-sm btn-warning flex-fill me-1" id="backspaceBtn">
-                                <i class="fas fa-backspace"></i> 消す
-                            </button>
-                            <button class="btn btn-sm btn-danger flex-fill" id="clearBtn">
-                                <i class="fas fa-times"></i> 全消去
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- フリック入力 -->
-                    <div class="flick-keyboard-panel mb-2" id="flickKeyboard" style="display: none;">
-                        <div class="flick-grid" id="flickKeys">
-                            <!-- JavaScriptで動的に生成 -->
-                        </div>
-                        <div class="keyboard-controls mt-1">
-                            <button class="btn btn-sm btn-warning flex-fill me-1" id="flickBackspaceBtn">
-                                <i class="fas fa-backspace"></i> 消す
-                            </button>
-                            <button class="btn btn-sm btn-danger flex-fill" id="flickClearBtn">
-                                <i class="fas fa-times"></i> 全消去
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- 音声入力ボタン -->
-                    <div class="voice-input-section mb-2" id="voiceInputSection">
-                        <button class="btn btn-outline-primary w-100 btn-sm" id="voiceInputBtn">
-                            <i class="fas fa-microphone"></i> 音声で入力
-                        </button>
-                        <div class="voice-input-status mt-2" id="voiceInputStatus" style="display: none;">
-                            <div class="alert alert-info mb-0 py-1">
-                                <i class="fas fa-microphone"></i>
-                                <span id="voiceStatusText">音声を認識中...</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- テキスト入力 -->
-                    <div class="text-input-section">
-                        <textarea class="form-control mb-2" id="messageInput" rows="3" placeholder="あなたの考えを入力してください..." style="font-size: 0.95rem;"></textarea>
-                        <button class="btn btn-primary w-100 btn-sm" id="sendButton">
-                            <i class="fas fa-paper-plane me-2"></i>送信
-                        </button>
-                    </div>
+                </div>
+                
+                <!-- キーボードコントロールボタン -->
+                <div class="d-flex gap-2">
+                    <button class="btn btn-warning flex-fill" id="backspaceBtn">
+                        <i class="fas fa-backspace"></i> 消す
+                    </button>
+                    <button class="btn btn-danger flex-fill" id="clearBtn">
+                        <i class="fas fa-times"></i> 全消去
+                    </button>
                 </div>
             </div>
         </div>
@@ -163,29 +153,15 @@ let lastMessage = '';
 // 入力補助用の設定（シンプルなひらがなのみ）
 const inputAssistConfig = {
     hiragana: [
-        // 縦5行、右から「あいうえお」順
+        // 右から左への伝統的な50音表配置（縦書き）
         ['わ', 'ら', 'や', 'ま', 'は', 'な', 'た', 'さ', 'か', 'あ'],
-        ['を', 'り', '', 'み', 'ひ', 'に', 'ち', 'し', 'き', 'い'],
-        ['ん', 'る', 'ゆ', 'む', 'ふ', 'ぬ', 'つ', 'す', 'く', 'う'],
+        ['', 'り', '', 'み', 'ひ', 'に', 'ち', 'し', 'き', 'い'],
+        ['を', 'る', 'ゆ', 'む', 'ふ', 'ぬ', 'つ', 'す', 'く', 'う'],
         ['', 'れ', '', 'め', 'へ', 'ね', 'て', 'せ', 'け', 'え'],
-        ['', 'ろ', 'よ', 'も', 'ほ', 'の', 'と', 'そ', 'こ', 'お'],
-        // 特殊文字行
-        ['゛', '゜', 'っ', 'ゃ', 'ゅ', 'ょ', '、', '。', ' ', '']
-    ],
-    flick: {
-        'あ': ['あ', 'い', 'う', 'え', 'お'],
-        'か': ['か', 'き', 'く', 'け', 'こ'],
-        'さ': ['さ', 'し', 'す', 'せ', 'そ'],
-        'た': ['た', 'ち', 'つ', 'て', 'と'],
-        'な': ['な', 'に', 'ぬ', 'ね', 'の'],
-        'は': ['は', 'ひ', 'ふ', 'へ', 'ほ'],
-        'ま': ['ま', 'み', 'む', 'め', 'も'],
-        'や': ['や', '(', 'ゆ', ')', 'よ'],
-        'ら': ['ら', 'り', 'る', 'れ', 'ろ'],
-        'わ': ['わ', 'を', 'ん', 'ー', '〜'],
-        '、': ['、', '。', '!', '?', '…'],
-        '☆': ['っ', 'ゃ', 'ゅ', 'ょ', 'ゎ']
-    }
+        ['ん', 'ろ', 'よ', 'も', 'ほ', 'の', 'と', 'そ', 'こ', 'お'],
+        // 小さい文字と記号（左から右へ）
+        ['゛゜', 'っ', 'ゃ', 'ゅ', 'ょ', '、', '。', '！', '？', 'スペース']
+    ]
 };
 
 const currentUnit = "{{ unit }}";
@@ -199,12 +175,38 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 入力補助の初期化
     initializeInputAssist();
-    initializeFlickInput();
     
     // 入力モード切り替え
     document.querySelectorAll('input[name="inputMode"]').forEach(radio => {
         radio.addEventListener('change', switchInputMode);
     });
+    
+    // 50音表表示切り替えスイッチ
+    const toggle50onSwitch = document.getElementById('toggle50on');
+    if (toggle50onSwitch) {
+        toggle50onSwitch.addEventListener('change', function() {
+            const keyboardArea = document.getElementById('keyboardArea');
+            if (this.checked) {
+                keyboardArea.style.display = 'flex';
+            } else {
+                keyboardArea.style.display = 'none';
+            }
+        });
+    }
+    
+    // 音声入力切り替えスイッチ
+    const toggleVoiceSwitch = document.getElementById('toggleVoice');
+    if (toggleVoiceSwitch) {
+        toggleVoiceSwitch.addEventListener('change', function() {
+            const voiceSection = document.getElementById('voiceInputSection');
+            if (this.checked) {
+                voiceSection.style.display = 'block';
+            } else {
+                voiceSection.style.display = 'none';
+                stopVoiceInput(); // 音声入力が有効な場合は停止
+            }
+        });
+    }
     
     // 音声入力ボタン
     const voiceInputBtn = document.getElementById('voiceInputBtn');
@@ -257,7 +259,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // 入力補助の初期化
 function initializeInputAssist() {
-    // ひらがなキーボードを設定（5列グリッドレイアウト）
+    // ひらがなキーボードを設定（10列グリッドレイアウト、右から左）
     const hiraganaContainer = document.getElementById('hiraganaKeys');
     hiraganaContainer.innerHTML = '';
     
@@ -270,16 +272,23 @@ function initializeInputAssist() {
                 // 空白セル
                 btn.style.visibility = 'hidden';
                 btn.textContent = ' ';
-            } else if (char === '゛') {
-                // 濁点ボタン
+            } else if (char === '゛゜') {
+                // 濁点・半濁点ボタン
                 btn.textContent = '゛゜';
-                btn.style.fontSize = '0.9rem';
+                btn.className = 'btn btn-outline-secondary touch-key special-key';
                 btn.onclick = () => addDakuten();
-            } else if (char === '゜') {
-                // 半濁音ボタン（濁点と統合したので非表示）
-                btn.style.visibility = 'hidden';
-                btn.textContent = ' ';
+            } else if (char === 'スペース') {
+                // スペースボタン
+                btn.textContent = 'スペース';
+                btn.className = 'btn btn-outline-info touch-key space-key';
+                btn.onclick = () => insertText(' ');
+            } else if (char === '、' || char === '。' || char === '！' || char === '？') {
+                // 記号ボタン
+                btn.textContent = char;
+                btn.className = 'btn btn-outline-secondary touch-key';
+                btn.onclick = () => insertText(char);
             } else {
+                // 通常のひらがなボタン
                 btn.textContent = char;
                 btn.onclick = () => insertText(char);
             }
@@ -295,18 +304,37 @@ function addDakuten() {
     if (text.length === 0) return;
     
     const lastChar = text[text.length - 1];
+    
+    // 濁点マップ
     const dakutenMap = {
         'か': 'が', 'き': 'ぎ', 'く': 'ぐ', 'け': 'げ', 'こ': 'ご',
         'さ': 'ざ', 'し': 'じ', 'す': 'ず', 'せ': 'ぜ', 'そ': 'ぞ',
         'た': 'だ', 'ち': 'ぢ', 'つ': 'づ', 'て': 'で', 'と': 'ど',
-        'は': 'ば', 'ひ': 'び', 'ふ': 'ぶ', 'へ': 'べ', 'ほ': 'ぼ',
+        'は': 'ば', 'ひ': 'び', 'ふ': 'ぶ', 'へ': 'べ', 'ほ': 'ぼ'
+    };
+    
+    // 半濁点マップ
+    const handakutenMap = {
+        'は': 'ぱ', 'ひ': 'ぴ', 'ふ': 'ぷ', 'へ': 'ぺ', 'ほ': 'ぽ',
         'ば': 'ぱ', 'び': 'ぴ', 'ぶ': 'ぷ', 'べ': 'ぺ', 'ぼ': 'ぽ'
     };
     
+    // は行なら濁点、濁音なら半濁点に変換
     if (dakutenMap[lastChar]) {
         input.value = text.slice(0, -1) + dakutenMap[lastChar];
-        input.focus();
+    } else if (handakutenMap[lastChar]) {
+        input.value = text.slice(0, -1) + handakutenMap[lastChar];
     }
+    
+    updateInputPreview();  // プレビュー更新
+    input.focus();
+}
+
+// テキストを挿入（50音表から）
+function insertText(text) {
+    const input = document.getElementById('messageInput');
+    input.value += text;
+    input.focus();
 }
 
 // 入力補助の表示切り替え
@@ -322,13 +350,6 @@ function toggleInputAssist(enabled) {
         voiceDiv.style.display = 'none';
         stopVoiceInput();
     }
-}
-
-// テキストを挿入
-function insertText(text) {
-    const input = document.getElementById('messageInput');
-    input.value += text;
-    input.focus();
 }
 
 // 音声入力開始/停止
@@ -646,151 +667,20 @@ function getSummary() {
 // 入力モード切り替え
 function switchInputMode() {
     const mode = document.querySelector('input[name="inputMode"]:checked').id;
+    const toggleSwitch = document.getElementById('toggleInputAssist');
     
-    document.getElementById('touchKeyboard').style.display = 'none';
-    document.getElementById('flickKeyboard').style.display = 'none';
+    const touchKeyboard = document.getElementById('touchKeyboard');
+    const keyboardArea = document.getElementById('keyboardArea');
     
     if (mode === 'modeKeyboard') {
-        document.getElementById('touchKeyboard').style.display = 'block';
-    } else if (mode === 'modeFlick') {
-        document.getElementById('flickKeyboard').style.display = 'block';
-    }
-}
-
-// フリック入力の初期化
-function initializeFlickInput() {
-    const flickContainer = document.getElementById('flickKeys');
-    flickContainer.innerHTML = '';
-    flickContainer.style.display = 'grid';
-    flickContainer.style.gridTemplateColumns = 'repeat(3, 1fr)';
-    flickContainer.style.gap = '8px';
-    flickContainer.style.maxWidth = '220px';
-    flickContainer.style.margin = '0 auto';
-    
-    // 4行×3列のレイアウト: あかさ / たなは / まやら / わ、。
-    const keys = [
-        'あ', 'か', 'さ',
-        'た', 'な', 'は',
-        'ま', 'や', 'ら',
-        'わ', '、', '☆'
-    ];
-    
-    keys.forEach(key => {
-        const btn = document.createElement('div');
-        btn.className = 'flick-key-container';
-        btn.style.cssText = 'position: relative; min-width: 60px; height: 60px;';
-        
-        const mainBtn = document.createElement('button');
-        mainBtn.type = 'button';
-        mainBtn.className = 'btn btn-outline-primary flick-key';
-        mainBtn.style.cssText = 'width: 100%; height: 100%; font-size: 1.1rem; font-weight: 500; position: relative;';
-        mainBtn.textContent = key;
-        
-        // フリックオプションのツールチップを表示
-        const tooltip = document.createElement('div');
-        tooltip.className = 'flick-tooltip';
-        tooltip.style.cssText = 'position: absolute; top: -50px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; white-space: nowrap; display: none; z-index: 1000;';
-        
-        const options = inputAssistConfig.flick[key];
-        if (options && options.length > 1) {
-            let tooltipText = '';
-            if (options.length === 5) {
-                tooltipText = `↑${options[1]} ←${options[3]} ${options[0]} →${options[2]} ↓${options[4]}`;
-            } else {
-                tooltipText = options.join(' ');
-            }
-            tooltip.textContent = tooltipText;
-        }
-        
-        mainBtn.addEventListener('mouseenter', () => {
-            if (options && options.length > 1) tooltip.style.display = 'block';
-        });
-        mainBtn.addEventListener('mouseleave', () => {
-            tooltip.style.display = 'none';
-        });
-        
-        // タップでメイン文字、長押しでオプション表示
-        let touchStartTime = 0;
-        let touchStartX = 0;
-        let touchStartY = 0;
-        
-        mainBtn.addEventListener('touchstart', (e) => {
-            touchStartTime = Date.now();
-            touchStartX = e.touches[0].clientX;
-            touchStartY = e.touches[0].clientY;
-            tooltip.style.display = 'block';
-        });
-        
-        mainBtn.addEventListener('touchend', (e) => {
-            tooltip.style.display = 'none';
-            const touchEndX = e.changedTouches[0].clientX;
-            const touchEndY = e.changedTouches[0].clientY;
-            const deltaX = touchEndX - touchStartX;
-            const deltaY = touchEndY - touchStartY;
-            const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-            
-            if (distance < 10) {
-                // タップ
-                insertText(options[0]);
-            } else {
-                // フリック
-                const angle = Math.atan2(deltaY, deltaX) * 180 / Math.PI;
-                let selectedChar = options[0];
-                
-                if (options.length === 5) {
-                    if (angle > -45 && angle <= 45) {
-                        // 右
-                        selectedChar = options[2];
-                    } else if (angle > 45 && angle <= 135) {
-                        // 下
-                        selectedChar = options[4];
-                    } else if (angle > -135 && angle <= -45) {
-                        // 上
-                        selectedChar = options[1];
-                    } else {
-                        // 左
-                        selectedChar = options[3];
-                    }
-                }
-                
-                if (selectedChar && selectedChar !== '(' && selectedChar !== ')') {
-                    insertText(selectedChar);
-                }
-            }
-        });
-        
-        // マウスクリックでメイン文字
-        mainBtn.addEventListener('click', (e) => {
-            if (e.type === 'click' && !('ontouchstart' in window)) {
-                insertText(options[0]);
-            }
-        });
-        
-        btn.appendChild(mainBtn);
-        btn.appendChild(tooltip);
-        flickContainer.appendChild(btn);
-    });
-    
-    // フリックキーボードのコントロールボタン
-    const flickBackspaceBtn = document.getElementById('flickBackspaceBtn');
-    const flickClearBtn = document.getElementById('flickClearBtn');
-    
-    if (flickBackspaceBtn) {
-        flickBackspaceBtn.addEventListener('click', function() {
-            const input = document.getElementById('messageInput');
-            if (input.value.length > 0) {
-                input.value = input.value.slice(0, -1);
-            }
-            input.focus();
-        });
-    }
-    
-    if (flickClearBtn) {
-        flickClearBtn.addEventListener('click', function() {
-            const input = document.getElementById('messageInput');
-            input.value = '';
-            input.focus();
-        });
+        // キーボードモードでは50音表を非表示
+        keyboardArea.style.display = 'none';
+        toggleSwitch.checked = false;
+    } else if (mode === 'mode50on') {
+        // 50音表モード
+        touchKeyboard.style.display = 'block';
+        keyboardArea.style.display = 'block';
+        toggleSwitch.checked = true;
     }
 }
 
