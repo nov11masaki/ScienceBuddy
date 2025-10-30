@@ -516,19 +516,15 @@ body {
 /* 入力エリアをチャット領域の下部に固定（スクロール時に常に見える） */
 .user-input-area {
     display: flex;
-    flex-direction: column;
     align-items: flex-end;
     padding: 6px 0 0 0;
     pointer-events: auto;
     margin-top: auto;
+    width: 100%;
 }
 
 .input-column {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
+    display: none;
 }
 
 .user-input-area .user-input-wrapper {
@@ -553,6 +549,11 @@ body {
     border: 2px solid var(--primary-color) !important;
     background: rgba(255, 255, 255, 0.95) !important;
     color: var(--dark-color) !important;
+    min-height: 120px !important;
+    padding: 10px 12px !important;
+    font-size: 0.95rem !important;
+    line-height: 1.5 !important;
+    resize: none !important;
 }
 
 .placeholder-input::placeholder {
