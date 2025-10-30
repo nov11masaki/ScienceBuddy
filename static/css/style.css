@@ -566,6 +566,14 @@ body {
     transform: scale(0.95);
 }
 
+#inputAssistSendBtn {
+    padding: 6px 12px;
+    font-size: 14px;
+    width: auto;
+    height: auto;
+    border-radius: 6px;
+}
+
 .user-input-area .user-input-bubble {
     box-shadow: 0 6px 20px rgba(79,195,247,0.18);
 }

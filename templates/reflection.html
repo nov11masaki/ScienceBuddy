@@ -140,6 +140,9 @@
                     <button class="btn btn-danger flex-fill" id="clearBtn">
                         <i class="fas fa-times"></i> 全消去
                     </button>
+                    <button class="btn btn-success" id="inputAssistSendBtn" title="送信">
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
                 </div>
             </div>
         </div>
@@ -282,10 +285,16 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // 送信ボタン
+    // 送信ボタン（チャット入力エリア）
     const sendBtn = document.getElementById('sendButton');
     if (sendBtn) {
         sendBtn.addEventListener('click', sendReflection);
+    }
+    
+    // 送信ボタン（50音表エリア）
+    const inputAssistSendBtn = document.getElementById('inputAssistSendBtn');
+    if (inputAssistSendBtn) {
+        inputAssistSendBtn.addEventListener('click', sendReflection);
     }
     
     // まとめボタン
