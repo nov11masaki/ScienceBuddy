@@ -643,18 +643,25 @@ def prediction():
 
 @app.route('/chat', methods=['POST'])
 def chat():
+    print("[DEBUG] /chat エンドポイント呼び出し")
     user_message = request.json.get('message')
     input_metadata = request.json.get('metadata', {})
+    print(f"[DEBUG] ユーザーメッセージ: {user_message}")
+    
     conversation = session.get('conversation', [])
     unit = session.get('unit')
     task_content = session.get('task_content')
     student_number = session.get('student_number')
+    
+    print(f"[DEBUG] ユニット: {unit}, 学生番号: {student_number}")
+    print(f"[DEBUG] 現在の対話履歴: {len(conversation)} メッセージ")
     
     # 対話履歴に追加
     conversation.append({'role': 'user', 'content': user_message})
     
     # 単元ごとのプロンプトを読み込み
     unit_prompt = load_unit_prompt(unit)
+    print(f"[DEBUG] プロンプト読み込み完了: {len(unit_prompt)} 文字")
     
     # 対話履歴を含めてプロンプト作成
     # OpenAI APIに送信するためにメッセージ形式で構築
@@ -669,11 +676,16 @@ def chat():
             "content": msg['content']
         })
     
+    print(f"[DEBUG] OpenAI に送信するメッセージ数: {len(messages)}")
+    
     try:
+        print("[DEBUG] OpenAI API 呼び出し開始")
         ai_response = call_openai_with_retry(messages, unit=unit, stage='prediction')
+        print(f"[DEBUG] AI レスポンス取得: {len(ai_response)} 文字")
         
         # JSON形式のレスポンスの場合は解析して純粋なメッセージを抽出
         ai_message = extract_message_from_json_response(ai_response)
+        print(f"[DEBUG] 抽出後メッセージ: {len(ai_message)} 文字")
         
         # 予想・考察段階ではマークダウン除去をスキップ（MDファイルのプロンプトに従う）
         # ai_message = remove_markdown_formatting(ai_message)
@@ -711,16 +723,18 @@ def chat():
         # user + AI で最低2セット（2往復）= 4メッセージ以上必要
         # ただし、実際のユーザーとの往復回数をカウント(AIの初期メッセージは除外)
         user_messages_count = sum(1 for msg in conversation if msg['role'] == 'user')
-        suggest_summary = user_messages_count >= 2  # ユーザーメッセージが2回以上
         
         response_data = {
             'response': ai_message,
-            'suggest_summary': suggest_summary
         }
         
+        print(f"[DEBUG] レスポンス返却: {ai_message[:50]}...")
         return jsonify(response_data)
         
     except Exception as e:
+        print(f"[DEBUG] エラー発生: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': f'AI接続エラーが発生しました。しばらく待ってから再度お試しください。'}), 500
 
 @app.route('/summary', methods=['POST'])
@@ -865,12 +879,12 @@ def reflect_chat():
         # 対話が2往復以上あれば、考察のまとめを作成可能
         # ユーザーメッセージが2回以上必要
         user_messages_count = sum(1 for msg in reflection_conversation if msg['role'] == 'user')
-        suggest_final_summary = user_messages_count >= 2
         
-        return jsonify({
+        response_data = {
             'response': ai_message,
-            'suggest_final_summary': suggest_final_summary
-        })
+        }
+        
+        return jsonify(response_data)
         
     except Exception as e:
         return jsonify({'error': f'AI接続エラーが発生しました。しばらく待ってから再度お試しください。'}), 500

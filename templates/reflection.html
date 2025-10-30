@@ -41,7 +41,12 @@
                     <div class="message user-message user-input-area input-compact" style="margin-top: 12px;">
                         <div class="message-avatar user-avatar"></div>
                         <div class="user-input-wrapper">
-                            <textarea class="user-input-bubble" id="reflectionInput" placeholder="ここに入力してください..."></textarea>
+                            <div class="input-with-send">
+                                <textarea class="user-input-bubble" id="reflectionInput" placeholder="ここに入力してください..."></textarea>
+                                <button class="send-button" id="sendButton" title="送信">
+                                    <i class="fas fa-arrow-right"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -52,6 +57,14 @@
                     <i class="fas fa-file-alt me-2"></i>
                     考察をまとめる
                 </button>
+            </div>
+            
+            <!-- チャット内で表示される学習完了ボタン -->
+            <div class="text-center mt-3" id="completionSection" style="display: none;">
+                <a href="/" class="btn btn-success btn-lg">
+                    <i class="fas fa-home me-2"></i>
+                    ホームに戻る
+                </a>
             </div>
             
             <div class="summary-section" id="finalSummarySection" style="display: none;">
@@ -233,9 +246,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // 音声入力ボタン
     const voiceInputBtn = document.getElementById('voiceInputBtn');
     if (voiceInputBtn) {
-        voiceInputBtn.onclick = function() {
+        voiceInputBtn.addEventListener('click', function() {
+            console.log('voiceInputBtnがクリックされました (reflection.html)');
             startVoiceInput();
-        };
+        });
     }
     
     // キーボードコントロールボタン
@@ -267,6 +281,12 @@ document.addEventListener('DOMContentLoaded', function() {
             sendReflection();
         }
     });
+    
+    // 送信ボタン
+    const sendBtn = document.getElementById('sendButton');
+    if (sendBtn) {
+        sendBtn.addEventListener('click', sendReflection);
+    }
     
     // まとめボタン
     document.getElementById('finalSummaryButton').addEventListener('click', getFinalSummary);
@@ -366,8 +386,9 @@ function sendReflection() {
             addReflectionMessage(data.response, 'ai');
             reflectionCount++;
             
-            // サーバーからの判定に基づいて、まとめボタンを表示
-            if (data.suggest_final_summary) {
+            // AIのメッセージが「まとめ」に関する内容だったら、要約ボタンを表示
+            if (data.response.includes('まとめ')) {
+                console.log('【DEBUG】最終要約ボタンを表示します');
                 document.getElementById('finalSummaryButton').style.display = 'block';
             }
         }
@@ -404,7 +425,20 @@ function addReflectionMessage(content, type) {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
+function showCompletionMessage() {
+    console.log('【DEBUG】showCompletionMessage 呼び出し');
+    const completionSection = document.getElementById('completionSection');
+    if (completionSection) {
+        completionSection.style.display = 'block';
+        // スクロールして見やすく
+        setTimeout(() => {
+            completionSection.scrollIntoView({ behavior: 'smooth' });
+        }, 300);
+    }
+}
+
 function getFinalSummary() {
+    console.log('【DEBUG】getFinalSummary 呼び出し');
     document.getElementById('finalSummaryButton').disabled = true;
     
     fetch('/final_summary', {
@@ -413,19 +447,29 @@ function getFinalSummary() {
             'Content-Type': 'application/json'
         }
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('【DEBUG】/final_summary レスポンス受信:', response.status);
+        return response.json();
+    })
     .then(data => {
+        console.log('【DEBUG】最終要約データ:', data);
         if (data.error) {
             alert('エラーが発生しました: ' + data.error);
         } else {
+            console.log('【DEBUG】最終要約を表示します:', data.summary);
             document.getElementById('finalSummaryContent').textContent = data.summary;
             document.getElementById('finalSummarySection').style.display = 'block';
             document.getElementById('finalSummaryButton').style.display = 'none';
+            
+            // スクロールして要約セクションを見やすく
+            setTimeout(() => {
+                document.getElementById('finalSummarySection').scrollIntoView({ behavior: 'smooth' });
+            }, 500);
         }
         document.getElementById('finalSummaryButton').disabled = false;
     })
     .catch(error => {
-        console.error('Error:', error);
+        console.error('【DEBUG】Error:', error);
         alert('通信エラーが発生しました。');
         document.getElementById('finalSummaryButton').disabled = false;
     });

@@ -50,7 +50,12 @@
                     <div class="message user-message user-input-area input-compact" style="margin-top: 12px;">
                         <div class="message-avatar user-avatar"></div>
                         <div class="user-input-wrapper">
-                            <textarea class="user-input-bubble" id="messageInput" placeholder="ここに入力してください..."></textarea>
+                            <div class="input-with-send">
+                                <textarea class="user-input-bubble" id="messageInput" placeholder="ここに入力してください..."></textarea>
+                                <button class="send-button" id="sendButton" title="送信">
+                                    <i class="fas fa-arrow-right"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -61,6 +66,14 @@
                     <i class="fas fa-check me-2"></i>
                     予想をまとめる
                 </button>
+            </div>
+            
+            <!-- チャット内で表示される実験開始ボタン -->
+            <div class="text-center mt-3" id="experimentButtonSection" style="display: none;">
+                <a href="/experiment" class="btn btn-primary btn-lg">
+                    <i class="fas fa-flask me-2"></i>
+                    では、実験を始めましょう！
+                </a>
             </div>
             
             <div class="summary-section" id="summarySection" style="display: none;">
@@ -238,11 +251,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const voiceInputBtn = document.getElementById('voiceInputBtn');
     console.log('voiceInputBtn要素:', voiceInputBtn);
     if (voiceInputBtn) {
-        // 既存のイベントリスナーを削除してから新しいものを追加
-        voiceInputBtn.onclick = function() {
+        voiceInputBtn.addEventListener('click', function() {
             console.log('voiceInputBtnがクリックされました');
             startVoiceInput();
-        };
+        });
         console.log('voiceInputBtnにイベントリスナーを設定しました');
     } else {
         console.error('voiceInputBtn要素が見つかりません');
@@ -277,6 +289,12 @@ document.addEventListener('DOMContentLoaded', function() {
             sendMessage();
         }
     });
+    
+    // 送信ボタン
+    const sendBtn = document.getElementById('sendButton');
+    if (sendBtn) {
+        sendBtn.addEventListener('click', sendMessage);
+    }
     
     // まとめボタン
     document.getElementById('summaryButton').addEventListener('click', getSummary);
@@ -615,8 +633,7 @@ function retryLastMessage() {
 }
 
 function sendMessageToAPI(message) {
-    // 送信ボタンを無効化
-    document.getElementById('sendButton').disabled = true;
+    console.log('【DEBUG】sendMessageToAPI 呼び出し, メッセージ:', message);
     
     // 読み込み中のメッセージを表示
     const loadingMessage = addMessage('考え中...', 'ai');
@@ -627,6 +644,8 @@ function sendMessageToAPI(message) {
         message: message
     };
     
+    console.log('【DEBUG】リクエストデータ:', requestData);
+    
     // AIの応答を取得
     fetch('/chat', {
         method: 'POST',
@@ -636,6 +655,8 @@ function sendMessageToAPI(message) {
         body: JSON.stringify(requestData)
     })
     .then(response => {
+        console.log('【DEBUG】レスポンス受信:', response.status, response.statusText);
+        
         // 読み込み中メッセージを削除
         const loadingMessages = document.querySelectorAll('.loading-message');
         loadingMessages.forEach(msg => msg.remove());
@@ -647,42 +668,59 @@ function sendMessageToAPI(message) {
         return response.json();
     })
     .then(data => {
+        console.log('【DEBUG】JSONレスポンス:', data);
+        
         if (data.error) {
+            console.error('【DEBUG】エラーレスポンス:', data.error);
             addMessage('⚠️ ' + data.error, 'ai');
             addRetryButton();
         } else {
+            console.log('【DEBUG】AI返答を表示:', data.response);
             addMessage(data.response, 'ai');
             conversationCount++;
+            
+            // AIのメッセージが「まとめ」に関する内容だったら、要約ボタンを表示
+            if (data.response.includes('まとめ')) {
+                console.log('【DEBUG】要約ボタンを表示します');
+                document.getElementById('summaryButton').style.display = 'block';
+            }
             
             // デジタル学習ツインのインサイトを表示（開発時のみ）
             if (data.twin_insights && window.location.hostname === 'localhost') {
                 console.log('学習ツイン分析:', data.twin_insights);
                 displayTwinInsights(data.twin_insights);
             }
-            
-            if (data.suggest_summary) {
-                document.getElementById('summaryButton').style.display = 'block';
-            }
         }
-        
-        document.getElementById('sendButton').disabled = false;
     })
     .catch(error => {
         // 読み込み中メッセージを削除
         const loadingMessages = document.querySelectorAll('.loading-message');
         loadingMessages.forEach(msg => msg.remove());
         
+        console.error('【DEBUG】エラーキャッチ:', error);
         console.error('通信エラー詳細:', error);
         addMessage('⚠️ 通信エラーが発生しました: ' + error.message, 'ai');
         addRetryButton();
-        document.getElementById('sendButton').disabled = false;
         
         // API接続テストを実行
         testApiConnection();
     });
 }
 
+function showExperimentButton() {
+    console.log('【DEBUG】showExperimentButton 呼び出し');
+    const experimentButtonSection = document.getElementById('experimentButtonSection');
+    if (experimentButtonSection) {
+        experimentButtonSection.style.display = 'block';
+        // スクロールして見やすく
+        setTimeout(() => {
+            experimentButtonSection.scrollIntoView({ behavior: 'smooth' });
+        }, 300);
+    }
+}
+
 function getSummary() {
+    console.log('【DEBUG】getSummary 呼び出し');
     document.getElementById('summaryButton').disabled = true;
     
     fetch('/summary', {
@@ -691,19 +729,29 @@ function getSummary() {
             'Content-Type': 'application/json'
         }
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('【DEBUG】/summary レスポンス受信:', response.status);
+        return response.json();
+    })
     .then(data => {
+        console.log('【DEBUG】要約データ:', data);
         if (data.error) {
             alert('エラーが発生しました: ' + data.error);
         } else {
+            console.log('【DEBUG】要約を表示します:', data.summary);
             document.getElementById('summaryContent').textContent = data.summary;
             document.getElementById('summarySection').style.display = 'block';
             document.getElementById('summaryButton').style.display = 'none';
+            
+            // スクロールして要約セクションを見やすく
+            setTimeout(() => {
+                document.getElementById('summarySection').scrollIntoView({ behavior: 'smooth' });
+            }, 500);
         }
         document.getElementById('summaryButton').disabled = false;
     })
     .catch(error => {
-        console.error('Error:', error);
+        console.error('【DEBUG】Error:', error);
         alert('通信エラーが発生しました。');
         document.getElementById('summaryButton').disabled = false;
     });

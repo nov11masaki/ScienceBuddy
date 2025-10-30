@@ -41,6 +41,7 @@
                             <i class="fas fa-check me-2"></i>
                             実験が完了しました
                         </button>
+                        <p class="text-muted mt-3 small">実験の結果を観察したら、このボタンを押してください</p>
                     </div>
                 </div>
                 
@@ -63,7 +64,7 @@ document.getElementById('completeButton').addEventListener('click', function() {
     this.disabled = true;
     this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>結果を送信中...';
     
-    // 少し待ってから次のページに移動
+    // 少し待ってから考察ページに移動
     setTimeout(() => {
         window.location.href = '/reflection';
     }, 1000);
