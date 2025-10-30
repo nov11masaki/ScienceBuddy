@@ -517,6 +517,7 @@ body {
 .user-input-area {
     display: flex;
     align-items: flex-end;
+    justify-content: center;
     padding: 6px 0 0 0;
     pointer-events: auto;
     margin-top: auto;
@@ -528,8 +529,9 @@ body {
 }
 
 .user-input-area .user-input-wrapper {
-    width: 100%;
-    margin: 0 0 0 0;
+    width: 90%;
+    max-width: 1000px;
+    margin: 0 auto;
 }
 
 .input-with-send {
@@ -549,11 +551,13 @@ body {
     border: 2px solid var(--primary-color) !important;
     background: rgba(255, 255, 255, 0.95) !important;
     color: var(--dark-color) !important;
-    min-height: 120px !important;
-    padding: 10px 12px !important;
+    min-height: 60px !important;
+    max-height: 100px !important;
+    padding: 10px 14px !important;
     font-size: 0.95rem !important;
     line-height: 1.5 !important;
     resize: none !important;
+    width: 100% !important;
 }
 
 .placeholder-input::placeholder {
