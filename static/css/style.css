@@ -527,8 +527,8 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
-    margin-bottom: 8px;
+    gap: 8px;
+    margin-bottom: 12px;
 }
 
 .input-placeholder-text {
@@ -537,6 +537,9 @@ body {
     text-align: center;
     font-weight: 500;
     letter-spacing: 0.3px;
+    min-height: 16px;
+    max-width: 120px;
+    word-wrap: break-word;
 }
 
 .user-input-area .user-input-wrapper {
@@ -631,13 +634,12 @@ body {
 /* 入力エリア縮小サイズ（50音表OFF時） */
 .user-input-area.input-compact {
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
+    justify-content: flex-end;
+    align-items: center;
 }
 
 .user-input-area.input-compact .user-input-wrapper {
-    margin: 0 0 0 0;
-    width: 100%;
+    margin: 0 8px 0 0;
 }
 
 .user-input-area.input-compact .user-input-bubble {
@@ -656,13 +658,11 @@ body {
 /* 入力エリア通常サイズ（50音表ON時） */
 .user-input-area.input-normal {
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
+    justify-content: flex-end;
 }
 
 .user-input-area.input-normal .user-input-wrapper {
-    margin: 0 0 0 0;
-    width: 100%;
+    margin: 0 12px 0 0;
 }
 
 .user-input-area.input-normal .user-input-bubble {

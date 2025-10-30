@@ -41,7 +41,7 @@
                     <div class="message user-message user-input-area input-compact" style="margin-top: 12px;">
                         <div class="input-column">
                             <div class="message-avatar user-avatar"></div>
-                            <div class="input-placeholder-text">ここに入力してください</div>
+                            <div class="input-placeholder-text" id="inputPlaceholderText">ここに入力してください</div>
                         </div>
                         <div class="user-input-wrapper">
                             <div class="input-with-send">
@@ -280,6 +280,19 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // 入力欄の入力イベント - プレースホルダーテキストを非表示
+    const reflectionInput = document.getElementById('reflectionInput');
+    reflectionInput.addEventListener('input', function() {
+        const placeholderText = document.getElementById('inputPlaceholderText');
+        if (placeholderText) {
+            if (this.value.length > 0) {
+                placeholderText.style.display = 'none';
+            } else {
+                placeholderText.style.display = 'block';
+            }
+        }
+    });
+    
     // Enterキーで送信
     document.getElementById('reflectionInput').addEventListener('keypress', function(e) {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -515,6 +528,12 @@ function startVoiceInput() {
         statusText.textContent = '音声を認識中...';
         voiceBtn.classList.add('btn-danger');
         voiceBtn.classList.remove('btn-outline-primary');
+        
+        // 音声入力中はプレースホルダーテキストを非表示
+        const placeholderText = document.getElementById('inputPlaceholderText');
+        if (placeholderText) {
+            placeholderText.style.display = 'none';
+        }
     };
     
     recognition.onresult = function(event) {
@@ -530,14 +549,24 @@ function startVoiceInput() {
             }
         }
         
+        const input = document.getElementById('reflectionInput');
+        const placeholderText = document.getElementById('inputPlaceholderText');
+        
         if (interimTranscript) {
             statusText.textContent = '認識中: ' + interimTranscript;
+            // プレースホルダーテキストにもリアルタイム表示
+            if (placeholderText && input.value + interimTranscript) {
+                placeholderText.textContent = input.value + interimTranscript;
+            }
         }
         
         if (finalTranscript) {
-            const input = document.getElementById('reflectionInput');
             input.value += finalTranscript;
             statusText.textContent = '認識完了: ' + finalTranscript;
+            // プレースホルダーテキストにもリアルタイム表示
+            if (placeholderText && input.value) {
+                placeholderText.textContent = input.value;
+            }
         }
     };
     
@@ -561,6 +590,12 @@ function startVoiceInput() {
             voiceBtn.classList.remove('btn-danger');
             voiceBtn.classList.add('btn-outline-primary');
             recognition.isListening = false;
+            
+            // プレースホルダーテキストを表示
+            const placeholderText = document.getElementById('inputPlaceholderText');
+            if (placeholderText) {
+                placeholderText.style.display = 'block';
+            }
         }, 1000);
     };
     

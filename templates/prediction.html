@@ -50,7 +50,7 @@
                     <div class="message user-message user-input-area input-compact" style="margin-top: 12px;">
                         <div class="input-column">
                             <div class="message-avatar user-avatar"></div>
-                            <div class="input-placeholder-text">ここに入力してください</div>
+                            <div class="input-placeholder-text" id="inputPlaceholderText">ここに入力してください</div>
                         </div>
                         <div class="user-input-wrapper">
                             <div class="input-with-send">
@@ -456,6 +456,12 @@ function startVoiceInput() {
             voiceBtn.innerHTML = '<i class="fas fa-stop"></i> 停止';
             voiceBtn.classList.add('btn-danger');
             voiceBtn.classList.remove('btn-outline-primary');
+            
+            // 音声入力中はプレースホルダーテキストを非表示
+            const placeholderText = document.getElementById('inputPlaceholderText');
+            if (placeholderText) {
+                placeholderText.style.display = 'none';
+            }
         };
     
     recognition.onresult = function(event) {
@@ -478,6 +484,12 @@ function startVoiceInput() {
             input.value = input.value.substring(0, startPosition) + finalTranscript + interimTranscript;
             statusText.textContent = '認識中: ' + interimTranscript;
             console.log('途中結果:', interimTranscript);
+            
+            // プレースホルダーテキストにもリアルタイム表示
+            const placeholderText = document.getElementById('inputPlaceholderText');
+            if (placeholderText && input.value) {
+                placeholderText.textContent = input.value;
+            }
         }
         
         if (finalTranscript) {
@@ -486,6 +498,12 @@ function startVoiceInput() {
             startPosition = input.value.length;  // 新しい開始位置を更新
             statusText.textContent = '認識完了: ' + finalTranscript;
             console.log('確定結果:', finalTranscript);
+            
+            // プレースホルダーテキストにもリアルタイム表示
+            const placeholderText = document.getElementById('inputPlaceholderText');
+            if (placeholderText && input.value) {
+                placeholderText.textContent = input.value;
+            }
         }
         
         // 入力欄を最後までスクロール
