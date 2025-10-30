@@ -3,116 +3,130 @@
 {% block title %}考察をまとめよう{% endblock %}
 
 {% block content %}
-<div class="reflection-page">
-    <div class="container-fluid">
-        <div class="reflection-header text-center mb-3">
-            <h2 class="mb-2">
-                <i class="fas fa-lightbulb text-primary"></i>
-                考察をまとめよう
-            </h2>
-            <div class="unit-display">
-                <span class="badge bg-primary fs-6">{{ unit }}</span>
-            </div>
-        </div>
-        
-        <div class="row g-3">
-            <!-- 左側: 対話エリア -->
-            <div class="col-lg-7 chat-column">
-                <div class="prediction-review mb-3">
-                    <div class="review-card">
-                        <h5 class="review-title">
-                            <i class="fas fa-brain"></i>
-                            あなたの予想
-                        </h5>
-                        <p class="review-content">{{ prediction_summary or '予想が記録されていません。' }}</p>
-                    </div>
+<div class="chat-page-vertical">
+    <div class="container-fluid h-100">
+        <!-- 上半分: 対話画面 -->
+        <div class="chat-section">
+            <div class="chat-header text-center mb-2">
+                <h2 class="mb-2">
+                    <i class="fas fa-lightbulb text-primary"></i>
+                    考察をまとめよう
+                </h2>
+                <div class="unit-display">
+                    <span class="badge bg-primary fs-6">{{ unit }}</span>
                 </div>
-                
-                <div class="chat-container">
-                    <div class="chat-messages" id="reflectionMessages">
-                        <!-- 初期メッセージはJavaScriptで動的に追加 -->
-                    </div>
-                    
-                    <div class="chat-input-section mt-3">
-                        <div class="input-group">
-                            <textarea class="form-control" id="reflectionInput" rows="3" 
-                                    placeholder="実験結果を入力してください..."></textarea>
-                            <button class="btn btn-primary" id="sendReflectionButton">
-                                <i class="fas fa-paper-plane"></i>
-                            </button>
+            </div>
+            
+            <div class="prediction-review mb-2">
+                <div class="review-card">
+                    <h5 class="review-title">
+                        <i class="fas fa-brain"></i>
+                        あなたの予想
+                    </h5>
+                    <p class="review-content">{{ prediction_summary or '予想が記録されていません。' }}</p>
+                </div>
+            </div>
+            
+            <div class="chat-container">
+                <div class="chat-messages" id="reflectionMessages">
+                    <!-- 初期メッセージ -->
+                    <div class="message ai-message">
+                        <div class="message-avatar"></div>
+                        <div class="message-content">
+                            {{ initial_ai_message }}
                         </div>
                     </div>
-                </div>
-                
-                <div class="action-buttons text-center mt-3">
-                    <button class="btn btn-success" id="finalSummaryButton" style="display: none;">
-                        <i class="fas fa-file-alt me-2"></i>
-                        考察をまとめる
-                    </button>
-                </div>
-                
-                <div class="final-summary-section" id="finalSummarySection" style="display: none;">
-                    <div class="final-summary-card">
-                        <h5 class="final-summary-title">
-                            <i class="fas fa-graduation-cap"></i>
-                            最終考察
-                        </h5>
-                        <div class="final-summary-content" id="finalSummaryContent"></div>
-                        <div class="text-center mt-3">
-                            <a href="/" class="btn btn-primary">
-                                <i class="fas fa-home me-2"></i>
-                                ホームに戻る
-                            </a>
+                    
+                    <!-- 入力エリア（直接入力可能） -->
+                    <div class="message user-message user-input-area input-compact" style="margin-top: 12px;">
+                        <div class="message-avatar user-avatar"></div>
+                        <div class="user-input-wrapper">
+                            <textarea class="user-input-bubble" id="reflectionInput" placeholder="ここに入力してください..."></textarea>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <!-- 右側: 入力補助エリア -->
-            <div class="col-lg-5 input-column">
-                <div class="input-panel">
-                    <h5 class="mb-3">
-                        <i class="fas fa-keyboard"></i> 入力補助
+            <div class="action-buttons text-center mt-2">
+                <button class="btn btn-success" id="finalSummaryButton" style="display: none;">
+                    <i class="fas fa-file-alt me-2"></i>
+                    考察をまとめる
+                </button>
+            </div>
+            
+            <div class="summary-section" id="finalSummarySection" style="display: none;">
+                <div class="summary-card">
+                    <h5 class="summary-title">
+                        <i class="fas fa-graduation-cap"></i>
+                        最終考察
                     </h5>
-                    
-                    <!-- 入力補助機能の切り替えスイッチ -->
-                    <div class="form-check form-switch mb-3">
-                        <input class="form-check-input" type="checkbox" id="inputAssistToggle">
-                        <label class="form-check-label" for="inputAssistToggle">
-                            入力補助を使う
-                        </label>
+                    <div class="summary-content" id="finalSummaryContent"></div>
+                    <div class="text-center mt-3">
+                        <a href="/" class="btn btn-primary">
+                            <i class="fas fa-home me-2"></i>
+                            ホームに戻る
+                        </a>
                     </div>
-                    
-                    <!-- タッチキーボード -->
-                    <div class="touch-keyboard" id="touchKeyboard" style="display: none;">
-                        <div class="keyboard-section">
-                            <small class="text-muted d-block mb-2">ひらがな</small>
-                            <div class="keyboard-grid" id="hiraganaKeys">
-                                <!-- JavaScriptで動的に生成 -->
-                            </div>
-                            <div class="keyboard-controls mt-2">
-                                <button class="btn btn-warning btn-sm" id="backspaceBtn">
-                                    <i class="fas fa-backspace"></i> 戻す
-                                </button>
-                                <button class="btn btn-danger btn-sm" id="clearBtn">
-                                    <i class="fas fa-times"></i> 消去
-                                </button>
-                            </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 下半分: 入力補助エリア -->
+        <div class="input-assist-section" id="inputAssistSection">
+            <div class="input-assist-header">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="mb-0">
+                        <i class="fas fa-edit"></i> 入力エリア
+                    </h5>
+                    <div class="input-mode-switches">
+                        <div class="form-check form-switch d-inline-block me-3">
+                            <input class="form-check-input" type="checkbox" id="toggle50on">
+                            <label class="form-check-label" for="toggle50on">
+                                50音表
+                            </label>
+                        </div>
+                        <div class="form-check form-switch d-inline-block">
+                            <input class="form-check-input" type="checkbox" id="toggleVoice">
+                            <label class="form-check-label" for="toggleVoice">
+                                音声入力
+                            </label>
                         </div>
                     </div>
-                    
-                    <!-- 音声入力 -->
-                    <div class="voice-input-section mt-3" id="voiceInputSection" style="display: none;">
-                        <button class="btn btn-outline-primary w-100" id="voiceInputBtn">
-                            <i class="fas fa-microphone"></i> 音声で入力
-                        </button>
-                        <div class="voice-input-status mt-2" id="voiceInputStatus" style="display: none;">
-                            <div class="alert alert-info mb-0">
-                                <i class="fas fa-microphone"></i>
-                                <span id="voiceStatusText">音声を認識中...</span>
-                            </div>
+                </div>
+            </div>
+            
+            <!-- 50音表キーボード -->
+            <div class="keyboard-area-fullscreen" id="keyboardArea">
+                <div class="touch-keyboard-panel" id="touchKeyboard">
+                    <div class="keyboard-grid-vertical" id="hiraganaKeys">
+                        <!-- JavaScriptで動的に生成 -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 入力コントロールエリア -->
+            <div class="input-controls-area">
+                <!-- 音声入力ボタン -->
+                <div class="voice-input-section mb-2" id="voiceInputSection" style="display: none;">
+                    <button class="btn btn-outline-primary w-100" id="voiceInputBtn">
+                        <i class="fas fa-microphone"></i> 音声で入力
+                    </button>
+                    <div class="voice-input-status mt-2" id="voiceInputStatus" style="display: none;">
+                        <div class="alert alert-info mb-0 py-2">
+                            <i class="fas fa-microphone"></i>
+                            <span id="voiceStatusText">音声を認識中...</span>
                         </div>
                     </div>
+                </div>
+                
+                <!-- キーボードコントロールボタン -->
+                <div class="d-flex gap-2">
+                    <button class="btn btn-warning flex-fill" id="backspaceBtn">
+                        <i class="fas fa-backspace"></i> 消す
+                    </button>
+                    <button class="btn btn-danger flex-fill" id="clearBtn">
+                        <i class="fas fa-times"></i> 全消去
+                    </button>
                 </div>
             </div>
         </div>
@@ -124,85 +138,197 @@
 <script>
 let conversationCount = 0;
 let reflectionCount = 0;
+let recognition = null;
 
-// 入力補助用の設定
+const currentUnit = "{{ unit }}";
+
+// 入力補助用の設定（シンプルなひらがなのみ）
 const inputAssistConfig = {
     hiragana: [
-        // あ行
-        ['あ', 'い', 'う', 'え', 'お'],
-        // か行
-        ['か', 'き', 'く', 'け', 'こ'],
-        // さ行
-        ['さ', 'し', 'す', 'せ', 'そ'],
-        // た行
-        ['た', 'ち', 'つ', 'て', 'と'],
-        // な行
-        ['な', 'に', 'ぬ', 'ね', 'の'],
-        // は行
-        ['は', 'ひ', 'ふ', 'へ', 'ほ'],
-        // ま行
-        ['ま', 'み', 'む', 'め', 'も'],
-        // や行
-        ['や', '', 'ゆ', '', 'よ'],
-        // ら行
-        ['ら', 'り', 'る', 'れ', 'ろ'],
-        // わ行
-        ['わ', '', '', '', 'ん'],
-        // 濁音・半濁音
-        ['が', 'ぎ', 'ぐ', 'げ', 'ご'],
-        ['ざ', 'じ', 'ず', 'ぜ', 'ぞ'],
-        ['だ', 'ぢ', 'づ', 'で', 'ど'],
-        ['ば', 'び', 'ぶ', 'べ', 'ぼ'],
-        ['ぱ', 'ぴ', 'ぷ', 'ぺ', 'ぽ'],
-        // 小文字・記号
-        ['っ', 'ゃ', 'ゅ', 'ょ', 'を'],
-        ['。', '、', ' ', '', '']
+        // 右から左への伝統的な50音表配置（縦書き）
+        ['わ', 'ら', 'や', 'ま', 'は', 'な', 'た', 'さ', 'か', 'あ'],
+        ['', 'り', '', 'み', 'ひ', 'に', 'ち', 'し', 'き', 'い'],
+        ['を', 'る', 'ゆ', 'む', 'ふ', 'ぬ', 'つ', 'す', 'く', 'う'],
+        ['', 'れ', '', 'め', 'へ', 'ね', 'て', 'せ', 'け', 'え'],
+        ['ん', 'ろ', 'よ', 'も', 'ほ', 'の', 'と', 'そ', 'こ', 'お'],
+        // 小さい文字と記号（左から右へ）
+        ['゛゜', 'っ', 'ゃ', 'ゅ', 'ょ', '、', '。', '！', '？', 'スペース']
     ]
 };
 
-const currentUnit = "{{ unit }}";
-let recognition = null;
+// 濁点・半濁点変換マップ
+const dakutenMap = {
+    'か': 'が', 'き': 'ぎ', 'く': 'ぐ', 'け': 'げ', 'こ': 'ご',
+    'さ': 'ざ', 'し': 'じ', 'す': 'ず', 'せ': 'ぜ', 'そ': 'ぞ',
+    'た': 'だ', 'ち': 'ぢ', 'つ': 'づ', 'て': 'で', 'と': 'ど',
+    'は': 'ば', 'ひ': 'び', 'ふ': 'ぶ', 'へ': 'べ', 'ほ': 'ぼ',
+    'が': 'か', 'ぎ': 'き', 'ぐ': 'く', 'げ': 'け', 'ご': 'こ',
+    'ざ': 'さ', 'じ': 'し', 'ず': 'す', 'ぜ': 'せ', 'ぞ': 'そ',
+    'だ': 'た', 'ぢ': 'ち', 'づ': 'つ', 'で': 'て', 'ど': 'と',
+    'ば': 'ぱ', 'び': 'ぴ', 'ぶ': 'ぷ', 'べ': 'ぺ', 'ぼ': 'ぽ',
+    'ぱ': 'は', 'ぴ': 'ひ', 'ぷ': 'ふ', 'ぺ': 'へ', 'ぽ': 'ほ'
+};
 
 // ページ読み込み時の初期化
 document.addEventListener('DOMContentLoaded', function() {
-    // 初期メッセージを表示（サーバーから渡されたメッセージを使用）
-    const initialMessage = '{{ initial_ai_message }}';
-    addReflectionMessage(initialMessage, 'ai');
+    // 初期メッセージはHTMLに直接書かれているので、ここでは追加しない
+    
+    // デフォルトで50音表がOFFなので、入力補助エリアを縮小
+    const inputAssistSection = document.getElementById('inputAssistSection');
+    if (inputAssistSection) {
+        inputAssistSection.classList.add('keyboard-off');
+    }
     
     // 入力補助の初期化
     initializeInputAssist();
     
-    // 入力補助トグル
-    document.getElementById('inputAssistToggle').addEventListener('change', function(e) {
-        toggleInputAssist(e.target.checked);
-    });
+    // 50音表表示切り替えスイッチ
+    const toggle50onSwitch = document.getElementById('toggle50on');
+    if (toggle50onSwitch) {
+        toggle50onSwitch.addEventListener('change', function() {
+            const keyboardArea = document.getElementById('keyboardArea');
+            const userInputArea = document.querySelector('.user-input-area');
+            const inputAssistSection = document.getElementById('inputAssistSection');
+            
+            if (this.checked) {
+                // 50音表を表示
+                keyboardArea.style.display = 'flex';
+                if (userInputArea) {
+                    userInputArea.classList.remove('keyboard-hidden', 'input-compact');
+                    userInputArea.classList.add('keyboard-shown', 'input-normal');
+                }
+                if (inputAssistSection) {
+                    inputAssistSection.classList.remove('keyboard-off');
+                    inputAssistSection.classList.add('keyboard-on');
+                }
+            } else {
+                // 50音表を非表示（入力エリア下降アニメーション + 縮小）
+                keyboardArea.style.display = 'none';
+                if (userInputArea) {
+                    userInputArea.classList.remove('keyboard-shown', 'input-normal');
+                    userInputArea.classList.add('keyboard-hidden', 'input-compact');
+                }
+                if (inputAssistSection) {
+                    inputAssistSection.classList.remove('keyboard-on');
+                    inputAssistSection.classList.add('keyboard-off');
+                }
+            }
+        });
+    }
     
-    // バックスペースボタン
-    document.getElementById('backspaceBtn').addEventListener('click', function() {
-        const input = document.getElementById('reflectionInput');
-        input.value = input.value.slice(0, -1);
-        input.focus();
-    });
-    
-    // 消去ボタン
-    document.getElementById('clearBtn').addEventListener('click', function() {
-        document.getElementById('reflectionInput').value = '';
-        document.getElementById('reflectionInput').focus();
-    });
+    // 音声入力切り替えスイッチ
+    const toggleVoiceSwitch = document.getElementById('toggleVoice');
+    if (toggleVoiceSwitch) {
+        toggleVoiceSwitch.addEventListener('change', function() {
+            const voiceSection = document.getElementById('voiceInputSection');
+            if (this.checked) {
+                voiceSection.style.display = 'block';
+            } else {
+                voiceSection.style.display = 'none';
+                stopVoiceInput();
+            }
+        });
+    }
     
     // 音声入力ボタン
-    document.getElementById('voiceInputBtn').addEventListener('click', startVoiceInput);
-});
-
-document.getElementById('sendReflectionButton').addEventListener('click', sendReflection);
-document.getElementById('reflectionInput').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendReflection();
+    const voiceInputBtn = document.getElementById('voiceInputBtn');
+    if (voiceInputBtn) {
+        voiceInputBtn.onclick = function() {
+            startVoiceInput();
+        };
     }
+    
+    // キーボードコントロールボタン
+    const backspaceBtn = document.getElementById('backspaceBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    
+    if (backspaceBtn) {
+        backspaceBtn.addEventListener('click', function() {
+            const input = document.getElementById('reflectionInput');
+            if (input.value.length > 0) {
+                input.value = input.value.slice(0, -1);
+            }
+            input.focus();
+        });
+    }
+    
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function() {
+            const input = document.getElementById('reflectionInput');
+            input.value = '';
+            input.focus();
+        });
+    }
+    
+    // Enterキーで送信
+    document.getElementById('reflectionInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendReflection();
+        }
+    });
+    
+    // まとめボタン
+    document.getElementById('finalSummaryButton').addEventListener('click', getFinalSummary);
 });
 
-document.getElementById('finalSummaryButton').addEventListener('click', getFinalSummary);
+// 入力補助の初期化
+function initializeInputAssist() {
+    // ひらがなキーボードを設定
+    const hiraganaContainer = document.getElementById('hiraganaKeys');
+    hiraganaContainer.innerHTML = '';
+    
+    inputAssistConfig.hiragana.forEach(row => {
+        row.forEach(char => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn btn-outline-primary touch-key';
+            if (char === '') {
+                // 空白セル
+                btn.style.visibility = 'hidden';
+                btn.textContent = ' ';
+            } else if (char === '゛゜') {
+                // 濁点・半濁点ボタン
+                btn.textContent = '゛゜';
+                btn.className = 'btn btn-outline-secondary touch-key special-key';
+                btn.onclick = () => addDakuten();
+            } else if (char === 'スペース') {
+                // スペースボタン
+                btn.textContent = 'スペース';
+                btn.className = 'btn btn-outline-info touch-key space-key';
+                btn.onclick = () => insertText(' ');
+            } else if (char === '、' || char === '。' || char === '！' || char === '？') {
+                // 記号ボタン
+                btn.textContent = char;
+                btn.className = 'btn btn-outline-secondary touch-key';
+                btn.onclick = () => insertText(char);
+            } else {
+                // 通常のひらがなボタン
+                btn.textContent = char;
+                btn.onclick = () => insertText(char);
+            }
+            hiraganaContainer.appendChild(btn);
+        });
+    });
+}
+
+function insertText(text) {
+    const input = document.getElementById('reflectionInput');
+    input.value += text;
+    input.focus();
+}
+
+function addDakuten() {
+    const input = document.getElementById('reflectionInput');
+    const text = input.value;
+    if (text.length === 0) return;
+    
+    const lastChar = text[text.length - 1];
+    if (dakutenMap[lastChar]) {
+        input.value = text.slice(0, -1) + dakutenMap[lastChar];
+    }
+    input.focus();
+}
 
 function sendReflection() {
     const input = document.getElementById('reflectionInput');
@@ -213,9 +339,6 @@ function sendReflection() {
     // ユーザーメッセージを表示
     addReflectionMessage(message, 'user');
     input.value = '';
-    
-    // 送信ボタンを無効化
-    document.getElementById('sendReflectionButton').disabled = true;
     
     // APIリクエストデータ
     const requestData = { 
@@ -244,19 +367,14 @@ function sendReflection() {
             reflectionCount++;
             
             // サーバーからの判定に基づいて、まとめボタンを表示
-            // 最低2往復の対話が行われた場合のみ表示
             if (data.suggest_final_summary) {
                 document.getElementById('finalSummaryButton').style.display = 'block';
             }
         }
-        
-        // 送信ボタンを有効化
-        document.getElementById('sendReflectionButton').disabled = false;
     })
     .catch(error => {
         console.error('Error:', error);
         addReflectionMessage('通信エラーが発生しました: ' + error.message, 'ai');
-        document.getElementById('sendReflectionButton').disabled = false;
     });
 }
 
@@ -272,7 +390,17 @@ function addReflectionMessage(content, type) {
         </div>
     `;
     
-    messagesContainer.appendChild(messageDiv);
+    // 入力エリアを取得
+    const inputArea = document.querySelector('.user-input-area');
+    
+    // メッセージを追加
+    if (inputArea) {
+        // 入力エリアの前に追加（入力エリアが最後に来るように）
+        messagesContainer.insertBefore(messageDiv, inputArea);
+    } else {
+        messagesContainer.appendChild(messageDiv);
+    }
+    
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
@@ -301,51 +429,6 @@ function getFinalSummary() {
         alert('通信エラーが発生しました。');
         document.getElementById('finalSummaryButton').disabled = false;
     });
-}
-
-// 入力補助関数
-function initializeInputAssist() {
-    // ひらがなキーボードを設定（5列グリッドレイアウト）
-    const hiraganaContainer = document.getElementById('hiraganaKeys');
-    hiraganaContainer.innerHTML = '';
-    
-    inputAssistConfig.hiragana.forEach(row => {
-        row.forEach(char => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'btn btn-outline-primary touch-key';
-            if (char === '') {
-                // 空白セル
-                btn.style.visibility = 'hidden';
-                btn.textContent = ' ';
-            } else {
-                btn.textContent = char;
-                btn.onclick = () => insertText(char);
-            }
-            hiraganaContainer.appendChild(btn);
-        });
-    });
-}
-
-// 入力補助の表示切り替え
-function toggleInputAssist(enabled) {
-    const keyboardDiv = document.getElementById('touchKeyboard');
-    const voiceDiv = document.getElementById('voiceInputSection');
-    
-    if (enabled) {
-        keyboardDiv.style.display = 'block';
-        voiceDiv.style.display = 'block';
-    } else {
-        keyboardDiv.style.display = 'none';
-        voiceDiv.style.display = 'none';
-        stopVoiceInput();
-    }
-}
-
-function insertText(text) {
-    const input = document.getElementById('reflectionInput');
-    input.value += text;
-    input.focus();
 }
 
 function startVoiceInput() {

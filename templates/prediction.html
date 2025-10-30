@@ -45,15 +45,14 @@
                             {{ initial_ai_message }}
                         </div>
                     </div>
-                </div>
-                
-                <!-- 入力エリア（直接入力可能） -->
-                <div class="chat-input-area">
-                    <div class="input-label">入力中:</div>
-                    <textarea class="form-control" id="messageInput" rows="2" placeholder="ここに入力してください..."></textarea>
-                    <button class="btn btn-primary w-100 mt-1" id="sendButton">
-                        <i class="fas fa-paper-plane me-2"></i>送信
-                    </button>
+                    
+                    <!-- 入力エリア（直接入力可能） -->
+                    <div class="message user-message user-input-area input-compact" style="margin-top: 12px;">
+                        <div class="message-avatar user-avatar"></div>
+                        <div class="user-input-wrapper">
+                            <textarea class="user-input-bubble" id="messageInput" placeholder="ここに入力してください..."></textarea>
+                        </div>
+                    </div>
                 </div>
             </div>
             
@@ -90,7 +89,7 @@
                     </h5>
                     <div class="input-mode-switches">
                         <div class="form-check form-switch d-inline-block me-3">
-                            <input class="form-check-input" type="checkbox" id="toggle50on" checked>
+                            <input class="form-check-input" type="checkbox" id="toggle50on">
                             <label class="form-check-label" for="toggle50on">
                                 50音表
                             </label>
@@ -173,6 +172,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     testApiConnection();
     
+    // デフォルトで50音表がOFFなので、入力補助エリアを縮小
+    const inputAssistSection = document.getElementById('inputAssistSection');
+    if (inputAssistSection) {
+        inputAssistSection.classList.add('keyboard-off');
+    }
+    
     // 入力補助の初期化
     initializeInputAssist();
     
@@ -186,10 +191,31 @@ document.addEventListener('DOMContentLoaded', function() {
     if (toggle50onSwitch) {
         toggle50onSwitch.addEventListener('change', function() {
             const keyboardArea = document.getElementById('keyboardArea');
+            const userInputArea = document.querySelector('.user-input-area');
+            const inputAssistSection = document.getElementById('inputAssistSection');
+            
             if (this.checked) {
+                // 50音表を表示
                 keyboardArea.style.display = 'flex';
+                if (userInputArea) {
+                    userInputArea.classList.remove('keyboard-hidden', 'input-compact');
+                    userInputArea.classList.add('keyboard-shown', 'input-normal');
+                }
+                if (inputAssistSection) {
+                    inputAssistSection.classList.remove('keyboard-off');
+                    inputAssistSection.classList.add('keyboard-on');
+                }
             } else {
+                // 50音表を非表示（入力エリア下降アニメーション + 縮小）
                 keyboardArea.style.display = 'none';
+                if (userInputArea) {
+                    userInputArea.classList.remove('keyboard-shown', 'input-normal');
+                    userInputArea.classList.add('keyboard-hidden', 'input-compact');
+                }
+                if (inputAssistSection) {
+                    inputAssistSection.classList.remove('keyboard-on');
+                    inputAssistSection.classList.add('keyboard-off');
+                }
             }
         });
     }
@@ -244,8 +270,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // 送信ボタンとEnterキー
-    document.getElementById('sendButton').addEventListener('click', sendMessage);
+    // Enterキーで送信
     document.getElementById('messageInput').addEventListener('keypress', function(e) {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -533,7 +558,17 @@ function addMessage(content, type) {
         </div>
     `;
     
-    messagesContainer.appendChild(messageDiv);
+    // 入力エリアを取得
+    const inputArea = document.querySelector('.user-input-area');
+    
+    // メッセージを追加
+    if (inputArea) {
+        // 入力エリアの前に追加（入力エリアが最後に来るように）
+        messagesContainer.insertBefore(messageDiv, inputArea);
+    } else {
+        messagesContainer.appendChild(messageDiv);
+    }
+    
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
     
     return messageDiv; // 作成されたメッセージ要素を返す
@@ -551,7 +586,17 @@ function addRetryButton() {
             </button>
         </div>
     `;
-    messagesContainer.appendChild(retryDiv);
+    
+    // 入力エリアを取得
+    const inputArea = document.querySelector('.user-input-area');
+    
+    if (inputArea) {
+        // 入力エリアの前に追加
+        messagesContainer.insertBefore(retryDiv, inputArea);
+    } else {
+        messagesContainer.appendChild(retryDiv);
+    }
+    
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
