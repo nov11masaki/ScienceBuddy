@@ -41,11 +41,8 @@
                     <div class="message user-message user-input-area input-compact" style="margin-top: 12px;">
                         <div class="input-column">
                             <div class="message-avatar user-avatar"></div>
-                            <div class="input-placeholder-text" id="inputPlaceholderText">ここに入力してください</div>
-                        </div>
-                        <div class="user-input-wrapper">
                             <div class="input-with-send">
-                                <textarea class="user-input-bubble" id="reflectionInput" placeholder=""></textarea>
+                                <textarea class="user-input-bubble placeholder-input" id="reflectionInput" placeholder="ここに入力してください"></textarea>
                                 <button class="send-button" id="sendButton" title="送信">
                                     <i class="fas fa-arrow-right"></i>
                                 </button>
@@ -279,19 +276,6 @@ document.addEventListener('DOMContentLoaded', function() {
             input.focus();
         });
     }
-    
-    // 入力欄の入力イベント - プレースホルダーテキストを非表示
-    const reflectionInput = document.getElementById('reflectionInput');
-    reflectionInput.addEventListener('input', function() {
-        const placeholderText = document.getElementById('inputPlaceholderText');
-        if (placeholderText) {
-            if (this.value.length > 0) {
-                placeholderText.style.display = 'none';
-            } else {
-                placeholderText.style.display = 'block';
-            }
-        }
-    });
     
     // Enterキーで送信
     document.getElementById('reflectionInput').addEventListener('keypress', function(e) {
