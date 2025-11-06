@@ -1,2 +1,0 @@
-python-3.9.18
-# Cloud Run uses Dockerfile for runtime
