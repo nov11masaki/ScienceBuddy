@@ -30,5 +30,5 @@ ENV PORT=8080
 # 本番環境フラグ
 ENV FLASK_ENV=production
 
-# gunicornでアプリケーションを起動
-CMD exec gunicorn --bind :$PORT --workers 2 --threads 4 --timeout 120 app:app
+# gunicornでアプリケーションを起動（JSON形式でOSシグナルを適切に処理）
+CMD ["sh", "-c", "exec gunicorn --bind :$PORT --workers 2 --threads 4 --timeout 120 app:app"]
