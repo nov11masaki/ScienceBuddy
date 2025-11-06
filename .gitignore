@@ -88,3 +88,9 @@ temp/
 
 # OpenAI API Key (セキュリティのため)
 openai_api_key.txt
+
+# Google Cloud
+key.json
+*.json.key
+service-account-key.json
+.gcloud/

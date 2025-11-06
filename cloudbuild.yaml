@@ -1,0 +1,42 @@
+# Cloud Build設定ファイル（CI/CD用）
+steps:
+  # Step 1: Dockerイメージをビルド
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/sciencebuddy', '.']
+  
+  # Step 2: Container Registryにプッシュ
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/sciencebuddy']
+  
+  # Step 3: Cloud Runにデプロイ
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'sciencebuddy'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/sciencebuddy'
+      - '--region'
+      - 'asia-northeast1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--memory'
+      - '1Gi'
+      - '--cpu'
+      - '1'
+      - '--min-instances'
+      - '0'
+      - '--max-instances'
+      - '10'
+      - '--timeout'
+      - '300'
+      - '--concurrency'
+      - '80'
+
+images:
+  - 'gcr.io/$PROJECT_ID/sciencebuddy'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
