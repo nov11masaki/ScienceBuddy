@@ -100,22 +100,44 @@ function selectUnit(unit) {
     
     // 進行状況をチェック
     const needsResumption = unitProgress[unit] && unitProgress[unit].needs_resumption;
+    const predictionSummaryCreated = unitProgress[unit] && unitProgress[unit].prediction_summary_created;
+    const reflectionStarted = unitProgress[unit] && unitProgress[unit].reflection_started;
+    const reflectionSummaryCreated = unitProgress[unit] && unitProgress[unit].reflection_summary_created;
     
-    if (needsResumption) {
-        // 復帰確認ダイアログを表示
+    // 進捗に応じた適切なステージを決定
+    let targetStage = 'prediction';  // デフォルトは予想段階
+    
+    if (reflectionSummaryCreated) {
+        // 考察の要約まで完了している場合は完了画面へ
+        alert('この単元はすでに完了しています。');
+        return;
+    } else if (reflectionStarted) {
+        // 考察段階を開始している場合は考察へ
+        targetStage = 'reflection';
+    } else if (predictionSummaryCreated) {
+        // 予想の要約が完了している場合は実験段階へ
+        targetStage = 'experiment';
+    }
+    
+    if (needsResumption && targetStage === 'prediction') {
+        // 予想段階の復帰確認ダイアログを表示
         const confirmResume = confirm(`この単元は前回の続きがあります。\n前回の続きから始めますか？\n\n進行状況: ${unitProgress[unit].progress_summary}\n\nOK: 続きから開始\nキャンセル: 最初から開始`);
         
         setTimeout(() => {
             if (confirmResume) {
-                window.location.href = `/prediction?class=${classNumber}&number=${studentNumber}&unit=${encodeURIComponent(unit)}&resume=true`;
+                window.location.href = `/${targetStage}?class=${classNumber}&number=${studentNumber}&unit=${encodeURIComponent(unit)}&resume=true`;
             } else {
-                window.location.href = `/prediction?class=${classNumber}&number=${studentNumber}&unit=${encodeURIComponent(unit)}`;
+                window.location.href = `/${targetStage}?class=${classNumber}&number=${studentNumber}&unit=${encodeURIComponent(unit)}`;
             }
         }, 300);
     } else {
-        // 通常の開始
+        // 通常の開始または進捗に応じたステージへ遷移
         setTimeout(() => {
-            window.location.href = `/prediction?class=${classNumber}&number=${studentNumber}&unit=${encodeURIComponent(unit)}`;
+            if (targetStage === 'prediction' && needsResumption) {
+                window.location.href = `/${targetStage}?class=${classNumber}&number=${studentNumber}&unit=${encodeURIComponent(unit)}&resume=true`;
+            } else {
+                window.location.href = `/${targetStage}?class=${classNumber}&number=${studentNumber}&unit=${encodeURIComponent(unit)}`;
+            }
         }, 300);
     }
 }

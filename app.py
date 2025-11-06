@@ -677,7 +677,10 @@ def select_unit():
             'current_stage': progress['current_stage'],
             'needs_resumption': needs_resumption,
             'last_access': progress.get('last_access', ''),
-            'progress_summary': get_progress_summary(progress)
+            'progress_summary': get_progress_summary(progress),
+            'prediction_summary_created': progress['stage_progress']['prediction'].get('summary_created', False),
+            'reflection_started': progress['stage_progress']['reflection'].get('started', False),
+            'reflection_summary_created': progress['stage_progress']['reflection'].get('summary_created', False)
         }
     
     return render_template('select_unit.html', units=UNITS, unit_progress=unit_progress)
