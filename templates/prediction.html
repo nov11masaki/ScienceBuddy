@@ -735,9 +735,9 @@ function sendMessageToAPI(message) {
             addMessage(data.response, 'ai', true); // タイピングエフェクト有効
             conversationCount++;
             
-            // AIのメッセージが「まとめ」に関する内容だったら、要約ボタンを表示
-            if (data.response.includes('まとめ')) {
-                console.log('【DEBUG】要約ボタンを表示します');
+            // 会話回数が5回以上、またはAIが「まとめ」を促したら要約ボタンを表示
+            if (conversationCount >= 5 || data.response.includes('まとめ') || data.response.includes('要約')) {
+                console.log('【DEBUG】要約ボタンを表示します (会話回数:', conversationCount, ')');
                 document.getElementById('summaryButton').style.display = 'block';
             }
             

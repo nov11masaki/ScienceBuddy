@@ -423,9 +423,9 @@ function sendReflection() {
             addReflectionMessage(data.response, 'ai', true); // タイピングエフェクト有効
             reflectionCount++;
             
-            // AIのメッセージが「まとめ」に関する内容だったら、要約ボタンを表示
-            if (data.response.includes('まとめ')) {
-                console.log('【DEBUG】最終要約ボタンを表示します');
+            // 会話回数が5回以上、またはAIが「まとめ」を促したら最終要約ボタンを表示
+            if (reflectionConversationCount >= 5 || data.response.includes('まとめ') || data.response.includes('要約')) {
+                console.log('【DEBUG】最終要約ボタンを表示します (会話回数:', reflectionConversationCount, ')');
                 document.getElementById('finalSummaryButton').style.display = 'block';
             }
         }
