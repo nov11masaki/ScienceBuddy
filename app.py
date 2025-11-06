@@ -128,21 +128,48 @@ def remove_markdown_formatting(text):
 # 学習進行状況管理機能
 def load_learning_progress():
     """学習進行状況を読み込み"""
-    if os.path.exists(LEARNING_PROGRESS_FILE):
+    if USE_GCS:
+        # Cloud Storageから読み込み
         try:
-            with open(LEARNING_PROGRESS_FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except (json.JSONDecodeError, Exception):
+            blob = bucket.blob('learning_progress.json')
+            
+            if not blob.exists():
+                return {}
+            
+            data = blob.download_as_text()
+            return json.loads(data)
+        except Exception as e:
+            print(f"Error loading learning progress from GCS: {e}")
             return {}
-    return {}
+    else:
+        # ローカルファイルから読み込み
+        if os.path.exists(LEARNING_PROGRESS_FILE):
+            try:
+                with open(LEARNING_PROGRESS_FILE, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except (json.JSONDecodeError, Exception):
+                return {}
+        return {}
 
 def save_learning_progress(progress_data):
     """学習進行状況を保存"""
-    try:
-        with open(LEARNING_PROGRESS_FILE, 'w', encoding='utf-8') as f:
-            json.dump(progress_data, f, ensure_ascii=False, indent=2)
-    except Exception:
-        pass
+    if USE_GCS:
+        # Cloud Storageに保存
+        try:
+            blob = bucket.blob('learning_progress.json')
+            blob.upload_from_string(
+                json.dumps(progress_data, ensure_ascii=False, indent=2),
+                content_type='application/json'
+            )
+        except Exception as e:
+            print(f"Error saving learning progress to GCS: {e}")
+    else:
+        # ローカルファイルに保存
+        try:
+            with open(LEARNING_PROGRESS_FILE, 'w', encoding='utf-8') as f:
+                json.dump(progress_data, f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
 
 def get_student_progress(class_number, student_number, unit):
     """特定の学習者の単元進行状況を取得"""
