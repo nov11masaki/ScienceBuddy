@@ -418,9 +418,9 @@ function sendReflection() {
     })
     .then(data => {
         if (data.error) {
-            addReflectionMessage('エラーが発生しました: ' + data.error, 'ai');
+            addReflectionMessage('エラーが発生しました: ' + data.error, 'ai', false);
         } else {
-            addReflectionMessage(data.response, 'ai');
+            addReflectionMessage(data.response, 'ai', true); // タイピングエフェクト有効
             reflectionCount++;
             
             // AIのメッセージが「まとめ」に関する内容だったら、要約ボタンを表示
@@ -432,21 +432,23 @@ function sendReflection() {
     })
     .catch(error => {
         console.error('Error:', error);
-        addReflectionMessage('通信エラーが発生しました: ' + error.message, 'ai');
+        addReflectionMessage('通信エラーが発生しました: ' + error.message, 'ai', false);
     });
 }
 
-function addReflectionMessage(content, type) {
+function addReflectionMessage(content, type, useTypingEffect = false) {
     const messagesContainer = document.getElementById('reflectionMessages');
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${type}-message`;
     
-    messageDiv.innerHTML = `
-        <div class="message-avatar"></div>
-        <div class="message-content">
-            ${content}
-        </div>
-    `;
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'message-content';
+    
+    const avatarDiv = document.createElement('div');
+    avatarDiv.className = 'message-avatar';
+    
+    messageDiv.appendChild(avatarDiv);
+    messageDiv.appendChild(contentDiv);
     
     // 入力エリアを取得
     const inputArea = document.querySelector('.user-input-area');
@@ -459,7 +461,44 @@ function addReflectionMessage(content, type) {
         messagesContainer.appendChild(messageDiv);
     }
     
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    // タイピングエフェクトを使用する場合（AI応答のみ）
+    if (useTypingEffect && type === 'ai') {
+        typeReflectionMessage(contentDiv, content, messagesContainer);
+    } else {
+        contentDiv.innerHTML = content;
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+}
+
+// タイピングエフェクト関数
+function typeReflectionMessage(element, text, container) {
+    let index = 0;
+    const speed = 30; // ミリ秒単位（数値が小さいほど速い）
+    
+    // カーソルを追加
+    const cursor = document.createElement('span');
+    cursor.className = 'typing-cursor';
+    cursor.textContent = '▌';
+    element.appendChild(cursor);
+    
+    function typeChar() {
+        if (index < text.length) {
+            // カーソルの前にテキストを追加
+            const textNode = document.createTextNode(text.charAt(index));
+            element.insertBefore(textNode, cursor);
+            index++;
+            
+            // 自動スクロール
+            container.scrollTop = container.scrollHeight;
+            
+            setTimeout(typeChar, speed);
+        } else {
+            // タイピング完了後、カーソルを削除
+            cursor.remove();
+        }
+    }
+    
+    typeChar();
 }
 
 function showCompletionMessage() {
