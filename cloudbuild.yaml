@@ -1,4 +1,17 @@
 # Cloud Build設定ファイル（CI/CD用）
+# 
+# 重要: 初回デプロイ時に以下の環境変数を設定してください:
+# - OPENAI_API_KEY: OpenAI APIキー
+# - FLASK_ENV: production
+# - BUCKET_NAME: sciencebuddy-logs-{PROJECT_ID}
+#
+# 設定方法:
+#   gcloud run services update sciencebuddy \
+#     --region asia-northeast1 \
+#     --update-env-vars OPENAI_API_KEY="your-api-key" \
+#     --update-env-vars FLASK_ENV=production \
+#     --update-env-vars BUCKET_NAME="sciencebuddy-logs-{PROJECT_ID}"
+#
 steps:
   # Step 1: Dockerイメージをビルド
   - name: 'gcr.io/cloud-builders/docker'

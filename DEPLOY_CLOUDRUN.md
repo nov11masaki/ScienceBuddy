@@ -134,19 +134,20 @@ gcloud run deploy $SERVICE_NAME \
 
 ## 🔐 環境変数の設定
 
-### OPENAI_API_KEYの設定
+Cloud Runで環境変数を設定する方法は2つあります。
+
+### 方法1: コマンドラインから設定（簡単）
 
 ```bash
-# .envファイルからAPIキーを取得
-cat .env
-
-# 環境変数を設定
+# 環境変数を設定（OPENAI_API_KEYとBUCKET_NAME）
 gcloud run services update sciencebuddy \
     --region asia-northeast1 \
-    --update-env-vars OPENAI_API_KEY=あなたのAPIキー,FLASK_ENV=production
+    --update-env-vars OPENAI_API_KEY="あなたのAPIキー" \
+    --update-env-vars FLASK_ENV=production \
+    --update-env-vars BUCKET_NAME="sciencebuddy-logs-あなたのプロジェクトID"
 ```
 
-### Secret Managerを使用（推奨・セキュア）
+### 方法2: Secret Manager使用（推奨・安全）
 
 ```bash
 # Secret Managerを有効化
@@ -164,7 +165,63 @@ gcloud secrets add-iam-policy-binding openai-api-key \
 gcloud run services update sciencebuddy \
     --region asia-northeast1 \
     --update-secrets OPENAI_API_KEY=openai-api-key:latest \
-    --update-env-vars FLASK_ENV=production
+    --update-env-vars FLASK_ENV=production \
+    --update-env-vars BUCKET_NAME="sciencebuddy-logs-あなたのプロジェクトID"
+```
+
+### ⚠️ 重要: Cloud Storage バケットの作成
+
+教員用ログ機能を使用するために、Cloud Storageバケットを作成する必要があります。
+
+```bash
+# プロジェクトIDを取得
+PROJECT_ID=$(gcloud config get-value project)
+
+# バケット名を設定（全世界で一意である必要があります）
+BUCKET_NAME="sciencebuddy-logs-${PROJECT_ID}"
+
+# Cloud Storage APIを有効化
+gcloud services enable storage.googleapis.com
+
+# バケットを作成（asia-northeast1 = 東京リージョン）
+gcloud storage buckets create gs://$BUCKET_NAME \
+    --location=asia-northeast1 \
+    --uniform-bucket-level-access
+
+# バケットにライフサイクルルールを設定（90日後に古いログを削除）
+cat > lifecycle.json << EOF
+{
+  "lifecycle": {
+    "rule": [
+      {
+        "action": {"type": "Delete"},
+        "condition": {"age": 90}
+      }
+    ]
+  }
+}
+EOF
+
+gcloud storage buckets update gs://$BUCKET_NAME --lifecycle-file=lifecycle.json
+rm lifecycle.json
+
+# Cloud RunサービスアカウントにGCSへの書き込み権限を付与
+PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format='value(projectNumber)')
+gcloud storage buckets add-iam-policy-binding gs://$BUCKET_NAME \
+    --member=serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com \
+    --role=roles/storage.objectAdmin
+
+echo "✅ バケット作成完了: gs://$BUCKET_NAME"
+echo "📝 環境変数 BUCKET_NAME に設定してください: $BUCKET_NAME"
+```
+
+### Cloud Runへの環境変数設定を確認
+
+```bash
+# 設定されている環境変数を確認
+gcloud run services describe sciencebuddy \
+    --region asia-northeast1 \
+    --format 'value(spec.template.spec.containers[0].env)'
 ```
 
 ---

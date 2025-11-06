@@ -11,6 +11,8 @@ import certifi
 import urllib3
 import re
 import glob
+from google.cloud import storage
+from google.api_core import exceptions as gcs_exceptions
 
 
 # 環境変数を読み込み
@@ -18,6 +20,24 @@ load_dotenv()
 
 # 学習進行状況管理用のファイルパス
 LEARNING_PROGRESS_FILE = 'learning_progress.json'
+
+# Cloud Storage設定
+BUCKET_NAME = os.getenv('BUCKET_NAME', '')  # GCSバケット名（本番環境のみ）
+USE_GCS = os.getenv('FLASK_ENV') == 'production' and BUCKET_NAME
+
+# Cloud Storageクライアント初期化（本番環境のみ）
+if USE_GCS:
+    try:
+        storage_client = storage.Client()
+        bucket = storage_client.bucket(BUCKET_NAME)
+    except Exception as e:
+        print(f"Warning: Cloud Storage initialization failed: {e}")
+        USE_GCS = False
+        storage_client = None
+        bucket = None
+else:
+    storage_client = None
+    bucket = None
 
 # SSL設定の改善
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -459,27 +479,58 @@ def save_learning_log(student_number, unit, log_type, data, class_number=None):
         'data': data
     }
     
-    # ログディレクトリが存在しない場合は作成
-    os.makedirs('logs', exist_ok=True)
-    
     # ログファイル名（日付別）
-    log_file = f"logs/learning_log_{datetime.now().strftime('%Y%m%d')}.json"
+    log_filename = f"learning_log_{datetime.now().strftime('%Y%m%d')}.json"
     
-    # 既存のログを読み込み
-    logs = []
-    if os.path.exists(log_file):
+    if USE_GCS:
+        # Cloud Storageに保存
         try:
-            with open(log_file, 'r', encoding='utf-8') as f:
-                logs = json.load(f)
-        except (json.JSONDecodeError, FileNotFoundError):
+            blob_name = f"logs/{log_filename}"
+            blob = bucket.blob(blob_name)
+            
+            # 既存のログを読み込み
             logs = []
-    
-    # 新しいログを追加
-    logs.append(log_entry)
-    
-    # ファイルに保存
-    with open(log_file, 'w', encoding='utf-8') as f:
-        json.dump(logs, f, ensure_ascii=False, indent=2)
+            try:
+                existing_data = blob.download_as_text()
+                logs = json.loads(existing_data)
+            except gcs_exceptions.NotFound:
+                logs = []
+            except Exception as e:
+                print(f"Warning: Failed to load existing log from GCS: {e}")
+                logs = []
+            
+            # 新しいログを追加
+            logs.append(log_entry)
+            
+            # GCSに保存
+            blob.upload_from_string(
+                json.dumps(logs, ensure_ascii=False, indent=2),
+                content_type='application/json'
+            )
+        except Exception as e:
+            print(f"Error saving log to GCS: {e}")
+    else:
+        # ローカルファイルに保存
+        # ログディレクトリが存在しない場合は作成
+        os.makedirs('logs', exist_ok=True)
+        
+        log_file = f"logs/{log_filename}"
+        
+        # 既存のログを読み込み
+        logs = []
+        if os.path.exists(log_file):
+            try:
+                with open(log_file, 'r', encoding='utf-8') as f:
+                    logs = json.load(f)
+            except (json.JSONDecodeError, FileNotFoundError):
+                logs = []
+        
+        # 新しいログを追加
+        logs.append(log_entry)
+        
+        # ファイルに保存
+        with open(log_file, 'w', encoding='utf-8') as f:
+            json.dump(logs, f, ensure_ascii=False, indent=2)
 
 # 学習ログを読み込む関数
 def load_learning_logs(date=None):
@@ -487,16 +538,34 @@ def load_learning_logs(date=None):
     if date is None:
         date = datetime.now().strftime('%Y%m%d')
     
-    log_file = f"logs/learning_log_{date}.json"
+    log_filename = f"learning_log_{date}.json"
     
-    if not os.path.exists(log_file):
-        return []
-    
-    try:
-        with open(log_file, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except (json.JSONDecodeError, FileNotFoundError):
-        return []
+    if USE_GCS:
+        # Cloud Storageから読み込み
+        try:
+            blob_name = f"logs/{log_filename}"
+            blob = bucket.blob(blob_name)
+            
+            if not blob.exists():
+                return []
+            
+            data = blob.download_as_text()
+            return json.loads(data)
+        except Exception as e:
+            print(f"Error loading log from GCS: {e}")
+            return []
+    else:
+        # ローカルファイルから読み込み
+        log_file = f"logs/{log_filename}"
+        
+        if not os.path.exists(log_file):
+            return []
+        
+        try:
+            with open(log_file, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except (json.JSONDecodeError, FileNotFoundError):
+            return []
 
 def parse_student_info(student_number):
     """生徒番号からクラスと出席番号を取得
@@ -1114,20 +1183,34 @@ def teacher_export():
 
 def get_available_log_dates():
     """利用可能なログファイルの日付一覧を取得"""
-    import os
-    import glob
-    
-    log_files = glob.glob("logs/learning_log_*.json")
     dates = []
     
-    for file in log_files:
-        # ファイル名から日付を抽出
-        filename = os.path.basename(file)
-        if filename.startswith('learning_log_') and filename.endswith('.json'):
-            date_str = filename[13:-5]  # learning_log_YYYYMMDD.json
-            if len(date_str) == 8 and date_str.isdigit():
-                formatted_date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
-                dates.append({'raw': date_str, 'formatted': formatted_date})
+    if USE_GCS:
+        # Cloud Storageからログファイル一覧を取得
+        try:
+            blobs = bucket.list_blobs(prefix='logs/learning_log_')
+            
+            for blob in blobs:
+                filename = os.path.basename(blob.name)
+                if filename.startswith('learning_log_') and filename.endswith('.json'):
+                    date_str = filename[13:-5]  # learning_log_YYYYMMDD.json
+                    if len(date_str) == 8 and date_str.isdigit():
+                        formatted_date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+                        dates.append({'raw': date_str, 'formatted': formatted_date})
+        except Exception as e:
+            print(f"Error listing log files from GCS: {e}")
+    else:
+        # ローカルファイルシステムからログファイル一覧を取得
+        log_files = glob.glob("logs/learning_log_*.json")
+        
+        for file in log_files:
+            # ファイル名から日付を抽出
+            filename = os.path.basename(file)
+            if filename.startswith('learning_log_') and filename.endswith('.json'):
+                date_str = filename[13:-5]  # learning_log_YYYYMMDD.json
+                if len(date_str) == 8 and date_str.isdigit():
+                    formatted_date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+                    dates.append({'raw': date_str, 'formatted': formatted_date})
     
     # 日付でソート（新しい順）
     dates.sort(key=lambda x: x['raw'], reverse=True)
