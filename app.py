@@ -1201,4 +1201,8 @@ def student_detail():
                          teacher_id=session.get('teacher_id', 'teacher'))
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5014)
+    # 環境変数からポート番号を取得（Render用）
+    port = int(os.environ.get('PORT', 5014))
+    # 本番環境ではdebug=False
+    debug_mode = os.environ.get('FLASK_ENV') != 'production'
+    app.run(host='0.0.0.0', port=port, debug=debug_mode)
