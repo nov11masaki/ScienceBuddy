@@ -6,14 +6,11 @@ import json
 from datetime import datetime
 import csv
 import time
-import hashlib
 import ssl
 import certifi
 import urllib3
 import re
 import glob
-import uuid
-from werkzeug.utils import secure_filename
 
 
 # 環境変数を読み込み
@@ -30,18 +27,6 @@ ssl_context = ssl.create_default_context(cafile=certifi.where())
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-here'  # 本番環境では安全なキーに変更
-
-# ファイルアップロード設定
-UPLOAD_FOLDER = 'uploads'  # 一時的なアップロード用
-ALLOWED_EXTENSIONS = {'md', 'txt'}  # Markdownとテキストファイルのみ
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB制限
-
-# アップロードディレクトリが存在しない場合は作成
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # 教員認証情報（実際の運用では環境変数やデータベースに保存）
 TEACHER_CREDENTIALS = {
