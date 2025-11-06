@@ -513,31 +513,33 @@ body {
     border-radius: 15px 15px 0 0;
 }
 
-/* 入力エリアをチャット領域の下部に固定（スクロール時に常に見える） */
+/* 入力全体の青い枠を右寄せ */
 .user-input-area {
-    display: flex;
+    justify-content: flex-end; /* 右寄せ */
+    padding-right: 40px; /* 右端に少し余白 */
+}
+
+/* 吹き出し全体を右に寄せる */
+.user-input-wrapper {
     align-items: flex-end;
-    justify-content: center;
-    padding: 6px 0 0 0;
-    pointer-events: auto;
-    margin-top: auto;
-    width: 100%;
 }
 
-.input-column {
-    display: none;
+/* 入力欄のテキストを左寄せ（枠の中） */
+.user-input-bubble {
+    text-align: left; 
 }
 
-.user-input-area .user-input-wrapper {
-    width: 90%;
-    max-width: 1000px;
-    margin: 0 auto;
+/* プレースホルダーも左寄せ */
+.user-input-bubble::placeholder {
+    text-align: left;
 }
 
+/* 送信ボタンの位置調整（右寄せに自然に並ぶように） */
 .input-with-send {
     display: flex;
-    align-items: flex-end;
-    gap: 8px;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
     width: 100%;
 }
 
@@ -558,11 +560,29 @@ body {
     line-height: 1.5 !important;
     resize: none !important;
     width: 100% !important;
+    text-align: left !important;
 }
 
 .placeholder-input::placeholder {
     color: rgba(79, 195, 247, 0.6) !important;
     font-weight: 500;
+    text-align: left;
+}
+
+.placeholder-input:placeholder-shown {
+    text-align: left !important;
+}
+
+.placeholder-input:placeholder-shown::placeholder {
+    text-align: left;
+}
+
+/* プレースホルダーの横幅を拡大 */
+.user-input-bubble,
+.placeholder-input {
+    /* 元の 60% だと幅が狭いので拡大 */
+    max-width: 65% !important;  
+    min-width: 250px !important; /* 小さすぎないよう最低幅も指定 */
 }
 
 .send-button {

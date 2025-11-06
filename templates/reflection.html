@@ -343,15 +343,47 @@ function insertText(text) {
     input.focus();
 }
 
+// 濁点・半濁音を追加（循環対応）
 function addDakuten() {
     const input = document.getElementById('reflectionInput');
     const text = input.value;
     if (text.length === 0) return;
     
     const lastChar = text[text.length - 1];
-    if (dakutenMap[lastChar]) {
-        input.value = text.slice(0, -1) + dakutenMap[lastChar];
+    
+    // 濁点・半濁点の循環マップ（清音 → 濁音 → 半濁音 → 清音）
+    const dakutenCycleMap = {
+        // か行（清音 → 濁音 → 清音）
+        'か': 'が', 'が': 'か',
+        'き': 'ぎ', 'ぎ': 'き',
+        'く': 'ぐ', 'ぐ': 'く',
+        'け': 'げ', 'げ': 'け',
+        'こ': 'ご', 'ご': 'こ',
+        // さ行（清音 → 濁音 → 清音）
+        'さ': 'ざ', 'ざ': 'さ',
+        'し': 'じ', 'じ': 'し',
+        'す': 'ず', 'ず': 'す',
+        'せ': 'ぜ', 'ぜ': 'せ',
+        'そ': 'ぞ', 'ぞ': 'そ',
+        // た行（清音 → 濁音 → 清音）
+        'た': 'だ', 'だ': 'た',
+        'ち': 'ぢ', 'ぢ': 'ち',
+        'つ': 'づ', 'づ': 'つ',
+        'て': 'で', 'で': 'て',
+        'と': 'ど', 'ど': 'と',
+        // は行（清音 → 濁音 → 半濁音 → 清音）
+        'は': 'ば', 'ば': 'ぱ', 'ぱ': 'は',
+        'ひ': 'び', 'び': 'ぴ', 'ぴ': 'ひ',
+        'ふ': 'ぶ', 'ぶ': 'ぷ', 'ぷ': 'ふ',
+        'へ': 'べ', 'べ': 'ぺ', 'ぺ': 'へ',
+        'ほ': 'ぼ', 'ぼ': 'ぽ', 'ぽ': 'ほ'
+    };
+    
+    // 循環マップに存在すれば変換
+    if (dakutenCycleMap[lastChar]) {
+        input.value = text.slice(0, -1) + dakutenCycleMap[lastChar];
     }
+    
     input.focus();
 }
 

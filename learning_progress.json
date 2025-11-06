@@ -2,13 +2,35 @@
   "1_29": {
     "空気の温度と体積": {
       "current_stage": "prediction",
-      "last_access": "2025-10-30T14:09:28.629080",
+      "last_access": "2025-11-06T11:20:05.801267",
       "stage_progress": {
         "prediction": {
           "started": true,
-          "conversation_count": 2,
+          "conversation_count": 1,
           "summary_created": false,
-          "last_message": "ソニーが望んでいれば それ本人に 本人書いたらやるけれども"
+          "last_message": "温vocabularyn"
+        },
+        "experiment": {
+          "started": false,
+          "completed": false
+        },
+        "reflection": {
+          "started": false,
+          "conversation_count": 0,
+          "summary_created": false
+        }
+      },
+      "conversation_history": []
+    },
+    "金属のあたたまり方": {
+      "current_stage": "prediction",
+      "last_access": "2025-11-06T08:03:13.832982",
+      "stage_progress": {
+        "prediction": {
+          "started": true,
+          "conversation_count": 0,
+          "summary_created": false,
+          "last_message": ""
         },
         "experiment": {
           "started": false,
