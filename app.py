@@ -387,7 +387,7 @@ def call_openai_with_retry(prompt, max_retries=3, delay=2, unit=None, stage=None
             else:
                 temperature = 0.5  # デフォルト
             
-            model_name = model_override if model_override else "gpt-5-mini"
+            model_name = model_override if model_override else "gpt-5-nano"
 
             response = client.chat.completions.create(
                 model=model_name,
@@ -858,7 +858,7 @@ def summary():
     })
     
     try:
-        summary_response = call_openai_with_retry(messages, model_override="gpt-5-mini", enable_cache=True)
+        summary_response = call_openai_with_retry(messages, model_override="gpt-5-nano", enable_cache=True)
         
         # JSON形式のレスポンスの場合は解析して純粋なメッセージを抽出
         summary_text = extract_message_from_json_response(summary_response)
@@ -1026,7 +1026,7 @@ def final_summary():
     })
     
     try:
-        final_summary_response = call_openai_with_retry(messages, model_override="gpt-5-mini", enable_cache=True)
+        final_summary_response = call_openai_with_retry(messages, model_override="gpt-5-nano", enable_cache=True)
         
         # JSON形式のレスポンスの場合は解析して純粋なメッセージを抽出
         final_summary_text = extract_message_from_json_response(final_summary_response)
