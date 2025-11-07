@@ -89,36 +89,86 @@ ScienceBuddy は、小学校理科の学習過程において、子ども達が*
 | カテゴリ | 技術スタック |
 |--------|-----------|
 | **バックエンド** | Flask (Python 3.9+) |
-| **AI** | OpenAI API (gpt-4o-mini) |
+| **AI** | OpenAI API (chat: gpt-4o-mini, summary: gpt-5-nano) |
+| **AIコスト最適化** | OpenAI Prompt Caching (入力トークン90%削減) |
 | **フロントエンド** | HTML5, CSS3, JavaScript, Bootstrap 5 |
-| **データ保存** | JSON形式ログ |
+| **クラウド環境** | Google Cloud Run, Cloud Storage, Cloud Build |
+| **ホスト環境** | ステートレスコンテナ（Docker） |
+| **データ保存** | Cloud Storage（本番）、JSON形式ログ（ローカル） |
 | **セッション管理** | Flask Session |
-| **プロンプト** | Markdown形式 |
+| **プロンプト** | Markdown形式 (CIIO構造) |
 | **デザイン** | レスポンシブ・モダンUI |
 
 ---
 
 ## 🚀 セットアップ・起動方法
 
-### 1. パッケージのインストール
+### ローカル開発環境
+
+#### 1. パッケージのインストール
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. 環境変数の設定
+#### 2. 環境変数の設定
 `.env`ファイルを作成：
 ```env
 OPENAI_API_KEY=your_actual_openai_api_key_here
+FLASK_ENV=development
 ```
 
-### 3. アプリケーション起動
+#### 3. アプリケーション起動
 ```bash
 python app.py
 ```
 
-### 4. アクセス
+#### 4. アクセス
 - **学習者用**: http://localhost:5014
 - **教員用**: http://localhost:5014/teacher
+
+### 本番環境（Google Cloud Run デプロイ）
+
+#### 前提条件
+- Google Cloud Project
+- Cloud Build有効化（GitHub連携）
+- Cloud Storage バケット作成
+
+#### デプロイ手順
+```bash
+# 1. Google Cloud CLIでプロジェクト認証
+gcloud auth login
+gcloud config set project PROJECT_ID
+
+# 2. Cloud Storageバケット作成（ログ・進捗保存用）
+gsutil mb gs://YOUR_BUCKET_NAME/
+
+# 3. Cloud Runにデプロイ
+gcloud run deploy science-buddy \
+  --source . \
+  --platform managed \
+  --region asia-northeast1 \
+  --allow-unauthenticated \
+  --set-env-vars OPENAI_API_KEY=your_api_key,BUCKET_NAME=YOUR_BUCKET_NAME,FLASK_ENV=production
+```
+
+#### 環境変数（Cloud Run）
+| 変数 | 説明 | 例 |
+|------|------|-----|
+| `OPENAI_API_KEY` | OpenAI API キー | `sk-proj-...` |
+| `BUCKET_NAME` | Cloud Storage バケット名 | `science-buddy-logs` |
+| `FLASK_ENV` | 環境タイプ | `production` |
+
+#### デプロイ確認
+```bash
+# Cloud Runのログを確認
+gcloud run logs read science-buddy --region asia-northeast1
+
+# Cloud Storageのファイル確認
+gsutil ls gs://YOUR_BUCKET_NAME/logs/
+gsutil ls gs://YOUR_BUCKET_NAME/learning_progress.json
+```
+
+**本番環境へのアクセス**: `https://science-buddy-xxxxx.run.app`
 
 ---
 
@@ -406,6 +456,18 @@ AI: 「普段の生活でも同じようなことってある？」
 - **AI対話調整**: `prompts/`内の各プロンプトファイルを編集（app.pyの変更不要）
 
 ## 🆕 最新アップデート（2025年11月）
+
+### v1.3 - コスト最適化 & プロンプトキャッシング
+- **OpenAI Prompt Caching** - システムプロンプトをキャッシュして入力トークンコスト90%削減
+  - 予想段階（`/chat`）：単元別プロンプトをキャッシュ
+  - 考察段階（`/reflect_chat`）：考察プロンプトをキャッシュ  
+  - 予想要約（`/summary`）：要約プロンプトをキャッシュ
+  - 考察要約（`/final_summary`）：考察要約プロンプトをキャッシュ
+- **本番環境の完全統合**：Cloud RunとCloud Storageを使用した完全ホスト
+  - GitHub自動デプロイ（Cloud Build トリガー）
+  - Cloud Storageへの学習ログ・進捗データ保存
+  - ステートレスコンテナ実行
+- **GPT-5 nano サポート** - 要約生成モデルを gpt-5-nano に切り替え対応
 
 ### v1.2 - 入力機能強化
 - **濁点・半濁点循環ロジック** - 50音キーボードで濁点ボタンを押すと循環変換（は → ば → ぱ → は）
