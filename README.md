@@ -89,7 +89,7 @@ ScienceBuddy は、小学校理科の学習過程において、子ども達が*
 | カテゴリ | 技術スタック |
 |--------|-----------|
 | **バックエンド** | Flask (Python 3.9+) |
-| **AI** | OpenAI API (chat: gpt-4o-mini, summary: gpt-5-nano) |
+| **AI** | OpenAI API (gpt-5-mini) |
 | **AIコスト最適化** | OpenAI Prompt Caching (入力トークン90%削減) |
 | **フロントエンド** | HTML5, CSS3, JavaScript, Bootstrap 5 |
 | **クラウド環境** | Google Cloud Run, Cloud Storage, Cloud Build |
@@ -467,7 +467,7 @@ AI: 「普段の生活でも同じようなことってある？」
   - GitHub自動デプロイ（Cloud Build トリガー）
   - Cloud Storageへの学習ログ・進捗データ保存
   - ステートレスコンテナ実行
-- **GPT-5 nano サポート** - 要約生成モデルを gpt-5-nano に切り替え対応
+- **GPT-5 mini 統一** - すべてのエンドポイント（対話・要約）で gpt-5-mini を使用
 
 ### v1.2 - 入力機能強化
 - **濁点・半濁点循環ロジック** - 50音キーボードで濁点ボタンを押すと循環変換（は → ば → ぱ → は）
@@ -508,7 +508,7 @@ python app.py
 ## 🔗 関連技術
 
 - **Flask**: Pythonウェブフレームワーク
-- **OpenAI API**: GPT-4o-mini による自然言語処理
+- **OpenAI API**: GPT-5 mini による自然言語処理
 - **Bootstrap 5**: レスポンシブWebデザイン
 - **Web Speech API**: リアルタイム音声認識
 - **対話型学習**: 子どもの「気づき」を大切にする教育設計
