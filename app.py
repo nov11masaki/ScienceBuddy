@@ -344,7 +344,7 @@ def extract_message_from_json_response(response):
         return response
 
 # APIコール用のリトライ関数
-def call_openai_with_retry(prompt, max_retries=3, delay=2, unit=None, stage=None):
+def call_openai_with_retry(prompt, max_retries=3, delay=2, unit=None, stage=None, model_override=None, enable_cache=False):
     """OpenAI APIを呼び出し、エラー時はリトライする
     
     Args:
@@ -353,6 +353,8 @@ def call_openai_with_retry(prompt, max_retries=3, delay=2, unit=None, stage=None
         delay: リトライ間隔（秒）
         unit: 単元名
         stage: 学習段階
+        model_override: モデルオーバーライド
+        enable_cache: プロンプトキャッシング有効化（システムメッセージに対して有効）
     """
     if client is None:
         return "AI システムの初期化に問題があります。管理者に連絡してください。"
@@ -363,6 +365,12 @@ def call_openai_with_retry(prompt, max_retries=3, delay=2, unit=None, stage=None
     else:
         # promptが文字列の場合（従来フォーマット）
         messages = [{"role": "user", "content": prompt}]
+    
+    # キャッシング有効時、システムメッセージにキャッシュ制御を追加
+    if enable_cache:
+        for msg in messages:
+            if msg.get('role') == 'system':
+                msg['cache_control'] = {'type': 'ephemeral'}
     
     for attempt in range(max_retries):
         try:
@@ -379,8 +387,10 @@ def call_openai_with_retry(prompt, max_retries=3, delay=2, unit=None, stage=None
             else:
                 temperature = 0.5  # デフォルト
             
+            model_name = model_override if model_override else "gpt-4o-mini"
+
             response = client.chat.completions.create(
-                model="gpt-4o-mini",
+                model=model_name,
                 messages=messages,
                 max_tokens=2000,
                 temperature=temperature,
@@ -764,7 +774,7 @@ def chat():
     
     try:
         print("[DEBUG] OpenAI API 呼び出し開始")
-        ai_response = call_openai_with_retry(messages, unit=unit, stage='prediction')
+        ai_response = call_openai_with_retry(messages, unit=unit, stage='prediction', enable_cache=True)
         print(f"[DEBUG] AI レスポンス取得: {len(ai_response)} 文字")
         
         # JSON形式のレスポンスの場合は解析して純粋なメッセージを抽出
@@ -848,7 +858,7 @@ def summary():
     })
     
     try:
-        summary_response = call_openai_with_retry(messages)
+        summary_response = call_openai_with_retry(messages, model_override="gpt-5-nano", enable_cache=True)
         
         # JSON形式のレスポンスの場合は解析して純粋なメッセージを抽出
         summary_text = extract_message_from_json_response(summary_response)
@@ -936,7 +946,7 @@ def reflect_chat():
         })
     
     try:
-        ai_response = call_openai_with_retry(messages, unit=unit, stage='reflection')
+        ai_response = call_openai_with_retry(messages, unit=unit, stage='reflection', enable_cache=True)
         
         # JSON形式のレスポンスの場合は解析して純粋なメッセージを抽出
         ai_message = extract_message_from_json_response(ai_response)
@@ -1016,7 +1026,7 @@ def final_summary():
     })
     
     try:
-        final_summary_response = call_openai_with_retry(messages)
+        final_summary_response = call_openai_with_retry(messages, model_override="gpt-5-nano", enable_cache=True)
         
         # JSON形式のレスポンスの場合は解析して純粋なメッセージを抽出
         final_summary_text = extract_message_from_json_response(final_summary_response)
