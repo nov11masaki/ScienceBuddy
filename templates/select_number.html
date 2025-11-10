@@ -38,47 +38,68 @@
 
 {% block scripts %}
 <script>
-// URLからクラス番号を取得
-const urlParams = new URLSearchParams(window.location.search);
-const classNumber = urlParams.get('class') || '1';
-
-// クラス番号を表示（研究室の場合は特別に表示）
-if (classNumber === 'lab') {
-    document.getElementById('classDisplayText').textContent = '研究室';
-    document.getElementById('selectedClass').textContent = '';
-} else {
-    document.getElementById('selectedClass').textContent = classNumber;
-}
-
-// 1-30番のカードを生成
-const numberCards = document.getElementById('numberCards');
-for (let i = 1; i <= 30; i++) {
-    const col = document.createElement('div');
-    col.className = 'col-lg-2 col-md-3 col-4';
+document.addEventListener('DOMContentLoaded', function() {
+    // URLからクラス番号を取得
+    const urlParams = new URLSearchParams(window.location.search);
+    let classNumber = urlParams.get('class') || '1';
     
-    const card = document.createElement('div');
-    card.className = 'number-card';
-    card.innerHTML = `
-        <div class="number-display">${i}</div>
-        <div class="number-label">番</div>
-    `;
-    card.onclick = () => selectNumber(i);
+    // Jinja2から渡されたclass_numberを優先
+    const jinja2Class = '{{ class_number }}';
+    if (jinja2Class && jinja2Class !== 'None' && jinja2Class !== '') {
+        classNumber = jinja2Class;
+    }
     
-    col.appendChild(card);
-    numberCards.appendChild(col);
-}
-
-function selectNumber(number) {
-    // 選択されたカードにアクティブクラスを追加
-    document.querySelectorAll('.number-card').forEach(card => {
-        card.classList.remove('active');
-    });
-    event.target.closest('.number-card').classList.add('active');
+    // クラス番号を表示（研究室の場合は特別に表示）
+    const classDisplayText = document.getElementById('classDisplayText');
+    if (classNumber === 'lab') {
+        classDisplayText.textContent = '研究室';
+    } else {
+        classDisplayText.innerHTML = `４年${classNumber}組`;
+    }
     
-    // 少し待ってから次のページに移動（クラス情報も含める）
-    setTimeout(() => {
-        window.location.href = `/select_unit?class=${classNumber}&number=${number}`;
-    }, 300);
-}
+    // 1-30番のカードを生成
+    const numberCards = document.getElementById('numberCards');
+    
+    if (!numberCards) {
+        return;
+    }
+    
+    for (let i = 1; i <= 30; i++) {
+        const col = document.createElement('div');
+        col.className = 'col-lg-2 col-md-3 col-4';
+        
+        const card = document.createElement('div');
+        card.className = 'number-card';
+        card.innerHTML = `
+            <div class="number-display">${i}</div>
+            <div class="number-label">番</div>
+        `;
+        card.style.cursor = 'pointer';
+        card.onclick = function(event) {
+            selectNumber(i, event);
+        };
+        
+        col.appendChild(card);
+        numberCards.appendChild(col);
+    }
+    
+    window.selectNumber = function(number, event) {
+        // 選択されたカードにアクティブクラスを追加
+        document.querySelectorAll('.number-card').forEach(card => {
+            card.classList.remove('active');
+        });
+        
+        const targetCard = event.target.closest('.number-card');
+        if (targetCard) {
+            targetCard.classList.add('active');
+        }
+        
+        // 少し待ってから次のページに移動（クラス情報も含める）
+        setTimeout(() => {
+            const url = `/select_unit?class=${classNumber}&number=${number}`;
+            window.location.href = url;
+        }, 300);
+    };
+});
 </script>
 {% endblock %}
