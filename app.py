@@ -695,11 +695,26 @@ def select_unit():
     for unit in UNITS:
         progress = get_student_progress(class_number, student_number, unit)
         needs_resumption = check_resumption_needed(class_number, student_number, unit)
+        stage_progress = progress.get('stage_progress', {})
+        
+        # 各段階の状態を取得
+        prediction_started = stage_progress.get('prediction', {}).get('started', False)
+        prediction_summary_created = stage_progress.get('prediction', {}).get('summary_created', False)
+        experiment_started = stage_progress.get('experiment', {}).get('started', False)
+        reflection_started = stage_progress.get('reflection', {}).get('started', False)
+        reflection_summary_created = stage_progress.get('reflection', {}).get('summary_created', False)
+        
         unit_progress[unit] = {
             'current_stage': progress['current_stage'],
             'needs_resumption': needs_resumption,
             'last_access': progress.get('last_access', ''),
-            'progress_summary': get_progress_summary(progress)
+            'progress_summary': get_progress_summary(progress),
+            # 各段階の状態フラグを追加
+            'prediction_started': prediction_started,
+            'prediction_summary_created': prediction_summary_created,
+            'experiment_started': experiment_started,
+            'reflection_started': reflection_started,
+            'reflection_summary_created': reflection_summary_created
         }
     
     return render_template('select_unit.html', units=UNITS, unit_progress=unit_progress)
@@ -720,19 +735,36 @@ def prediction():
     
     # 進行状況をチェック
     progress = get_student_progress(class_number, student_number, unit)
+    stage_progress = progress.get('stage_progress', {})
+    prediction_stage = stage_progress.get('prediction', {})
     
-    if resume and progress['stage_progress']['prediction']['conversation_count'] > 0:
+    # 予想のまとめが既に生成されている場合
+    prediction_summary_created = prediction_stage.get('summary_created', False)
+    
+    if resume and prediction_stage.get('conversation_count', 0) > 0:
         # 対話履歴を復元
         session['conversation'] = progress.get('conversation_history', [])
         resumption_info = {
             'is_resumption': True,
-            'last_conversation_count': progress['stage_progress']['prediction']['conversation_count'],
-            'last_access': progress.get('last_access', '')
+            'last_conversation_count': prediction_stage.get('conversation_count', 0),
+            'last_access': progress.get('last_access', ''),
+            'prediction_summary_created': prediction_summary_created
         }
+        
+        # まとめが完了している場合は保存されたまとめを復元
+        if prediction_summary_created:
+            # 学習ログから予想のまとめを取得
+            logs = load_learning_logs(datetime.now().strftime('%Y%m%d'))
+            for log in logs:
+                if (log.get('student_number') == student_number and 
+                    log.get('unit') == unit and 
+                    log.get('log_type') == 'prediction_summary'):
+                    session['prediction_summary'] = log.get('data', {}).get('summary', '')
+                    break
     else:
         # 新規開始
         session['conversation'] = []
-        resumption_info = {'is_resumption': False}
+        resumption_info = {'is_resumption': False, 'prediction_summary_created': False}
         
         # 予想段階開始を記録
         update_student_progress(class_number, student_number, unit, 
@@ -888,18 +920,52 @@ def summary():
             class_number=session.get('class_number')
         )
         
+        # 進行状況を更新（予想段階のまとめが完了したことを記録）
+        update_student_progress(
+            session.get('class_number', '1'),
+            session.get('student_number'),
+            unit,
+            summary_created=True
+        )
+        
         return jsonify({'summary': summary_text})
     except Exception as e:
         return jsonify({'error': f'まとめ生成中にエラーが発生しました。'}), 500
 
 @app.route('/experiment')
 def experiment():
+    unit = session.get('unit')
+    class_number = session.get('class_number', '1')
+    student_number = session.get('student_number')
+    
+    # 実験開始を記録
+    if unit and student_number:
+        update_student_progress(
+            class_number,
+            student_number,
+            unit,
+            stage='experiment',
+            started=True
+        )
+    
     return render_template('experiment.html')
 
 @app.route('/reflection')
 def reflection():
     unit = session.get('unit')
+    class_number = session.get('class_number', '1')
+    student_number = session.get('student_number')
     prediction_summary = session.get('prediction_summary')
+    
+    # 考察段階開始を記録
+    if unit and student_number:
+        update_student_progress(
+            class_number,
+            student_number,
+            unit,
+            stage='reflection',
+            started=True
+        )
     
     # 単元に応じた最初のAIメッセージを取得
     initial_ai_message = get_initial_ai_message(unit, stage='reflection')
@@ -1058,9 +1124,42 @@ def final_summary():
             class_number=session.get('class_number')
         )
         
+        # 進行状況を更新（考察段階のまとめが完了したことを記録）
+        update_student_progress(
+            session.get('class_number', '1'),
+            session.get('student_number'),
+            session.get('unit'),
+            summary_created=True  # 考察段階のまとめ完了
+        )
+        
         return jsonify({'summary': final_summary_text})
     except Exception as e:
         return jsonify({'error': f'最終まとめ生成中にエラーが発生しました。'}), 500
+
+@app.route('/get_prediction_summary', methods=['GET'])
+def get_prediction_summary():
+    """復帰時に予想のまとめを取得するエンドポイント"""
+    unit = session.get('unit')
+    student_number = session.get('student_number')
+    
+    if not unit or not student_number:
+        return jsonify({'summary': None}), 400
+    
+    # セッションに保存されている予想のまとめを返す
+    summary = session.get('prediction_summary')
+    if summary:
+        return jsonify({'summary': summary})
+    
+    # セッションにない場合は学習ログから取得を試みる
+    logs = load_learning_logs(datetime.now().strftime('%Y%m%d'))
+    for log in logs:
+        if (log.get('student_number') == student_number and 
+            log.get('unit') == unit and 
+            log.get('log_type') == 'prediction_summary'):
+            session['prediction_summary'] = log.get('data', {}).get('summary', '')
+            return jsonify({'summary': log.get('data', {}).get('summary', '')})
+    
+    return jsonify({'summary': None})
 
 # 教員用ルート
 @app.route('/teacher/login', methods=['GET', 'POST'])

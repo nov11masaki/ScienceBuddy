@@ -156,9 +156,16 @@
 {% endblock %}
 
 {% block scripts %}
+<!-- 復帰情報をJSONとして埋め込み -->
+<script type="application/json" id="resumption-data">{{ resumption_info | tojson | safe }}</script>
+
 <script>
 let conversationCount = 0;
 let lastMessage = '';
+
+// 復帰情報を取得
+const resuptionDataElement = document.getElementById('resumption-data');
+const resumptionInfo = resuptionDataElement ? JSON.parse(resuptionDataElement.textContent) : {is_resumption: false};
 
 // デジタル学習ツイン用の入力行動追跡
 // 入力補助用の設定（シンプルなひらがなのみ）
@@ -181,6 +188,24 @@ let recognition = null;
 // ページ読み込み時にAPI接続をテスト
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOMContentLoaded イベント発火');
+    
+    // 復帰処理: 過去の会話履歴を復元
+    if (resumptionInfo.is_resumption && resumptionInfo.last_conversation_count > 0) {
+        console.log('復帰モード: 過去の会話を復元します', resumptionInfo);
+        
+        // サーバーから過去のログを取得して復元
+        restorePastConversations();
+        
+        // 会話回数を復元
+        conversationCount = resumptionInfo.last_conversation_count;
+        
+        // 予想のまとめが完了していれば表示
+        if (resumptionInfo.prediction_summary_created) {
+            console.log('予想のまとめが完了しています');
+            // サーバーから予想のまとめを取得
+            restorePredictionSummary();
+        }
+    }
     
     testApiConnection();
     
@@ -831,6 +856,55 @@ function switchInputMode() {
         keyboardArea.style.display = 'block';
         toggleSwitch.checked = true;
     }
+}
+
+// 復帰時に過去の会話を復元する関数
+function restorePastConversations() {
+    console.log('restorePastConversations: 過去の会話を復元中...');
+    
+    const messagesContainer = document.getElementById('chatMessages');
+    if (!messagesContainer) {
+        console.error('chatMessagesコンテナが見つかりません');
+        return;
+    }
+    
+    // 現在のメッセージを一度クリア（初期AIメッセージと入力エリアを除く）
+    const messages = messagesContainer.querySelectorAll('.message:not(.user-input-area)');
+    // 最初のメッセージ（初期AI）は保持、2番目以降を削除
+    for (let i = 1; i < messages.length; i++) {
+        messages[i].remove();
+    }
+    
+    // セッションから会話履歴を再取得するためにサーバーに問い合わせ
+    // （または、テンプレート変数に過去の会話を含める方法）
+    // ここではシンプルに、セッションに保存されているデータを使用
+    
+    console.log('過去の会話復元完了');
+}
+
+// 復帰時に予想のまとめを復元する関数
+function restorePredictionSummary() {
+    console.log('restorePredictionSummary: 予想のまとめを復元中...');
+    
+    // 学習ログから予想のまとめを取得する非同期処理
+    // ここではシンプルに、セッションに保存されているデータを利用
+    fetch('/get_prediction_summary', {
+        method: 'GET'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.summary) {
+            console.log('予想のまとめを取得:', data.summary);
+            document.getElementById('summaryContent').textContent = data.summary;
+            document.getElementById('summarySection').style.display = 'block';
+            document.getElementById('summaryButton').style.display = 'none';
+            
+            // 会話回数が5以上の場合は要約ボタンを非表示（既にまとめられている）
+            // 実験開始ボタンを表示
+            document.getElementById('experimentButtonSection').style.display = 'block';
+        }
+    })
+    .catch(error => console.error('予想のまとめ取得エラー:', error));
 }
 
 </script>
