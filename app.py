@@ -14,6 +14,8 @@ import re
 import glob
 import uuid
 from werkzeug.utils import secure_filename
+from google.cloud import storage
+from google.api_core import exceptions as gcs_exceptions
 
 
 # 環境変数を読み込み
@@ -22,8 +24,23 @@ load_dotenv()
 # 学習進行状況管理用のファイルパス
 LEARNING_PROGRESS_FILE = 'learning_progress.json'
 
-# SSL設定の改善
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+# Cloud Storage設定
+BUCKET_NAME = os.getenv('BUCKET_NAME', '')  # GCSバケット名（本番環境のみ）
+USE_GCS = os.getenv('FLASK_ENV') == 'production' and BUCKET_NAME
+
+# Cloud Storageクライアント初期化（本番環境のみ）
+if USE_GCS:
+    try:
+        storage_client = storage.Client()
+        bucket = storage_client.bucket(BUCKET_NAME)
+    except Exception as e:
+        print(f"Warning: Cloud Storage initialization failed: {e}")
+        USE_GCS = False
+        storage_client = None
+        bucket = None
+else:
+    storage_client = None
+    bucket = None
 
 # SSL証明書の設定
 ssl_context = ssl.create_default_context(cafile=certifi.where())
@@ -123,21 +140,48 @@ def remove_markdown_formatting(text):
 # 学習進行状況管理機能
 def load_learning_progress():
     """学習進行状況を読み込み"""
-    if os.path.exists(LEARNING_PROGRESS_FILE):
+    if USE_GCS:
+        # Cloud Storageから読み込み
         try:
-            with open(LEARNING_PROGRESS_FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except (json.JSONDecodeError, Exception):
+            blob = bucket.blob('learning_progress.json')
+            
+            if not blob.exists():
+                return {}
+            
+            data = blob.download_as_text()
+            return json.loads(data)
+        except Exception as e:
+            print(f"Error loading learning progress from GCS: {e}")
             return {}
-    return {}
+    else:
+        # ローカルファイルから読み込み
+        if os.path.exists(LEARNING_PROGRESS_FILE):
+            try:
+                with open(LEARNING_PROGRESS_FILE, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except (json.JSONDecodeError, Exception):
+                return {}
+        return {}
 
 def save_learning_progress(progress_data):
     """学習進行状況を保存"""
-    try:
-        with open(LEARNING_PROGRESS_FILE, 'w', encoding='utf-8') as f:
-            json.dump(progress_data, f, ensure_ascii=False, indent=2)
-    except Exception:
-        pass
+    if USE_GCS:
+        # Cloud Storageに保存
+        try:
+            blob = bucket.blob('learning_progress.json')
+            blob.upload_from_string(
+                json.dumps(progress_data, ensure_ascii=False, indent=2),
+                content_type='application/json'
+            )
+        except Exception as e:
+            print(f"Error saving learning progress to GCS: {e}")
+    else:
+        # ローカルファイルに保存
+        try:
+            with open(LEARNING_PROGRESS_FILE, 'w', encoding='utf-8') as f:
+                json.dump(progress_data, f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
 
 def get_student_progress(class_number, student_number, unit):
     """特定の学習者の単元進行状況を取得"""
@@ -312,7 +356,7 @@ def extract_message_from_json_response(response):
         return response
 
 # APIコール用のリトライ関数
-def call_openai_with_retry(prompt, max_retries=3, delay=2, unit=None, stage=None):
+def call_openai_with_retry(prompt, max_retries=3, delay=2, unit=None, stage=None, model_override=None, enable_cache=False):
     """OpenAI APIを呼び出し、エラー時はリトライする
     
     Args:
@@ -321,6 +365,8 @@ def call_openai_with_retry(prompt, max_retries=3, delay=2, unit=None, stage=None
         delay: リトライ間隔（秒）
         unit: 単元名
         stage: 学習段階
+        model_override: モデルオーバーライド
+        enable_cache: プロンプトキャッシング有効化（システムメッセージに対して有効）
     """
     if client is None:
         return "AI システムの初期化に問題があります。管理者に連絡してください。"
@@ -331,6 +377,12 @@ def call_openai_with_retry(prompt, max_retries=3, delay=2, unit=None, stage=None
     else:
         # promptが文字列の場合（従来フォーマット）
         messages = [{"role": "user", "content": prompt}]
+    
+    # キャッシング有効時、システムメッセージにキャッシュ制御を追加
+    if enable_cache:
+        for msg in messages:
+            if msg.get('role') == 'system':
+                msg['cache_control'] = {'type': 'ephemeral'}
     
     for attempt in range(max_retries):
         try:
@@ -347,8 +399,10 @@ def call_openai_with_retry(prompt, max_retries=3, delay=2, unit=None, stage=None
             else:
                 temperature = 0.5  # デフォルト
             
+            model_name = model_override if model_override else "gpt-4o-mini"
+
             response = client.chat.completions.create(
-                model="gpt-4o-mini",
+                model=model_name,
                 messages=messages,
                 max_tokens=2000,
                 temperature=temperature,
@@ -474,27 +528,58 @@ def save_learning_log(student_number, unit, log_type, data, class_number=None):
         'data': data
     }
     
-    # ログディレクトリが存在しない場合は作成
-    os.makedirs('logs', exist_ok=True)
-    
     # ログファイル名（日付別）
-    log_file = f"logs/learning_log_{datetime.now().strftime('%Y%m%d')}.json"
+    log_filename = f"learning_log_{datetime.now().strftime('%Y%m%d')}.json"
     
-    # 既存のログを読み込み
-    logs = []
-    if os.path.exists(log_file):
+    if USE_GCS:
+        # Cloud Storageに保存
         try:
-            with open(log_file, 'r', encoding='utf-8') as f:
-                logs = json.load(f)
-        except (json.JSONDecodeError, FileNotFoundError):
+            blob_name = f"logs/{log_filename}"
+            blob = bucket.blob(blob_name)
+            
+            # 既存のログを読み込み
             logs = []
-    
-    # 新しいログを追加
-    logs.append(log_entry)
-    
-    # ファイルに保存
-    with open(log_file, 'w', encoding='utf-8') as f:
-        json.dump(logs, f, ensure_ascii=False, indent=2)
+            try:
+                existing_data = blob.download_as_text()
+                logs = json.loads(existing_data)
+            except gcs_exceptions.NotFound:
+                logs = []
+            except Exception as e:
+                print(f"Warning: Failed to load existing log from GCS: {e}")
+                logs = []
+            
+            # 新しいログを追加
+            logs.append(log_entry)
+            
+            # GCSに保存
+            blob.upload_from_string(
+                json.dumps(logs, ensure_ascii=False, indent=2),
+                content_type='application/json'
+            )
+        except Exception as e:
+            print(f"Error saving log to GCS: {e}")
+    else:
+        # ローカルファイルに保存
+        # ログディレクトリが存在しない場合は作成
+        os.makedirs('logs', exist_ok=True)
+        
+        log_file = f"logs/{log_filename}"
+        
+        # 既存のログを読み込み
+        logs = []
+        if os.path.exists(log_file):
+            try:
+                with open(log_file, 'r', encoding='utf-8') as f:
+                    logs = json.load(f)
+            except (json.JSONDecodeError, FileNotFoundError):
+                logs = []
+        
+        # 新しいログを追加
+        logs.append(log_entry)
+        
+        # ファイルに保存
+        with open(log_file, 'w', encoding='utf-8') as f:
+            json.dump(logs, f, ensure_ascii=False, indent=2)
 
 # 学習ログを読み込む関数
 def load_learning_logs(date=None):
@@ -502,16 +587,34 @@ def load_learning_logs(date=None):
     if date is None:
         date = datetime.now().strftime('%Y%m%d')
     
-    log_file = f"logs/learning_log_{date}.json"
+    log_filename = f"learning_log_{date}.json"
     
-    if not os.path.exists(log_file):
-        return []
-    
-    try:
-        with open(log_file, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except (json.JSONDecodeError, FileNotFoundError):
-        return []
+    if USE_GCS:
+        # Cloud Storageから読み込み
+        try:
+            blob_name = f"logs/{log_filename}"
+            blob = bucket.blob(blob_name)
+            
+            if not blob.exists():
+                return []
+            
+            data = blob.download_as_text()
+            return json.loads(data)
+        except Exception as e:
+            print(f"Error loading log from GCS: {e}")
+            return []
+    else:
+        # ローカルファイルから読み込み
+        log_file = f"logs/{log_filename}"
+        
+        if not os.path.exists(log_file):
+            return []
+        
+        try:
+            with open(log_file, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except (json.JSONDecodeError, FileNotFoundError):
+            return []
 
 def parse_student_info(student_number):
     """生徒番号からクラスと出席番号を取得
@@ -643,18 +746,25 @@ def prediction():
 
 @app.route('/chat', methods=['POST'])
 def chat():
+    print("[DEBUG] /chat エンドポイント呼び出し")
     user_message = request.json.get('message')
     input_metadata = request.json.get('metadata', {})
+    print(f"[DEBUG] ユーザーメッセージ: {user_message}")
+    
     conversation = session.get('conversation', [])
     unit = session.get('unit')
     task_content = session.get('task_content')
     student_number = session.get('student_number')
+    
+    print(f"[DEBUG] ユニット: {unit}, 学生番号: {student_number}")
+    print(f"[DEBUG] 現在の対話履歴: {len(conversation)} メッセージ")
     
     # 対話履歴に追加
     conversation.append({'role': 'user', 'content': user_message})
     
     # 単元ごとのプロンプトを読み込み
     unit_prompt = load_unit_prompt(unit)
+    print(f"[DEBUG] プロンプト読み込み完了: {len(unit_prompt)} 文字")
     
     # 対話履歴を含めてプロンプト作成
     # OpenAI APIに送信するためにメッセージ形式で構築
@@ -669,11 +779,16 @@ def chat():
             "content": msg['content']
         })
     
+    print(f"[DEBUG] OpenAI に送信するメッセージ数: {len(messages)}")
+    
     try:
-        ai_response = call_openai_with_retry(messages, unit=unit, stage='prediction')
+        print("[DEBUG] OpenAI API 呼び出し開始")
+        ai_response = call_openai_with_retry(messages, unit=unit, stage='prediction', enable_cache=True)
+        print(f"[DEBUG] AI レスポンス取得: {len(ai_response)} 文字")
         
         # JSON形式のレスポンスの場合は解析して純粋なメッセージを抽出
         ai_message = extract_message_from_json_response(ai_response)
+        print(f"[DEBUG] 抽出後メッセージ: {len(ai_message)} 文字")
         
         # 予想・考察段階ではマークダウン除去をスキップ（MDファイルのプロンプトに従う）
         # ai_message = remove_markdown_formatting(ai_message)
@@ -718,9 +833,13 @@ def chat():
             'suggest_summary': suggest_summary
         }
         
+        print(f"[DEBUG] レスポンス返却: {ai_message[:50]}...")
         return jsonify(response_data)
         
     except Exception as e:
+        print(f"[DEBUG] エラー発生: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': f'AI接続エラーが発生しました。しばらく待ってから再度お試しください。'}), 500
 
 @app.route('/summary', methods=['POST'])
@@ -750,7 +869,7 @@ def summary():
     })
     
     try:
-        summary_response = call_openai_with_retry(messages)
+        summary_response = call_openai_with_retry(messages, model_override="gpt-4o-mini", enable_cache=True)
         
         # JSON形式のレスポンスの場合は解析して純粋なメッセージを抽出
         summary_text = extract_message_from_json_response(summary_response)
@@ -838,7 +957,7 @@ def reflect_chat():
         })
     
     try:
-        ai_response = call_openai_with_retry(messages, unit=unit, stage='reflection')
+        ai_response = call_openai_with_retry(messages, unit=unit, stage='reflection', enable_cache=True)
         
         # JSON形式のレスポンスの場合は解析して純粋なメッセージを抽出
         ai_message = extract_message_from_json_response(ai_response)
@@ -918,7 +1037,7 @@ def final_summary():
     })
     
     try:
-        final_summary_response = call_openai_with_retry(messages)
+        final_summary_response = call_openai_with_retry(messages, model_override="gpt-4o-mini", enable_cache=True)
         
         # JSON形式のレスポンスの場合は解析して純粋なメッセージを抽出
         final_summary_text = extract_message_from_json_response(final_summary_response)
@@ -1118,17 +1237,34 @@ def get_available_log_dates():
     import os
     import glob
     
-    log_files = glob.glob("logs/learning_log_*.json")
     dates = []
     
-    for file in log_files:
-        # ファイル名から日付を抽出
-        filename = os.path.basename(file)
-        if filename.startswith('learning_log_') and filename.endswith('.json'):
-            date_str = filename[13:-5]  # learning_log_YYYYMMDD.json
-            if len(date_str) == 8 and date_str.isdigit():
-                formatted_date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
-                dates.append({'raw': date_str, 'formatted': formatted_date})
+    if USE_GCS:
+        # Cloud Storageからログファイル一覧を取得
+        try:
+            blobs = bucket.list_blobs(prefix='logs/learning_log_')
+            
+            for blob in blobs:
+                filename = os.path.basename(blob.name)
+                if filename.startswith('learning_log_') and filename.endswith('.json'):
+                    date_str = filename[13:-5]  # learning_log_YYYYMMDD.json
+                    if len(date_str) == 8 and date_str.isdigit():
+                        formatted_date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+                        dates.append({'raw': date_str, 'formatted': formatted_date})
+        except Exception as e:
+            print(f"Error listing log files from GCS: {e}")
+    else:
+        # ローカルファイルシステムからログファイル一覧を取得
+        log_files = glob.glob("logs/learning_log_*.json")
+        
+        for file in log_files:
+            # ファイル名から日付を抽出
+            filename = os.path.basename(file)
+            if filename.startswith('learning_log_') and filename.endswith('.json'):
+                date_str = filename[13:-5]  # learning_log_YYYYMMDD.json
+                if len(date_str) == 8 and date_str.isdigit():
+                    formatted_date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+                    dates.append({'raw': date_str, 'formatted': formatted_date})
     
     # 日付でソート（新しい順）
     dates.sort(key=lambda x: x['raw'], reverse=True)
@@ -1187,4 +1323,8 @@ def student_detail():
                          teacher_id=session.get('teacher_id', 'teacher'))
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5014)
+    # 環境変数からポート番号を取得（CloudRun用）
+    port = int(os.environ.get('PORT', 5014))
+    # 本番環境ではdebug=False
+    debug_mode = os.environ.get('FLASK_ENV') != 'production'
+    app.run(host='0.0.0.0', port=port, debug=debug_mode)

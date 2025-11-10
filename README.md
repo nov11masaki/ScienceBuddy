@@ -90,9 +90,11 @@ ScienceBuddy は、小学校理科の学習過程において、子ども達が*
 |--------|-----------|
 | **バックエンド** | Flask (Python 3.9+) |
 | **AI** | OpenAI API (gpt-4o-mini) |
+| **AIコスト最適化** | OpenAI Prompt Caching (入力トークン90%削減) |
 | **フロントエンド** | HTML5, CSS3, JavaScript, Bootstrap 5 |
-| **ホスト環境** | ローカル実行環境 |
-| **データ保存** | JSON形式ログ（ローカルファイルシステム） |
+| **クラウド環境** | Google Cloud Run, Cloud Storage, Cloud Build |
+| **ホスト環境** | ステートレスコンテナ（Docker） |
+| **データ保存** | Cloud Storage（本番）、JSON形式ログ（ローカル） |
 | **セッション管理** | Flask Session |
 | **プロンプト** | Markdown形式 (CIIO構造) |
 | **デザイン** | レスポンシブ・モダンUI |
