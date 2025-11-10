@@ -7,7 +7,7 @@
     <div class="container">
         <div class="text-center mb-4">
             <div class="class-info-banner mb-3">
-                <span class="class-badge">４年<span id="selectedClass"></span>組</span>
+                <span class="class-badge" id="classDisplayText">４年<span id="selectedClass"></span>組</span>
             </div>
             <h2 class="mb-3">
                 <i class="fas fa-user-graduate text-primary"></i>
@@ -42,8 +42,13 @@
 const urlParams = new URLSearchParams(window.location.search);
 const classNumber = urlParams.get('class') || '1';
 
-// クラス番号を表示
-document.getElementById('selectedClass').textContent = classNumber;
+// クラス番号を表示（研究室の場合は特別に表示）
+if (classNumber === 'lab') {
+    document.getElementById('classDisplayText').textContent = '研究室';
+    document.getElementById('selectedClass').textContent = '';
+} else {
+    document.getElementById('selectedClass').textContent = classNumber;
+}
 
 // 1-30番のカードを生成
 const numberCards = document.getElementById('numberCards');

@@ -67,24 +67,71 @@ TEACHER_CREDENTIALS = {
     "4200": "science",  # 2組担任
     "4300": "science",  # 3組担任
     "4400": "science",  # 4組担任
+    "5000": "science",  # 研究室管理者
 }
 
 # 教員IDとクラスの対応
 TEACHER_CLASS_MAPPING = {
-    "teacher": ["class1", "class2", "class3", "class4"],  # 全クラス管理可能
+    "teacher": ["class1", "class2", "class3", "class4", "lab"],  # 全クラス管理可能
     "4100": ["class1"],  # 1組のみ
     "4200": ["class2"],  # 2組のみ
     "4300": ["class3"],  # 3組のみ
     "4400": ["class4"],  # 4組のみ
+    "5000": ["lab"],  # 研究室のみ
 }
 
 # 生徒IDとクラスの対応
 STUDENT_CLASS_MAPPING = {
-    "class1": list(range(4101, 4131)),  # 4101-4130
-    "class2": list(range(4201, 4231)),  # 4201-4230
-    "class3": list(range(4301, 4331)),  # 4301-4330
-    "class4": list(range(4401, 4431)),  # 4401-4430
+    "class1": list(range(4101, 4131)),  # 4101-4130 (1組1-30番)
+    "class2": list(range(4201, 4231)),  # 4201-4230 (2組1-30番)
+    "class3": list(range(4301, 4331)),  # 4301-4330 (3組1-30番)
+    "class4": list(range(4401, 4431)),  # 4401-4430 (4組1-30番)
+    "lab": list(range(5001, 5031)),     # 5001-5030 (研究室1-30番)
 }
+
+# 同時セッション管理用（同じアカウントの同時ログインを防止）
+active_sessions = {}  # {student_id: session_id}
+session_devices = {}  # {session_id: device_info}
+
+def get_device_fingerprint():
+    """デバイスフィンガープリントを生成"""
+    import hashlib
+    ua = request.headers.get('User-Agent', 'unknown')
+    ip = request.remote_addr
+    device_info = f"{ua}:{ip}"
+    fingerprint = hashlib.md5(device_info.encode()).hexdigest()
+    return fingerprint
+
+def check_session_conflict(student_id):
+    """同一学生IDの他セッションを検出"""
+    current_device = get_device_fingerprint()
+    
+    if student_id in active_sessions:
+        previous_session_id = active_sessions[student_id]
+        previous_device = session_devices.get(previous_session_id)
+        
+        # 異なるデバイスからのアクセス
+        if previous_device and previous_device != current_device:
+            return True, previous_session_id, previous_device
+    
+    return False, None, None
+
+def register_session(student_id, session_id):
+    """セッションを登録"""
+    device_fingerprint = get_device_fingerprint()
+    active_sessions[student_id] = session_id
+    session_devices[session_id] = device_fingerprint
+
+def clear_session(session_id):
+    """セッションをクリア"""
+    # student_idを逆引きして削除
+    for student_id, sid in list(active_sessions.items()):
+        if sid == session_id:
+            del active_sessions[student_id]
+            break
+    
+    if session_id in session_devices:
+        del session_devices[session_id]
 
 # 認証チェック用デコレータ
 def require_teacher_auth(f):
@@ -689,6 +736,18 @@ def select_unit():
     student_number = request.args.get('number')
     session['class_number'] = class_number
     session['student_number'] = student_number
+    
+    # 同時セッション競合チェック
+    student_id = f"{class_number}_{student_number}"
+    has_conflict, previous_session_id, previous_device = check_session_conflict(student_id)
+    
+    if has_conflict:
+        # 前のセッションをクリア
+        clear_session(previous_session_id)
+        flash(f'別の端末でこのアカウントがアクセスされたため、前のセッションを終了しました。', 'warning')
+    
+    # 現在のセッションを登録
+    register_session(student_id, session.sid)
     
     # 各単元の進行状況をチェック
     unit_progress = {}
