@@ -1590,7 +1590,8 @@ JSON形式で以下の構造で返してください:
                             
                             print(f"[ANALYSIS] Analyzing {class_num}_{unit} with OpenAI...")
                             
-                            response = openai.ChatCompletion.create(
+                            client = openai.OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
+                            response = client.chat.completions.create(
                                 model="gpt-3.5-turbo",
                                 messages=[
                                     {"role": "system", "content": "You are an expert science education analyst specialized in elementary school science learning. Analyze student dialogue logs and provide detailed insights about their thinking patterns, misconceptions, and learning characteristics. Always respond in Japanese."},
@@ -1794,7 +1795,8 @@ JSON形式で以下の構造で返してください:
                             
                             print(f"[ANALYSIS] Analyzing {class_num}_{unit} with OpenAI...")
                             
-                            response = openai.ChatCompletion.create(
+                            client = openai.OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
+                            response = client.chat.completions.create(
                                 model="gpt-3.5-turbo",
                                 messages=[
                                     {"role": "system", "content": "You are an expert science education analyst. Analyze student learning logs and provide insights about their thinking patterns and misconceptions."},
