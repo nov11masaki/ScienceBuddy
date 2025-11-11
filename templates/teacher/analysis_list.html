@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}思考傾向分析 - 教員用{% endblock %}
+
+{% block content %}
+<div class="analysis-list-page">
+    <!-- ヘッダー -->
+    <header class="teacher-header">
+        <div class="header-container">
+            <div class="header-title-section">
+                <h1><i class="fas fa-brain"></i> 思考傾向分析</h1>
+                <p>クラスを選択して児童の思考傾向を分析</p>
+            </div>
+            <div class="header-actions-section">
+                <a href="/teacher/dashboard" class="btn btn-outline-secondary btn-sm me-2">
+                    <i class="fas fa-arrow-left"></i> ダッシュボードに戻る
+                </a>
+                <span class="teacher-id-badge"><i class="fas fa-user-tie"></i> {{ teacher_id }}</span>
+                <a href="/teacher/logout" class="logout-btn"><i class="fas fa-sign-out-alt"></i> ログアウト</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <main class="analysis-main">
+        <div class="container-fluid">
+            <section class="classes-section">
+                <h2><i class="fas fa-list"></i> 分析対象クラス</h2>
+                
+                {% if classes %}
+                <div class="classes-grid">
+                    {% for class_num in classes %}
+                    <a href="/teacher/analysis/{{ class_num }}" class="class-card">
+                        <div class="class-card-content">
+                            <div class="class-number">{{ class_num }}組</div>
+                            <div class="class-description">思考傾向分析</div>
+                            <div class="class-arrow">
+                                <i class="fas fa-chevron-right"></i>
+                            </div>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <div>
+                        <strong>分析データがありません</strong>
+                        <p style="margin: 4px 0 0 0; font-size: 0.9rem;">児童が対話を進めると、ここにクラス一覧が表示されます。</p>
+                    </div>
+                </div>
+                {% endif %}
+            </section>
+        </div>
+    </main>
+</div>
+
+<style>
+.analysis-list-page {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #f7f8f9 0%, #e8eaed 100%);
+}
+
+.analysis-main {
+    padding: 40px 20px;
+}
+
+.container-fluid {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.classes-section h2 {
+    font-size: 1.5rem;
+    margin-bottom: 30px;
+    color: #202124;
+}
+
+.classes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.class-card {
+    display: block;
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 90, 156, 0.12);
+    border: 2px solid #e8eaed;
+    cursor: pointer;
+}
+
+.class-card:hover {
+    border-color: #005A9C;
+    box-shadow: 0 8px 20px rgba(0, 90, 156, 0.2);
+    transform: translateY(-4px);
+}
+
+.class-card-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 12px;
+}
+
+.class-number {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #005A9C;
+}
+
+.class-description {
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+
+.class-arrow {
+    margin-top: 8px;
+    color: #005A9C;
+    font-size: 1.2rem;
+    transition: transform 0.3s ease;
+}
+
+.class-card:hover .class-arrow {
+    transform: translateX(4px);
+}
+
+/* アラート */
+.alert {
+    padding: 20px;
+    border-radius: 10px;
+    margin: 20px 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.alert-info {
+    background: #e3f2fd;
+    border: 1px solid #90caf9;
+    color: #01579b;
+}
+
+.alert i {
+    font-size: 1.3rem;
+    flex-shrink: 0;
+}
+
+/* レスポンシブ */
+@media (max-width: 768px) {
+    .classes-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 15px;
+    }
+    
+    .analysis-main {
+        padding: 20px 10px;
+    }
+    
+    .class-number {
+        font-size: 1.5rem;
+    }
+}
+</style>
+
+{% endblock %}

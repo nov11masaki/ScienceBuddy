@@ -1461,243 +1461,112 @@ def teacher_export():
 @app.route('/teacher/analysis')
 @require_teacher_auth
 def teacher_analysis():
-    """クラス×単元ごとの思考傾向分析 - AI による深い分析"""
+    """クラス選択ページにリダイレクト"""
+    return redirect(url_for('teacher_analysis_list'))
+
+@app.route('/teacher/analysis/<class_num>')
+@require_teacher_auth
+def teacher_analysis_class(class_num):
+    """クラス別の思考傾向分析 - シンプルなテキスト分析"""
     try:
         import glob
         import os
         import re
         import json
         
-        # 利用可能な全ログを取得
+        # 全ログを取得
         all_logs = []
-        dates = []
-        
-        # ログファイル一覧を取得
-        if USE_GCS:
-            try:
-                print(f"[ANALYSIS] GCS: listing log files")
-                blobs = bucket.list_blobs(prefix='logs/learning_log_')
-                for blob in blobs:
-                    filename = os.path.basename(blob.name)
-                    if filename.startswith('learning_log_') and filename.endswith('.json'):
-                        date_str = filename[13:-5]
-                        if len(date_str) == 8 and date_str.isdigit():
-                            dates.append(date_str)
-            except Exception as e:
-                print(f"[ANALYSIS] GCS Error: {str(e)}")
-        else:
-            # ローカルファイル
-            log_files = glob.glob("logs/learning_log_*.json")
-            for file in log_files:
-                filename = os.path.basename(file)
-                if filename.startswith('learning_log_') and filename.endswith('.json'):
-                    date_str = filename[13:-5]
-                    if len(date_str) == 8 and date_str.isdigit():
-                        dates.append(date_str)
-        
-        dates.sort(reverse=True)
-        print(f"[ANALYSIS] Found {len(dates)} log dates")
-        
-        print("[ANALYSIS] START - collecting all logs for analysis")
+        dates = get_available_log_dates()
         
         for date_str in dates:
             try:
                 logs = load_learning_logs(date_str)
                 all_logs.extend(logs)
-            except Exception as e:
-                print(f"[ANALYSIS] Warning loading logs from {date_str}: {str(e)}")
+            except:
+                pass
         
-        print(f"[ANALYSIS] Collected {len(all_logs)} total logs")
+        # このクラスのログのみフィルタリング
+        class_logs = [log for log in all_logs if log.get('class_num') == class_num]
         
-        # クラス×単元でグループ化
-        analysis_data = {}  # {class: {unit: {analysis}}}
-        
-        for log in all_logs:
-            class_num = log.get('class_num')
+        # 単元ごとにグループ化
+        units_data = {}
+        for log in class_logs:
             unit = log.get('unit', '未分類')
-            
-            if class_num not in analysis_data:
-                analysis_data[class_num] = {}
-            
-            if unit not in analysis_data[class_num]:
-                analysis_data[class_num][unit] = {
-                    'total_students': set(),
-                    'prediction_count': 0,
-                    'reflection_count': 0,
-                    'raw_logs': []
-                }
-            
-            # 学生数カウント
-            student_key = f"{log.get('student_number', '')}"
-            analysis_data[class_num][unit]['total_students'].add(student_key)
-            
-            # ログタイプ別カウント
-            if log.get('log_type') == 'prediction_chat':
-                analysis_data[class_num][unit]['prediction_count'] += 1
-            elif log.get('log_type') == 'reflection_chat':
-                analysis_data[class_num][unit]['reflection_count'] += 1
-            
-            analysis_data[class_num][unit]['raw_logs'].append(log)
+            if unit not in units_data:
+                units_data[unit] = []
+            units_data[unit].append(log)
         
-        # AI による思考傾向の深い分析
-        print("[ANALYSIS] Performing deep AI analysis on learning trends")
+        # 各単元の分析を実行
+        analysis_results = {}
         
-        for class_num in analysis_data:
-            for unit in analysis_data[class_num]:
-                unit_data = analysis_data[class_num][unit]
+        for unit, logs in units_data.items():
+            try:
+                # 対話ログから分析用テキストを構築
+                chat_texts = []
+                for log in logs[:30]:
+                    if log.get('log_type') in ['prediction_chat', 'reflection_chat']:
+                        user_msg = log.get('data', {}).get('user_message', '')
+                        if user_msg:
+                            chat_texts.append(user_msg)
                 
-                # 学生数を確定
-                unit_data['total_students'] = len(unit_data['total_students'])
-                
-                # AI分析を実行
-                if len(unit_data['raw_logs']) > 0:
-                    try:
-                        # 対話ログから分析用テキストを構築
-                        chat_texts = []
-                        for log in unit_data['raw_logs'][:20]:  # 最大20件
-                            if log.get('log_type') in ['prediction_chat', 'reflection_chat']:
-                                user_msg = log.get('data', {}).get('user_message', '')
-                                ai_msg = log.get('data', {}).get('ai_response', '')
-                                if user_msg:
-                                    chat_texts.append(f"学生: {user_msg}\nAI: {ai_msg}")
-                        
-                        if chat_texts:
-                            # OpenAI APIで思考傾向を詳しく分析
-                            analysis_prompt = f"""
-科学の学習における児童の対話ログを分析して、以下の観点から詳細な分析結果を日本語で提供してください:
+                if chat_texts:
+                    # OpenAI で思考傾向を分析
+                    analysis_prompt = f"""
+科学の学習における児童の対話ログを分析してください。
 
-【対話ログ】
-{chr(10).join(chat_texts[:8])}
+【対話内容サンプル】
+{chr(10).join(chat_texts[:10])}
 
-分析項目:
-1. 【思考の特徴】：児童の思考方法の特徴（例：帰納的思考、演繹的思考、実験思考、比較考察など）
-2. 【科学的理解度】：科学的概念の理解レベル（初期段階/発展段階/深化段階）
-3. 【質問の質】：児童が何について疑問を持っているか、その質問の深さ
-4. 【よくある誤解】：科学的事象についてのよくある誤解や思い違い
-5. 【学習の強み】：児童の学習における強み、良い習慣
-6. 【改善が必要な点】：学習をより効果的にするための改善点
-7. 【指導上の工夫】：教員が行うべき具体的な指導方法やアドバイス
+以下の観点から、児童の思考や経験との結びつき、既習事項の活用方法などをテキストで分析してください：
 
-JSON形式で以下の構造で返してください:
-{{
-    "thinking_characteristics": "思考の特徴について2-3文の説明",
-    "understanding_level": "初期段階|発展段階|深化段階",
-    "question_quality": "児童の質問の質について1-2文",
-    "misconceptions": ["誤解1", "誤解2"],
-    "learning_strengths": "学習の強みについて1-2文",
-    "improvement_areas": "改善点について1-2文",
-    "teaching_recommendations": "指導上の具体的な工夫3-4点をリスト形式で"
-}}
+1. 児童がどんな既習事項や経験と新しい学習を結びつけているか
+2. どのような思考プロセスで予想や考察を立てているか
+3. 児童の質問や気づきの特徴
+4. 日常生活との関連付けの傾向
+
+200〜300字でまとめてください。
 """
-                            
-                            print(f"[ANALYSIS] Analyzing {class_num}_{unit} with OpenAI...")
-                            
-                            client = openai.OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
-                            response = client.chat.completions.create(
-                                model="gpt-3.5-turbo",
-                                messages=[
-                                    {"role": "system", "content": "You are an expert science education analyst specialized in elementary school science learning. Analyze student dialogue logs and provide detailed insights about their thinking patterns, misconceptions, and learning characteristics. Always respond in Japanese."},
-                                    {"role": "user", "content": analysis_prompt}
-                                ],
-                                temperature=0.7,
-                                max_tokens=1000
-                            )
-                            
-                            # レスポンスを解析
-                            ai_analysis_text = response.choices[0].message.content
-                            print(f"[ANALYSIS] Raw response: {ai_analysis_text[:300]}")
-                            
-                            try:
-                                # JSON部分を抽出
-                                json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', ai_analysis_text, re.DOTALL)
-                                if json_match:
-                                    ai_analysis = json.loads(json_match.group())
-                                else:
-                                    # JSONパース失敗時は自動構造化
-                                    ai_analysis = {
-                                        "thinking_characteristics": ai_analysis_text[:150],
-                                        "understanding_level": "発展段階",
-                                        "question_quality": "分析中",
-                                        "misconceptions": [],
-                                        "learning_strengths": "対話内容から推定",
-                                        "improvement_areas": "さらなるデータが必要",
-                                        "teaching_recommendations": ["継続的な観察が重要"]
-                                    }
-                            except json.JSONDecodeError as e:
-                                print(f"[ANALYSIS] JSON Parse Error: {str(e)}")
-                                ai_analysis = {
-                                    "thinking_characteristics": ai_analysis_text[:200],
-                                    "understanding_level": "判定中",
-                                    "question_quality": "分析中",
-                                    "misconceptions": [],
-                                    "learning_strengths": "テキスト分析から推定",
-                                    "improvement_areas": "詳細分析が必要",
-                                    "teaching_recommendations": ["対話を継続促進"]
-                                }
-                            
-                            unit_data['ai_analysis'] = ai_analysis
-                            unit_data['detailed_analysis'] = ai_analysis_text
-                            
-                        else:
-                            unit_data['ai_analysis'] = {
-                                "thinking_characteristics": "データが不足しているため分析できません",
-                                "understanding_level": "未判定",
-                                "question_quality": "対話数が少ない",
-                                "misconceptions": [],
-                                "learning_strengths": "さらなる対話が必要です",
-                                "improvement_areas": "対話数を増加させることが重要",
-                                "teaching_recommendations": ["継続的な対話を促進する"]
-                            }
-                            unit_data['detailed_analysis'] = ""
-                        
-                        # サンプル対話を抽出
-                        sample_chats = []
-                        for log in unit_data['raw_logs'][:3]:
-                            if log.get('log_type') == 'prediction_chat':
-                                sample_chats.append({
-                                    'user': log.get('data', {}).get('user_message', '')[:150],
-                                    'ai': log.get('data', {}).get('ai_response', '')[:150]
-                                })
-                        unit_data['sample_chats'] = sample_chats
-                        
-                        # 学生数と対話数から活発度を計算
-                        avg_chats_per_student = (unit_data['prediction_count'] + unit_data['reflection_count']) / max(unit_data['total_students'], 1)
-                        unit_data['engagement_level'] = 'high' if avg_chats_per_student > 5 else 'medium' if avg_chats_per_student > 2 else 'low'
-                        
-                    except Exception as e:
-                        print(f"[ANALYSIS] Error analyzing unit {class_num}_{unit}: {type(e).__name__}: {str(e)}")
-                        import traceback
-                        traceback.print_exc()
-                        unit_data['ai_analysis'] = {
-                            "thinking_characteristics": f"分析エラーが発生しました: {str(e)[:100]}",
-                            "understanding_level": "不明",
-                            "question_quality": "エラー",
-                            "misconceptions": [],
-                            "learning_strengths": "再分析が必要",
-                            "improvement_areas": "システムの確認が必要",
-                            "teaching_recommendations": ["管理者に連絡してください"]
-                        }
-                        unit_data['sample_chats'] = []
-                        unit_data['engagement_level'] = 'unknown'
-                        unit_data['detailed_analysis'] = ""
-                else:
-                    unit_data['ai_analysis'] = {
-                        "thinking_characteristics": "このユニットにはまだログがありません",
-                        "understanding_level": "未判定",
-                        "question_quality": "データなし",
-                        "misconceptions": [],
-                        "learning_strengths": "記録がありません",
-                        "improvement_areas": "対話開始が必要",
-                        "teaching_recommendations": ["児童の対話開始を促す"]
+                    
+                    print(f"[ANALYSIS] Analyzing {class_num}_{unit} with OpenAI...")
+                    
+                    client = openai.OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
+                    response = client.chat.completions.create(
+                        model="gpt-3.5-turbo",
+                        messages=[
+                            {"role": "system", "content": "You are an expert science education analyst. Analyze student dialogue and provide insights about their thinking patterns and how they connect learning to prior knowledge. Always respond in Japanese with clear, readable paragraphs."},
+                            {"role": "user", "content": analysis_prompt}
+                        ],
+                        temperature=0.7,
+                        max_tokens=500
+                    )
+                    
+                    analysis_text = response.choices[0].message.content
+                    
+                    analysis_results[unit] = {
+                        'text': analysis_text,
+                        'student_count': len(set(log.get('student_number') for log in logs)),
+                        'chat_count': len([l for l in logs if l.get('log_type') in ['prediction_chat', 'reflection_chat']])
                     }
-                    unit_data['sample_chats'] = []
-                    unit_data['engagement_level'] = 'unknown'
-                    unit_data['detailed_analysis'] = ""
+                else:
+                    analysis_results[unit] = {
+                        'text': 'このユニットにはまだ十分なデータがありません。',
+                        'student_count': 0,
+                        'chat_count': 0
+                    }
+                
+            except Exception as e:
+                print(f"[ANALYSIS] Error analyzing {unit}: {str(e)}")
+                analysis_results[unit] = {
+                    'text': f'分析エラーが発生しました: {str(e)[:100]}',
+                    'student_count': len(set(log.get('student_number') for log in logs)),
+                    'chat_count': len([l for l in logs if l.get('log_type') in ['prediction_chat', 'reflection_chat']])
+                }
         
-        print("[ANALYSIS] SUCCESS - deep analysis complete")
+        print("[ANALYSIS] SUCCESS - class analysis complete")
         
-        return render_template('teacher/analysis.html',
-                             analysis_data=analysis_data,
+        return render_template('teacher/analysis_class.html',
+                             class_num=class_num,
+                             analysis_results=analysis_results,
                              teacher_id=session.get('teacher_id'))
     
     except Exception as e:
@@ -1705,8 +1574,35 @@ JSON形式で以下の構造で返してください:
         import traceback
         traceback.print_exc()
         return jsonify({'error': f'{type(e).__name__}: {str(e)}'}), 500
+
+@app.route('/teacher/analysis_list')
+@require_teacher_auth
+def teacher_analysis_list():
+    """分析対象クラスの一覧を表示"""
+    try:
+        # 全ログを取得してクラス一覧を取得
+        all_logs = []
+        dates = get_available_log_dates()
         
-        print("[ANALYSIS] START - collecting all logs for analysis")
+        for date_str in dates:
+            try:
+                logs = load_learning_logs(date_str)
+                all_logs.extend(logs)
+            except:
+                pass
+        
+        # ユニークなクラスを取得
+        classes = sorted(set(log.get('class_num') for log in all_logs if log.get('class_num')))
+        
+        return render_template('teacher/analysis_list.html',
+                             classes=classes,
+                             teacher_id=session.get('teacher_id'))
+    
+    except Exception as e:
+        print(f"[ANALYSIS LIST] ERROR: {str(e)}")
+        return render_template('teacher/analysis_list.html',
+                             classes=[],
+                             teacher_id=session.get('teacher_id'))
         
         for date_info in available_dates:
             try:

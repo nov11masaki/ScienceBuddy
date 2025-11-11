@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block title %}{{ class_num }}組 - 思考傾向分析{% endblock %}
+
+{% block content %}
+<div class="analysis-class-page">
+    <!-- ヘッダー -->
+    <header class="teacher-header">
+        <div class="header-container">
+            <div class="header-title-section">
+                <h1><i class="fas fa-brain"></i> {{ class_num }}組 - 思考傾向分析</h1>
+                <p>児童の学習における思考パターンと経験の結びつき</p>
+            </div>
+            <div class="header-actions-section">
+                <a href="/teacher/analysis_list" class="btn btn-outline-secondary btn-sm me-2">
+                    <i class="fas fa-arrow-left"></i> クラス選択に戻る
+                </a>
+                <a href="/teacher/dashboard" class="btn btn-outline-secondary btn-sm me-2">
+                    <i class="fas fa-home"></i> ダッシュボード
+                </a>
+                <a href="/teacher/logout" class="logout-btn"><i class="fas fa-sign-out-alt"></i> ログアウト</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <main class="analysis-main">
+        <div class="container-fluid">
+            <!-- 単元別分析 -->
+            {% if analysis_results %}
+            <section class="units-analysis">
+                {% for unit, result in analysis_results.items() %}
+                <div class="unit-analysis-card">
+                    <div class="unit-header">
+                        <h3>{{ unit }}</h3>
+                        <div class="unit-stats">
+                            <span class="stat-badge">
+                                <i class="fas fa-users"></i> {{ result.student_count }} 人
+                            </span>
+                            <span class="stat-badge">
+                                <i class="fas fa-comments"></i> {{ result.chat_count }} 件
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="analysis-content">
+                        <div class="analysis-text-section">
+                            <h5><i class="fas fa-lightbulb"></i> 思考傾向と学習パターン</h5>
+                            <p class="analysis-text">{{ result.text }}</p>
+                        </div>
+                    </div>
+
+                    <!-- 詳細ボタン -->
+                    <div class="unit-actions">
+                        <a href="/teacher/logs?class={{ class_num }}&unit={{ unit|urlencode }}" 
+                           class="btn btn-sm btn-primary">
+                            <i class="fas fa-magnifying-glass"></i> 対話ログを確認
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </section>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                <div>
+                    <strong>分析データなし</strong>
+                    <p style="margin: 4px 0 0 0; font-size: 0.9rem;">このクラスではまだ対話が記録されていません。</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </main>
+</div>
+
+<style>
+.analysis-class-page {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #f7f8f9 0%, #e8eaed 100%);
+}
+
+.analysis-main {
+    padding: 40px 20px;
+}
+
+.container-fluid {
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.units-analysis {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.unit-analysis-card {
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 2px 12px rgba(0, 90, 156, 0.12);
+    border-left: 5px solid #005A9C;
+}
+
+.unit-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e8eaed;
+}
+
+.unit-header h3 {
+    font-size: 1.3rem;
+    color: #005A9C;
+    margin: 0;
+    font-weight: 700;
+}
+
+.unit-stats {
+    display: flex;
+    gap: 12px;
+}
+
+.stat-badge {
+    background: #f0f7ff;
+    color: #005A9C;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.analysis-content {
+    margin-bottom: 20px;
+}
+
+.analysis-text-section h5 {
+    color: #005A9C;
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin: 0 0 16px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.analysis-text {
+    color: #202124;
+    line-height: 1.8;
+    font-size: 1rem;
+    text-align: justify;
+    background: #f9fafb;
+    padding: 20px;
+    border-radius: 8px;
+    border-left: 4px solid #00933e;
+    margin: 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.unit-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.unit-actions .btn {
+    flex-shrink: 0;
+}
+
+/* アラート */
+.alert {
+    padding: 20px;
+    border-radius: 10px;
+    margin: 20px 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.alert-info {
+    background: #e3f2fd;
+    border: 1px solid #90caf9;
+    color: #01579b;
+}
+
+.alert i {
+    font-size: 1.3rem;
+    flex-shrink: 0;
+}
+
+/* レスポンシブ */
+@media (max-width: 768px) {
+    .analysis-main {
+        padding: 20px 10px;
+    }
+    
+    .unit-analysis-card {
+        padding: 20px;
+    }
+    
+    .unit-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    .unit-stats {
+        width: 100%;
+    }
+    
+    .analysis-text {
+        font-size: 0.95rem;
+        padding: 15px;
+    }
+}
+</style>
+
+{% endblock %}
