@@ -584,27 +584,35 @@ def save_learning_log(student_number, unit, log_type, data, class_number=None):
             blob_name = f"logs/{log_filename}"
             blob = bucket.blob(blob_name)
             
+            print(f"[DEBUG] Saving log to GCS - blob_name: {blob_name}, class_display: {class_display}, unit: {unit}, log_type: {log_type}")
+            
             # 既存のログを読み込み
             logs = []
             try:
                 existing_data = blob.download_as_text()
                 logs = json.loads(existing_data)
+                print(f"[DEBUG] Loaded {len(logs)} existing logs from GCS")
             except gcs_exceptions.NotFound:
+                print(f"[DEBUG] No existing log file found, creating new one")
                 logs = []
             except Exception as e:
-                print(f"Warning: Failed to load existing log from GCS: {e}")
+                print(f"[DEBUG] Warning: Failed to load existing log from GCS: {e}")
                 logs = []
             
             # 新しいログを追加
             logs.append(log_entry)
+            print(f"[DEBUG] Added new log entry, total logs now: {len(logs)}")
             
             # GCSに保存
             blob.upload_from_string(
                 json.dumps(logs, ensure_ascii=False, indent=2),
                 content_type='application/json'
             )
+            print(f"[DEBUG] Successfully saved log to GCS")
         except Exception as e:
-            print(f"Error saving log to GCS: {e}")
+            print(f"[ERROR] Error saving log to GCS: {e}")
+            import traceback
+            traceback.print_exc()
     else:
         # ローカルファイルに保存
         # ログディレクトリが存在しない場合は作成
@@ -642,13 +650,20 @@ def load_learning_logs(date=None):
             blob_name = f"logs/{log_filename}"
             blob = bucket.blob(blob_name)
             
+            print(f"[DEBUG] Loading logs from GCS - blob_name: {blob_name}")
+            
             if not blob.exists():
+                print(f"[DEBUG] Log file does not exist in GCS: {blob_name}")
                 return []
             
             data = blob.download_as_text()
-            return json.loads(data)
+            logs = json.loads(data)
+            print(f"[DEBUG] Successfully loaded {len(logs)} logs from GCS")
+            return logs
         except Exception as e:
-            print(f"Error loading log from GCS: {e}")
+            print(f"[ERROR] Error loading log from GCS: {e}")
+            import traceback
+            traceback.print_exc()
             return []
     else:
         # ローカルファイルから読み込み
@@ -1468,6 +1483,97 @@ def student_detail():
                          available_dates=available_dates,
                          units_data={unit_name: {} for unit_name in all_units},
                          teacher_id=session.get('teacher_id', 'teacher'))
+
+@app.route('/teacher/delete_log', methods=['POST'])
+@require_teacher_auth
+def delete_log():
+    """学習ログを削除"""
+    try:
+        data = request.json
+        class_num = int(data.get('class_num', 0))
+        seat_num = int(data.get('seat_num', 0))
+        unit = data.get('unit', '')
+        date = data.get('date', '')
+        log_ids = data.get('log_ids', [])  # 削除するログのインデックス（複数可）
+        
+        if not (class_num and seat_num and unit and date):
+            return jsonify({'error': '削除に必要な情報が不足しています'}), 400
+        
+        print(f"[DEBUG] Deleting logs - class: {class_num}, seat: {seat_num}, unit: {unit}, date: {date}, ids: {log_ids}")
+        
+        # ログを読み込み
+        logs = load_learning_logs(date)
+        
+        # 削除対象を特定
+        original_count = len(logs)
+        if log_ids:
+            # 特定のログをIDで削除
+            logs = [log for i, log in enumerate(logs) if i not in log_ids]
+        else:
+            # 該当する学生のすべてのログを削除
+            logs = [log for log in logs if not (
+                log.get('class_num') == class_num and 
+                log.get('seat_num') == seat_num and 
+                log.get('unit') == unit
+            )]
+        
+        deleted_count = original_count - len(logs)
+        print(f"[DEBUG] Deleted {deleted_count} logs, {len(logs)} remaining")
+        
+        if deleted_count == 0:
+            return jsonify({'error': '削除するログが見つかりません'}), 404
+        
+        # ログを保存
+        if USE_GCS:
+            try:
+                log_filename = f"learning_log_{date}.json"
+                blob_name = f"logs/{log_filename}"
+                blob = bucket.blob(blob_name)
+                
+                if len(logs) > 0:
+                    # ログが残っている場合は更新
+                    blob.upload_from_string(
+                        json.dumps(logs, ensure_ascii=False, indent=2),
+                        content_type='application/json'
+                    )
+                    print(f"[DEBUG] Updated log file in GCS")
+                else:
+                    # ログが空になった場合はファイルを削除
+                    blob.delete()
+                    print(f"[DEBUG] Deleted empty log file from GCS")
+            except Exception as e:
+                print(f"[ERROR] Error updating log in GCS: {e}")
+                return jsonify({'error': 'ログ削除中にエラーが発生しました'}), 500
+        else:
+            # ローカルファイルの場合
+            try:
+                log_filename = f"learning_log_{date}.json"
+                log_file = f"logs/{log_filename}"
+                
+                if len(logs) > 0:
+                    # ログが残っている場合は更新
+                    with open(log_file, 'w', encoding='utf-8') as f:
+                        json.dump(logs, f, ensure_ascii=False, indent=2)
+                else:
+                    # ログが空になった場合はファイルを削除
+                    if os.path.exists(log_file):
+                        os.remove(log_file)
+                print(f"[DEBUG] Updated local log file")
+            except Exception as e:
+                print(f"[ERROR] Error updating log file: {e}")
+                return jsonify({'error': 'ログ削除中にエラーが発生しました'}), 500
+        
+        return jsonify({
+            'success': True,
+            'message': f'{deleted_count}件のログを削除しました',
+            'deleted_count': deleted_count
+        })
+    
+    except Exception as e:
+        print(f"[ERROR] Error in delete_log: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': 'ログ削除中にエラーが発生しました'}), 500
 
 if __name__ == '__main__':
     # 環境変数からポート番号を取得（CloudRun用）

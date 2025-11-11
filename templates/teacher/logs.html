@@ -122,6 +122,10 @@
                                class="btn btn-sm btn-outline-primary">
                                 <i class="fas fa-eye"></i> 詳細
                             </a>
+                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                    onclick="deleteLog('{{ student_data.student_info.class_num }}', '{{ student_data.student_info.seat_num }}', '{{ unit_name }}', '{{ current_date }}')">
+                                <i class="fas fa-trash"></i> 削除
+                            </button>
                         </div>
                         
                         <!-- 予想まとめがある場合は表示 -->
@@ -208,6 +212,49 @@ function exportCurrentData() {
     .catch(error => {
         console.error('Error:', error);
         alert('エクスポート中にエラーが発生しました。');
+    });
+}
+
+function deleteLog(classNum, seatNum, unit, date) {
+    if (!confirm(`${classNum}組${seatNum}番の「${unit}」のログを削除しますか？\n\nこの操作は取り消せません。`)) {
+        return;
+    }
+    
+    const confirmMsg = prompt('本当に削除しますか？確認のため「削除」と入力してください:');
+    if (confirmMsg !== '削除') {
+        alert('キャンセルしました。');
+        return;
+    }
+    
+    const data = {
+        class_num: parseInt(classNum),
+        seat_num: parseInt(seatNum),
+        unit: unit,
+        date: date
+    };
+    
+    fetch('/teacher/delete_log', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => {
+        if (response.ok) {
+            return response.json();
+        } else {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+    })
+    .then(data => {
+        alert(data.message || 'ログを削除しました。');
+        // ページをリロード
+        window.location.reload();
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('ログ削除中にエラーが発生しました。');
     });
 }
 </script>
