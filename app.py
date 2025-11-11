@@ -1362,12 +1362,28 @@ def teacher_logs():
 @app.route('/teacher/export')
 @require_teacher_auth
 def teacher_export():
-    """ログをCSVでエクスポート - ブラウザのダウンロード機能を使用"""
+    """ログをCSVでエクスポート - ダウンロード日までのすべてのログ"""
     from io import StringIO
     import csv
     
-    date = request.args.get('date', datetime.now().strftime('%Y%m%d'))
-    logs = load_learning_logs(date)
+    download_date_str = request.args.get('date', datetime.now().strftime('%Y%m%d'))
+    
+    # ダウンロード日までのすべてのログを取得
+    all_logs = []
+    available_dates = get_available_log_dates()
+    
+    print(f"[EXPORT] START - exporting logs up to date: {download_date_str}")
+    
+    for date_info in available_dates:
+        current_date_raw = date_info['raw']
+        # ダウンロード日以下の日付のみを対象
+        if current_date_raw <= download_date_str:
+            try:
+                logs = load_learning_logs(current_date_raw)
+                all_logs.extend(logs)
+                print(f"[EXPORT] Loaded {len(logs)} logs from {current_date_raw}")
+            except Exception as e:
+                print(f"[EXPORT] ERROR loading logs from {current_date_raw}: {str(e)}")
     
     # CSVをメモリに作成
     output = StringIO()
@@ -1375,7 +1391,7 @@ def teacher_export():
     writer = csv.DictWriter(output, fieldnames=fieldnames)
     writer.writeheader()
     
-    for log in logs:
+    for log in all_logs:
         content = ""
         if log.get('log_type') == 'prediction_chat':
             content = f"Q: {log['data'].get('user_message', '')}\nA: {log['data'].get('ai_response', '')}"
@@ -1397,9 +1413,9 @@ def teacher_export():
     
     # CSVをレスポンスとして返す
     csv_data = output.getvalue()
-    filename = f"learning_logs_{date}.csv"
+    filename = f"all_learning_logs_up_to_{download_date_str}.csv"
     
-    print(f"[EXPORT] Exported CSV for date: {date}, size: {len(csv_data)} bytes")
+    print(f"[EXPORT] SUCCESS - exported {len(all_logs)} total logs, size: {len(csv_data)} bytes")
     
     return Response(
         csv_data,

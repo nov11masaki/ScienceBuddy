@@ -1,21 +1,32 @@
-/* 小学生と教員に優しいUIデザイン - 改善版カラーパレット */
+/* UD（ユニバーサルデザイン）対応カラーパレット - WCAG AA以上 */
 :root {
-    --primary-color: #3498db;           /* 親しみやすい青 */
-    --primary-dark: #2980b9;            /* 濃い青 */
-    --secondary-color: #27ae60;         /* 爽やかな緑 */
-    --accent-color: #e74c3c;            /* 活発なオレンジレッド */
-    --success-color: #2ecc71;           /* 成功の緑 */
-    --danger-color: #e74c3c;            /* 明るい赤 */
-    --warning-color: #f39c12;           /* 温かい黄色 */
-    --info-color: #3498db;              /* 情報の青 */
-    --light-color: #ecf0f1;             /* 薄いグレー */
-    --white-color: #ffffff;             /* 純白 */
-    --light-bg: #f8f9fa;                /* 背景グレー */
-    --dark-color: #2c3e50;              /* 読みやすい濃いグレー */
-    --border-color: #bdc3c7;            /* ボーダー */
-    --shadow-light: 0 2px 8px rgba(52, 152, 219, 0.15);
-    --shadow-medium: 0 4px 16px rgba(52, 152, 219, 0.2);
-    --shadow-heavy: 0 8px 24px rgba(52, 152, 219, 0.25);
+    /* メインカラー - 濃い紺（色盲対応） */
+    --primary-color: #005A9C;            /* 濃い青 */
+    --primary-dark: #003d6b;             /* より濃い青 */
+    --primary-light: #0074d9;            /* より明るい青 */
+    
+    /* セカンダリーカラー - 濃い緑（色盲対応） */
+    --secondary-color: #00933e;          /* 濃い緑 */
+    --secondary-dark: #005228;           /* より濃い緑 */
+    
+    /* 状態色 - 区別しやすい色組み合わせ */
+    --success-color: #00933e;            /* 成功 - 濃い緑 */
+    --danger-color: #d2170d;             /* エラー - 濃い赤 */
+    --warning-color: #cc7000;            /* 警告 - 濃いオレンジ */
+    --info-color: #005A9C;               /* 情報 - 濃い青 */
+    
+    /* ニュートラル色 */
+    --white-color: #ffffff;              /* 純白 */
+    --light-bg: #f7f8f9;                 /* 背景グレー */
+    --light-color: #e8eaed;              /* 薄いグレー */
+    --dark-color: #202124;               /* 濃いグレー */
+    --border-color: #d3d3d7;             /* ボーダー */
+    
+    /* シャドウ */
+    --shadow-light: 0 2px 8px rgba(0, 90, 156, 0.12);
+    --shadow-medium: 0 4px 16px rgba(0, 90, 156, 0.16);
+    --shadow-heavy: 0 8px 24px rgba(0, 90, 156, 0.2);
+    
     --border-radius: 12px;              /* 丸みのある角 */
     --transition: all 0.3s ease;        /* スムーズなアニメーション */
 }
@@ -1309,45 +1320,45 @@ body {
     background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
     color: var(--white-color);
     border: none;
-    box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+    box-shadow: 0 4px 15px rgba(0, 90, 156, 0.3);
 }
 
 .btn-primary:hover {
-    background: linear-gradient(135deg, var(--primary-dark), #1a5276);
+    background: linear-gradient(135deg, var(--primary-dark), #002a4d);
     color: var(--white-color);
     transform: translateY(-3px);
-    box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+    box-shadow: 0 6px 20px rgba(0, 90, 156, 0.4);
 }
 
 .btn-primary:active {
     transform: translateY(-1px);
-    box-shadow: 0 2px 10px rgba(52, 152, 219, 0.3);
+    box-shadow: 0 2px 10px rgba(0, 90, 156, 0.3);
 }
 
 .btn-secondary {
-    background: linear-gradient(135deg, var(--secondary-color), #229954);
+    background: linear-gradient(135deg, var(--secondary-color), var(--secondary-dark));
     color: var(--white-color);
     border: none;
-    box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+    box-shadow: 0 4px 15px rgba(0, 147, 62, 0.3);
 }
 
 .btn-secondary:hover {
-    background: linear-gradient(135deg, #229954, #1e8449);
+    background: linear-gradient(135deg, var(--secondary-dark), #003d1f);
     color: var(--white-color);
-    box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4);
+    box-shadow: 0 6px 20px rgba(0, 147, 62, 0.4);
 }
 
 .btn-success {
-    background: linear-gradient(135deg, var(--success-color), #27ae60);
+    background: linear-gradient(135deg, var(--success-color), var(--secondary-dark));
     color: var(--white-color);
     border: none;
-    box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3);
+    box-shadow: 0 4px 15px rgba(0, 147, 62, 0.3);
 }
 
 .btn-success:hover {
-    background: linear-gradient(135deg, #27ae60, #1e8449);
+    background: linear-gradient(135deg, var(--secondary-dark), #003d1f);
     color: var(--white-color);
-    box-shadow: 0 6px 20px rgba(46, 204, 113, 0.4);
+    box-shadow: 0 6px 20px rgba(0, 147, 62, 0.4);
 }
 
 
@@ -1365,6 +1376,49 @@ body {
 .btn-sm {
     padding: 8px 16px;
     font-size: 0.9rem;
+}
+
+/* Bootstrap ボタンのUD対応カラーオーバーライド */
+.btn-danger,
+.btn-outline-danger {
+    background-color: var(--danger-color);
+    border-color: var(--danger-color);
+    color: white;
+}
+
+.btn-danger:hover,
+.btn-outline-danger:hover {
+    background-color: #9c0f08;
+    border-color: #9c0f08;
+    color: white;
+}
+
+.btn-warning,
+.btn-outline-warning {
+    background-color: var(--warning-color);
+    border-color: var(--warning-color);
+    color: white;
+}
+
+.btn-warning:hover,
+.btn-outline-warning:hover {
+    background-color: #8a4d00;
+    border-color: #8a4d00;
+    color: white;
+}
+
+.btn-info,
+.btn-outline-info {
+    background-color: var(--info-color);
+    border-color: var(--info-color);
+    color: white;
+}
+
+.btn-info:hover,
+.btn-outline-info:hover {
+    background-color: var(--primary-dark);
+    border-color: var(--primary-dark);
+    color: white;
 }
 
 /* 教員用スタイル - コンパクト化 */
@@ -1410,18 +1464,18 @@ body {
     100% { transform: scale(1); }
 }
 
-/* ===== 教員ダッシュボード（完全新規） ===== */
+/* ===== 教員ダッシュボード（UD対応） ===== */
 .teacher-dashboard-page {
     min-height: 100vh;
-    background: linear-gradient(135deg, #ecf0f1 0%, #d5dbdb 100%);
+    background: linear-gradient(135deg, #f7f8f9 0%, #e8eaed 100%);
 }
 
 /* ヘッダー */
 .teacher-header {
-    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    background: linear-gradient(135deg, #005A9C 0%, #003d6b 100%);
     color: white;
     padding: 0;
-    box-shadow: 0 6px 16px rgba(52, 152, 219, 0.3);
+    box-shadow: 0 6px 16px rgba(0, 90, 156, 0.3);
 }
 
 .header-container {
@@ -3107,8 +3161,8 @@ body {
 }
 
 @keyframes pulse-red {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
-    50% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+    0%, 100% { box-shadow: 0 0 0 0 rgba(210, 23, 13, 0.7); }
+    50% { box-shadow: 0 0 0 10px rgba(210, 23, 13, 0); }
 }
 
 /* レスポンシブ対応 */
