@@ -1363,7 +1363,7 @@ def teacher_logs():
 @require_teacher_auth
 def teacher_export():
     """ログをCSVでエクスポート - ダウンロード日までのすべてのログ"""
-    from io import StringIO
+    from io import StringIO, BytesIO
     import csv
     
     download_date_str = request.args.get('date', datetime.now().strftime('%Y%m%d'))
@@ -1385,7 +1385,7 @@ def teacher_export():
             except Exception as e:
                 print(f"[EXPORT] ERROR loading logs from {current_date_raw}: {str(e)}")
     
-    # CSVをメモリに作成
+    # CSVをメモリに作成（UTF-8 BOM付き）
     output = StringIO()
     fieldnames = ['timestamp', 'class_display', 'student_number', 'unit', 'log_type', 'content']
     writer = csv.DictWriter(output, fieldnames=fieldnames)
@@ -1411,15 +1411,17 @@ def teacher_export():
             'content': content
         })
     
-    # CSVをレスポンスとして返す
-    csv_data = output.getvalue()
+    # StringIOをUTF-8 BOM付きバイナリにエンコード
+    csv_string = output.getvalue()
+    csv_bytes = '\ufeff'.encode('utf-8') + csv_string.encode('utf-8')  # UTF-8 BOM追加
+    
     filename = f"all_learning_logs_up_to_{download_date_str}.csv"
     
-    print(f"[EXPORT] SUCCESS - exported {len(all_logs)} total logs, size: {len(csv_data)} bytes")
+    print(f"[EXPORT] SUCCESS - exported {len(all_logs)} total logs, size: {len(csv_bytes)} bytes")
     
     return Response(
-        csv_data,
-        mimetype="text/csv; charset=utf-8-sig",
+        csv_bytes,
+        mimetype="text/csv; charset=utf-8",
         headers={"Content-Disposition": f"attachment; filename*=UTF-8''{filename}"}
     )
 
