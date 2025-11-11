@@ -1531,7 +1531,7 @@ def teacher_analysis_class(class_num):
                     
                     client = openai.OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
                     response = client.chat.completions.create(
-                        model="gpt-3.5-turbo",
+                        model="gpt-4o-mini",
                         messages=[
                             {"role": "system", "content": "You are an expert science education analyst. Analyze student dialogue and provide insights about their thinking patterns and how they connect learning to prior knowledge. Always respond in Japanese with clear, readable paragraphs."},
                             {"role": "user", "content": analysis_prompt}
@@ -1695,7 +1695,7 @@ JSON形式で以下の構造で返してください:
                             
                             client = openai.OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
                             response = client.chat.completions.create(
-                                model="gpt-3.5-turbo",
+                                model="gpt-4o-mini",
                                 messages=[
                                     {"role": "system", "content": "You are an expert science education analyst. Analyze student learning logs and provide insights about their thinking patterns and misconceptions."},
                                     {"role": "user", "content": analysis_prompt}
