@@ -1530,20 +1530,25 @@ def delete_log():
                 blob_name = f"logs/{log_filename}"
                 blob = bucket.blob(blob_name)
                 
+                print(f"[DEBUG] Attempting to save to GCS - blob_name: {blob_name}, logs count: {len(logs)}")
+                
                 if len(logs) > 0:
                     # ログが残っている場合は更新
                     blob.upload_from_string(
                         json.dumps(logs, ensure_ascii=False, indent=2),
                         content_type='application/json'
                     )
-                    print(f"[DEBUG] Updated log file in GCS")
+                    print(f"[DEBUG] Successfully updated log file in GCS")
                 else:
                     # ログが空になった場合はファイルを削除
                     blob.delete()
-                    print(f"[DEBUG] Deleted empty log file from GCS")
+                    print(f"[DEBUG] Successfully deleted empty log file from GCS")
             except Exception as e:
+                error_msg = f"GCS エラー: {str(e)}"
                 print(f"[ERROR] Error updating log in GCS: {e}")
-                return jsonify({'error': 'ログ削除中にエラーが発生しました'}), 500
+                import traceback
+                traceback.print_exc()
+                return jsonify({'error': error_msg}), 500
         else:
             # ローカルファイルの場合
             try:

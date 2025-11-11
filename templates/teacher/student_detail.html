@@ -106,93 +106,101 @@
                             {% endif %}
                         </div>
                     </div>
-                </div>
-            </div>
 
-            <!-- 予想まとめ -->
-            {% if unit_data.prediction_summary %}
-            <div class="summary-card mb-3">
-                <div class="card">
-                    <div class="card-header bg-success text-white">
-                        <h6 class="mb-0">
-                            <i class="fas fa-lightbulb me-2"></i>
-                            予想まとめ
-                        </h6>
-                        <small>{{ unit_data.prediction_summary.timestamp }}</small>
-                    </div>
-                    <div class="card-body">
-                        <p class="card-text">{{ unit_data.prediction_summary.data.summary }}</p>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-
-            <!-- 最終まとめ -->
-            {% if unit_data.final_summary %}
-            <div class="summary-card mb-3">
-                <div class="card">
-                    <div class="card-header bg-warning text-dark">
-                        <h6 class="mb-0">
-                            <i class="fas fa-check-circle me-2"></i>
-                            最終まとめ
-                        </h6>
-                        <small>{{ unit_data.final_summary.timestamp }}</small>
-                    </div>
-                    <div class="card-body">
-                        <p class="card-text">{{ unit_data.final_summary.data.summary }}</p>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-
-            <!-- 予想対話 -->
-            {% if unit_data.prediction_chats %}
-            <div class="chat-section mb-3">
-                <h6 class="section-title">
-                    <i class="fas fa-comments text-primary"></i>
-                    予想対話履歴
-                </h6>
-                {% for chat in unit_data.prediction_chats %}
-                <div class="chat-item mb-2">
-                    <div class="chat-timestamp">{{ chat.timestamp }}</div>
-                    <div class="chat-content">
-                        <div class="user-message">
-                            <strong>学生:</strong> {{ chat.data.user_message }}
-                        </div>
-                        <div class="ai-message">
-                            <strong>AI:</strong> {{ chat.data.ai_response }}
+                    <!-- 予想まとめ -->
+                    {% if unit_data.prediction_summary %}
+                    <div class="summary-card mb-3">
+                        <div class="card">
+                            <div class="card-header bg-success text-white">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-lightbulb me-2"></i>
+                                    予想まとめ
+                                </h6>
+                                <small>{{ unit_data.prediction_summary.timestamp }}</small>
+                            </div>
+                            <div class="card-body">
+                                <p class="card-text">{{ unit_data.prediction_summary.data.summary }}</p>
+                            </div>
                         </div>
                     </div>
+                    {% endif %}
+
+                    <!-- 最終まとめ -->
+                    {% if unit_data.final_summary %}
+                    <div class="summary-card mb-3">
+                        <div class="card">
+                            <div class="card-header bg-warning text-dark">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-check-circle me-2"></i>
+                                    最終まとめ
+                                </h6>
+                                <small>{{ unit_data.final_summary.timestamp }}</small>
+                            </div>
+                            <div class="card-body">
+                                <p class="card-text">{{ unit_data.final_summary.data.summary }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- 予想対話 -->
+                    {% if unit_data.prediction_chats %}
+                    <div class="chat-section mb-3">
+                        <h6 class="section-title">
+                            <i class="fas fa-comments text-primary"></i>
+                            予想対話履歴
+                        </h6>
+                        {% for chat in unit_data.prediction_chats %}
+                        <div class="chat-item mb-2">
+                            <div class="chat-timestamp">{{ chat.timestamp }}</div>
+                            <div class="chat-content">
+                                <div class="user-message">
+                                    <strong>学生:</strong>
+                                    <p>{{ chat.data.user_message }}</p>
+                                </div>
+                                <div class="ai-message">
+                                    <strong>AI:</strong>
+                                    <p>{{ chat.data.ai_response }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <!-- 振り返り対話 -->
+                    {% if unit_data.reflection_chats %}
+                    <div class="chat-section mb-3">
+                        <h6 class="section-title">
+                            <i class="fas fa-comments text-info"></i>
+                            振り返り対話履歴
+                        </h6>
+                        {% for chat in unit_data.reflection_chats %}
+                        <div class="chat-item mb-2">
+                            <div class="chat-timestamp">{{ chat.timestamp }}</div>
+                            <div class="chat-content">
+                                <div class="user-message">
+                                    <strong>学生:</strong>
+                                    <p>{{ chat.data.user_message }}</p>
+                                </div>
+                                <div class="ai-message">
+                                    <strong>AI:</strong>
+                                    <p>{{ chat.data.ai_response }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                 </div>
                 {% endfor %}
-            </div>
-            {% endif %}
-
-            <!-- 振り返り対話 -->
-            {% if unit_data.reflection_chats %}
-            <div class="chat-section mb-3">
-                <h6 class="section-title">
-                    <i class="fas fa-comments text-info"></i>
-                    振り返り対話履歴
-                </h6>
-                {% for chat in unit_data.reflection_chats %}
-                <div class="chat-item mb-2">
-                    <div class="chat-timestamp">{{ chat.timestamp }}</div>
-                    <div class="chat-content">
-                        <div class="user-message">
-                            <strong>学生:</strong> {{ chat.data.user_message }}
-                        </div>
-                        <div class="ai-message">
-                            <strong>AI:</strong> {{ chat.data.ai_response }}
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                この学生のログが見つかりません。
             </div>
             {% endif %}
         </div>
-        {% endfor %}
-        {% endif %}
         {% endif %}
     </div>
 </div>
@@ -206,7 +214,7 @@ function applyFilters() {
     if (date) params.append('date', date);
     if (unit) params.append('unit', unit);
     
-    window.location.href = `/teacher/student/{{ student_number }}?${params.toString()}`;
+    window.location.href = `/teacher/student_detail?class={{ class_num }}&seat={{ seat_num }}&${params.toString()}`;
 }
 </script>
 
@@ -251,24 +259,77 @@ function applyFilters() {
     border-radius: 6px;
     padding: 15px;
     border-left: 4px solid #007bff;
+    margin-bottom: 20px;
 }
 
 .section-title {
     margin-bottom: 15px;
     color: #495057;
+    font-size: 1.1em;
+    font-weight: 600;
 }
 
 .chat-item {
     border: 1px solid #e9ecef;
     border-radius: 6px;
-    padding: 10px;
-    background: #f8f9fa;
+    padding: 12px;
+    background: #ffffff;
+    margin-bottom: 15px;
+}
+
+.chat-item:last-child {
+    margin-bottom: 0;
 }
 
 .chat-timestamp {
-    font-size: 0.8em;
+    font-size: 0.75em;
     color: #6c757d;
-    margin-bottom: 5px;
+    margin-bottom: 8px;
+    font-style: italic;
+}
+
+.chat-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.chat-content .user-message {
+    background: #e3f2fd;
+    padding: 10px;
+    border-radius: 4px;
+    border-left: 3px solid #2196F3;
+}
+
+.chat-content .user-message strong {
+    color: #1565c0;
+    font-size: 0.9em;
+}
+
+.chat-content .user-message p {
+    margin: 5px 0 0 0;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    line-height: 1.5;
+}
+
+.chat-content .ai-message {
+    background: #f1f8e9;
+    padding: 10px;
+    border-radius: 4px;
+    border-left: 3px solid #4CAF50;
+}
+
+.chat-content .ai-message strong {
+    color: #33691e;
+    font-size: 0.9em;
+}
+
+.chat-content .ai-message p {
+    margin: 5px 0 0 0;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    line-height: 1.5;
 }
 
 .chat-content .user-message {
