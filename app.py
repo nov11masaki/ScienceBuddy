@@ -1425,7 +1425,109 @@ def teacher_export():
         headers={"Content-Disposition": f"attachment; filename*=UTF-8''{filename}"}
     )
 
-def get_available_log_dates():
+@app.route('/teacher/analysis')
+@require_teacher_auth
+def teacher_analysis():
+    """クラス×単元ごとの思考傾向分析"""
+    try:
+        # 利用可能な全ログを取得
+        all_logs = []
+        available_dates = get_available_log_dates()
+        
+        print("[ANALYSIS] START - collecting all logs for analysis")
+        
+        for date_info in available_dates:
+            try:
+                logs = load_learning_logs(date_info['raw'])
+                all_logs.extend(logs)
+            except Exception as e:
+                print(f"[ANALYSIS] Warning loading logs from {date_info['raw']}: {str(e)}")
+        
+        print(f"[ANALYSIS] Collected {len(all_logs)} total logs")
+        
+        # クラス×単元でグループ化
+        analysis_data = {}  # {class: {unit: {analysis}}}
+        
+        for log in all_logs:
+            class_num = log.get('class_num')
+            unit = log.get('unit', '未分類')
+            
+            if class_num not in analysis_data:
+                analysis_data[class_num] = {}
+            
+            if unit not in analysis_data[class_num]:
+                analysis_data[class_num][unit] = {
+                    'total_students': set(),
+                    'prediction_count': 0,
+                    'reflection_count': 0,
+                    'key_phrases': [],
+                    'misconceptions': [],
+                    'understanding_depth': [],
+                    'raw_logs': []
+                }
+            
+            # 学生数カウント
+            student_key = f"{log.get('student_number', '')}"
+            analysis_data[class_num][unit]['total_students'].add(student_key)
+            
+            # ログタイプ別カウント
+            if log.get('log_type') == 'prediction_chat':
+                analysis_data[class_num][unit]['prediction_count'] += 1
+            elif log.get('log_type') == 'reflection_chat':
+                analysis_data[class_num][unit]['reflection_count'] += 1
+            
+            analysis_data[class_num][unit]['raw_logs'].append(log)
+        
+        # AI による思考傾向分析（非同期で行う可能性もある）
+        print("[ANALYSIS] Performing AI analysis on learning trends")
+        
+        for class_num in analysis_data:
+            for unit in analysis_data[class_num]:
+                unit_data = analysis_data[class_num][unit]
+                
+                # 抽出するべき特徴
+                unit_data['total_students'] = len(unit_data['total_students'])
+                
+                # 簡易的な分析（詳細はAIで行う予定）
+                preview_logs = unit_data['raw_logs'][:5]  # 最初の5件でプレビュー
+                
+                # 分析用のプロンプトをOpenAIに送信（オプション）
+                if len(unit_data['raw_logs']) > 0:
+                    try:
+                        # 対話ログから要点を抽出
+                        chat_messages = []
+                        for log in unit_data['raw_logs'][:10]:  # 最大10件
+                            if log.get('log_type') == 'prediction_chat':
+                                user_msg = log.get('data', {}).get('user_message', '')
+                                ai_msg = log.get('data', {}).get('ai_response', '')
+                                if user_msg and ai_msg:
+                                    chat_messages.append({
+                                        'user': user_msg,
+                                        'ai': ai_msg
+                                    })
+                        
+                        unit_data['sample_chats'] = chat_messages[:3]  # サンプルチャット
+                        
+                        # 学生数と対話数から活発度を計算
+                        avg_chats_per_student = (unit_data['prediction_count'] + unit_data['reflection_count']) / max(unit_data['total_students'], 1)
+                        unit_data['engagement_level'] = 'high' if avg_chats_per_student > 5 else 'medium' if avg_chats_per_student > 2 else 'low'
+                        
+                    except Exception as e:
+                        print(f"[ANALYSIS] Error analyzing unit {class_num}_{unit}: {str(e)}")
+                        unit_data['sample_chats'] = []
+                        unit_data['engagement_level'] = 'unknown'
+        
+        print("[ANALYSIS] SUCCESS - analysis complete")
+        
+        return render_template('teacher/analysis.html',
+                             analysis_data=analysis_data,
+                             teacher_id=session.get('teacher_id'))
+    
+    except Exception as e:
+        print(f"[ANALYSIS] FATAL ERROR: {type(e).__name__}: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
     """利用可能なログファイルの日付一覧を取得"""
     import os
     import glob

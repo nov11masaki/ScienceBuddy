@@ -1,0 +1,421 @@
+{% extends "base.html" %}
+
+{% block title %}思考傾向分析 - 教員用{% endblock %}
+
+{% block content %}
+<div class="teacher-analysis-page">
+    <!-- ヘッダー -->
+    <header class="teacher-header">
+        <div class="header-container">
+            <div class="header-title-section">
+                <h1><i class="fas fa-brain"></i> 思考傾向分析</h1>
+                <p>クラス・単元ごとの学生の思考傾向と学習状況</p>
+            </div>
+            <div class="header-actions-section">
+                <a href="/teacher/dashboard" class="btn btn-outline-secondary btn-sm me-2">
+                    <i class="fas fa-arrow-left"></i> ダッシュボードに戻る
+                </a>
+                <span class="teacher-id-badge"><i class="fas fa-user-tie"></i> {{ teacher_id }}</span>
+                <a href="/teacher/logout" class="logout-btn"><i class="fas fa-sign-out-alt"></i> ログアウト</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <main class="analysis-main">
+        <div class="container-fluid">
+            <!-- 概要セクション -->
+            <section class="analysis-overview">
+                <h2><i class="fas fa-chart-pie"></i> 分析概要</h2>
+                <div class="overview-cards">
+                    <div class="overview-card">
+                        <div class="card-value">{{ analysis_data|length }}</div>
+                        <div class="card-label">クラス数</div>
+                    </div>
+                    <div class="overview-card">
+                        {% set total_units = 0 %}
+                        {% for class_num in analysis_data %}
+                            {% set total_units = total_units + analysis_data[class_num]|length %}
+                        {% endfor %}
+                        <div class="card-value">{{ total_units }}</div>
+                        <div class="card-label">単元数</div>
+                    </div>
+                    <div class="overview-card">
+                        {% set total_students = 0 %}
+                        {% for class_num in analysis_data %}
+                            {% for unit in analysis_data[class_num] %}
+                                {% set total_students = total_students + analysis_data[class_num][unit]['total_students'] %}
+                            {% endfor %}
+                        {% endfor %}
+                        <div class="card-value">{{ total_students }}</div>
+                        <div class="card-label">関与学生数</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- クラス別分析 -->
+            <section class="class-analysis">
+                <h2><i class="fas fa-layer-group"></i> クラス別分析</h2>
+                
+                {% for class_num in analysis_data|sort %}
+                <div class="class-card">
+                    <div class="class-header">
+                        <h3>{{ class_num }}組</h3>
+                        <span class="badge bg-primary">{{ analysis_data[class_num]|length }}単元</span>
+                    </div>
+
+                    <div class="units-grid">
+                        {% for unit in analysis_data[class_num]|sort %}
+                        {% set unit_data = analysis_data[class_num][unit] %}
+                        <div class="unit-analysis-card">
+                            <div class="unit-header">
+                                <h4>{{ unit }}</h4>
+                                <div class="unit-badges">
+                                    <span class="badge engagement-{{ unit_data.engagement_level }}">
+                                        {{ 
+                                            '🔥 高活発' if unit_data.engagement_level == 'high'
+                                            else '⚠️ 中程度' if unit_data.engagement_level == 'medium'
+                                            else '❌ 低活発'
+                                        }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="unit-stats">
+                                <div class="stat">
+                                    <span class="stat-label">参加学生数</span>
+                                    <span class="stat-value">{{ unit_data.total_students }}</span>
+                                </div>
+                                <div class="stat">
+                                    <span class="stat-label">予想対話</span>
+                                    <span class="stat-value">{{ unit_data.prediction_count }}</span>
+                                </div>
+                                <div class="stat">
+                                    <span class="stat-label">振り返り対話</span>
+                                    <span class="stat-value">{{ unit_data.reflection_count }}</span>
+                                </div>
+                            </div>
+
+                            <!-- サンプル対話 -->
+                            {% if unit_data.sample_chats %}
+                            <div class="sample-chats">
+                                <h5><i class="fas fa-comments"></i> サンプル対話</h5>
+                                {% for chat in unit_data.sample_chats %}
+                                <div class="chat-sample">
+                                    <div class="user-q">
+                                        <strong>Q:</strong>
+                                        <p>{{ chat.user[:100] }}{% if chat.user|length > 100 %}...{% endif %}</p>
+                                    </div>
+                                    <div class="ai-a">
+                                        <strong>A:</strong>
+                                        <p>{{ chat.ai[:100] }}{% if chat.ai|length > 100 %}...{% endif %}</p>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+
+                            <!-- 詳細ボタン -->
+                            <div class="unit-actions">
+                                <a href="/teacher/logs?class={{ class_num }}&unit={{ unit|urlencode }}" 
+                                   class="btn btn-sm btn-primary">
+                                    <i class="fas fa-magnifying-glass"></i> 詳細を見る
+                                </a>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+
+                {% if not analysis_data %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    学習ログがまだありません。生徒が対話を進めると、ここに分析結果が表示されます。
+                </div>
+                {% endif %}
+            </section>
+        </div>
+    </main>
+</div>
+
+<style>
+.teacher-analysis-page {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #f7f8f9 0%, #e8eaed 100%);
+}
+
+.analysis-main {
+    padding: 40px 20px;
+}
+
+.container-fluid {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* 概要セクション */
+.analysis-overview {
+    margin-bottom: 40px;
+}
+
+.analysis-overview h2 {
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+    color: #202124;
+}
+
+.overview-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 40px;
+}
+
+.overview-card {
+    background: white;
+    border-radius: 12px;
+    padding: 30px 20px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0, 90, 156, 0.12);
+    border: 1px solid #d3d3d7;
+}
+
+.card-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #005A9C;
+    margin-bottom: 10px;
+}
+
+.card-label {
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+
+/* クラス別分析 */
+.class-analysis h2 {
+    font-size: 1.5rem;
+    margin-bottom: 30px;
+    color: #202124;
+}
+
+.class-card {
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 8px rgba(0, 90, 156, 0.12);
+    border: 1px solid #d3d3d7;
+}
+
+.class-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e8eaed;
+}
+
+.class-header h3 {
+    font-size: 1.3rem;
+    margin: 0;
+    color: #005A9C;
+}
+
+/* ユニット分析カード */
+.units-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 20px;
+}
+
+.unit-analysis-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f7f8f9 100%);
+    border-radius: 10px;
+    padding: 20px;
+    border: 2px solid #e8eaed;
+    transition: all 0.3s ease;
+}
+
+.unit-analysis-card:hover {
+    border-color: #005A9C;
+    box-shadow: 0 4px 12px rgba(0, 90, 156, 0.15);
+    transform: translateY(-2px);
+}
+
+.unit-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+}
+
+.unit-header h4 {
+    margin: 0;
+    color: #202124;
+    font-size: 1.1rem;
+    flex: 1;
+}
+
+.unit-badges {
+    display: flex;
+    gap: 8px;
+}
+
+.unit-badges .badge {
+    font-size: 0.8rem;
+    padding: 4px 8px;
+    white-space: nowrap;
+}
+
+/* 活発度バッジ */
+.badge.engagement-high {
+    background-color: #00933e;
+    color: white;
+}
+
+.badge.engagement-medium {
+    background-color: #cc7000;
+    color: white;
+}
+
+.badge.engagement-low {
+    background-color: #d2170d;
+    color: white;
+}
+
+.unit-header {
+.unit-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 15px;
+    padding: 15px 0;
+    border-top: 1px solid #e8eaed;
+    border-bottom: 1px solid #e8eaed;
+}
+
+.stat {
+    text-align: center;
+}
+
+.stat-label {
+    display: block;
+    font-size: 0.75rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+    font-weight: 600;
+}
+
+.stat-value {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #005A9C;
+}
+
+/* サンプル対話 */
+.sample-chats {
+    margin: 15px 0;
+    padding: 12px;
+    background: #f7f8f9;
+    border-radius: 8px;
+    border-left: 3px solid #0074d9;
+}
+
+.sample-chats h5 {
+    margin: 0 0 10px 0;
+    font-size: 0.9rem;
+    color: #005A9C;
+}
+
+.chat-sample {
+    margin-bottom: 10px;
+    font-size: 0.85rem;
+}
+
+.chat-sample:last-child {
+    margin-bottom: 0;
+}
+
+.user-q, .ai-a {
+    margin-bottom: 5px;
+}
+
+.user-q {
+    background: #e3f2fd;
+    padding: 8px;
+    border-radius: 4px;
+    border-left: 2px solid #005A9C;
+}
+
+.user-q strong {
+    color: #003d6b;
+}
+
+.user-q p {
+    margin: 4px 0 0 0;
+    color: #202124;
+}
+
+.ai-a {
+    background: #f1f8e9;
+    padding: 8px;
+    border-radius: 4px;
+    border-left: 2px solid #00933e;
+}
+
+.ai-a strong {
+    color: #005228;
+}
+
+.ai-a p {
+    margin: 4px 0 0 0;
+    color: #202124;
+}
+
+/* ユニットアクション */
+.unit-actions {
+    margin-top: 12px;
+    display: flex;
+    gap: 8px;
+}
+
+.unit-actions .btn {
+    flex: 1;
+    text-align: center;
+}
+
+/* アラート */
+.alert {
+    padding: 20px;
+    border-radius: 10px;
+    margin: 20px 0;
+}
+
+.alert-info {
+    background: #e3f2fd;
+    border: 1px solid #90caf9;
+    color: #01579b;
+}
+
+/* レスポンシブ */
+@media (max-width: 768px) {
+    .units-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .overview-cards {
+        grid-template-columns: 1fr;
+    }
+    
+    .unit-stats {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+{% endblock %}
