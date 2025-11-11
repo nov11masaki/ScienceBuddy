@@ -1465,6 +1465,8 @@ def teacher_analysis():
     try:
         import glob
         import os
+        import re
+        import json
         
         # 利用可能な全ログを取得
         all_logs = []
