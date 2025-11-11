@@ -109,14 +109,16 @@
                                     </span>
                                 </div>
                                 
-                                <!-- 思考傾向 -->
+                                <!-- 思考傾向の説明 -->
                                 <div class="analysis-item">
-                                    <span class="analysis-label">主な思考傾向：</span>
-                                    <div class="thinking-patterns">
-                                        {% for pattern in unit_data.ai_analysis.thinking_patterns %}
-                                        <span class="pattern-tag">{{ pattern }}</span>
-                                        {% endfor %}
-                                    </div>
+                                    <span class="analysis-label">思考の特徴：</span>
+                                    <p class="analysis-text">{{ unit_data.ai_analysis.thinking_characteristics }}</p>
+                                </div>
+                                
+                                <!-- 質問の質 -->
+                                <div class="analysis-item">
+                                    <span class="analysis-label">質問の質：</span>
+                                    <p class="analysis-text">{{ unit_data.ai_analysis.question_quality }}</p>
                                 </div>
                                 
                                 <!-- 誤解と改善 -->
@@ -133,22 +135,30 @@
                                     </div>
                                 </div>
                                 
-                                <!-- 強み -->
+                                <!-- 学習の強み -->
                                 <div class="analysis-item">
-                                    <span class="analysis-label">強み：</span>
-                                    <p class="analysis-text">{{ unit_data.ai_analysis.strengths }}</p>
+                                    <span class="analysis-label">学習の強み：</span>
+                                    <p class="analysis-text">{{ unit_data.ai_analysis.learning_strengths }}</p>
                                 </div>
                                 
-                                <!-- 改善点 -->
+                                <!-- 改善が必要な点 -->
                                 <div class="analysis-item">
-                                    <span class="analysis-label">改善点：</span>
-                                    <p class="analysis-text">{{ unit_data.ai_analysis.improvements }}</p>
+                                    <span class="analysis-label">改善が必要な点：</span>
+                                    <p class="analysis-text">{{ unit_data.ai_analysis.improvement_areas }}</p>
                                 </div>
                                 
-                                <!-- 指導上のポイント -->
+                                <!-- 指導上の工夫 -->
                                 <div class="analysis-item highlighted">
-                                    <span class="analysis-label">指導上のポイント：</span>
-                                    <p class="analysis-text">{{ unit_data.ai_analysis.teaching_points }}</p>
+                                    <span class="analysis-label">指導上の工夫：</span>
+                                    {% if unit_data.ai_analysis.teaching_recommendations is string %}
+                                        <p class="analysis-text">{{ unit_data.ai_analysis.teaching_recommendations }}</p>
+                                    {% else %}
+                                        <ul class="teaching-list">
+                                            {% for recommendation in unit_data.ai_analysis.teaching_recommendations %}
+                                            <li>{{ recommendation }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    {% endif %}
                                 </div>
                             </div>
                             {% endif %}
@@ -593,6 +603,29 @@
     .unit-stats {
         grid-template-columns: 1fr;
     }
+}
+
+/* 指導上の工夫リスト */
+.teaching-list {
+    margin: 8px 0;
+    padding-left: 20px;
+    list-style: none;
+}
+
+.teaching-list li {
+    margin: 6px 0;
+    padding-left: 24px;
+    position: relative;
+    color: #202124;
+    line-height: 1.5;
+}
+
+.teaching-list li:before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    color: #00933e;
+    font-weight: bold;
 }
 </style>
 
