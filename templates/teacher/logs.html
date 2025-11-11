@@ -227,15 +227,19 @@ function clearFilters() {
 
 function exportCurrentData() {
     const date = document.getElementById('dateFilter').value;
-    fetch(`/teacher/export?date=${date}`)
-    .then(response => response.json())
-    .then(data => {
-        alert(data.message);
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('エクスポート中にエラーが発生しました。');
-    });
+    
+    // ブラウザのダウンロード機能を使用
+    const link = document.createElement('a');
+    link.href = `/teacher/export?date=${date}`;
+    link.download = `learning_logs_${date}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // ユーザーへの通知
+    setTimeout(() => {
+        alert(`📥 ${date} のログをダウンロードしました。`);
+    }, 500);
 }
 
 function deleteLog(classNum, seatNum, unit, date, deleteType) {

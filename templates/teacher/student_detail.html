@@ -148,23 +148,25 @@
                     <div class="chat-section mb-3">
                         <h6 class="section-title">
                             <i class="fas fa-comments text-primary"></i>
-                            予想対話履歴
+                            予想対話履歴（{{ unit_data.prediction_chats|length }}件）
                         </h6>
-                        {% for chat in unit_data.prediction_chats %}
-                        <div class="chat-item mb-2">
-                            <div class="chat-timestamp">{{ chat.timestamp }}</div>
-                            <div class="chat-content">
-                                <div class="user-message">
-                                    <strong>学生:</strong>
-                                    <p>{{ chat.data.user_message }}</p>
-                                </div>
-                                <div class="ai-message">
-                                    <strong>AI:</strong>
-                                    <p>{{ chat.data.ai_response }}</p>
+                        <div class="chat-section-content">
+                            {% for chat in unit_data.prediction_chats %}
+                            <div class="chat-item mb-2">
+                                <div class="chat-timestamp">{{ chat.timestamp }}</div>
+                                <div class="chat-content">
+                                    <div class="user-message">
+                                        <strong>学生:</strong>
+                                        <p>{{ chat.data.user_message }}</p>
+                                    </div>
+                                    <div class="ai-message">
+                                        <strong>AI:</strong>
+                                        <p>{{ chat.data.ai_response }}</p>
+                                    </div>
                                 </div>
                             </div>
+                            {% endfor %}
                         </div>
-                        {% endfor %}
                     </div>
                     {% endif %}
 
@@ -173,23 +175,25 @@
                     <div class="chat-section mb-3">
                         <h6 class="section-title">
                             <i class="fas fa-comments text-info"></i>
-                            振り返り対話履歴
+                            振り返り対話履歴（{{ unit_data.reflection_chats|length }}件）
                         </h6>
-                        {% for chat in unit_data.reflection_chats %}
-                        <div class="chat-item mb-2">
-                            <div class="chat-timestamp">{{ chat.timestamp }}</div>
-                            <div class="chat-content">
-                                <div class="user-message">
-                                    <strong>学生:</strong>
-                                    <p>{{ chat.data.user_message }}</p>
-                                </div>
-                                <div class="ai-message">
-                                    <strong>AI:</strong>
-                                    <p>{{ chat.data.ai_response }}</p>
+                        <div class="chat-section-content">
+                            {% for chat in unit_data.reflection_chats %}
+                            <div class="chat-item mb-2">
+                                <div class="chat-timestamp">{{ chat.timestamp }}</div>
+                                <div class="chat-content">
+                                    <div class="user-message">
+                                        <strong>学生:</strong>
+                                        <p>{{ chat.data.user_message }}</p>
+                                    </div>
+                                    <div class="ai-message">
+                                        <strong>AI:</strong>
+                                        <p>{{ chat.data.ai_response }}</p>
+                                    </div>
                                 </div>
                             </div>
+                            {% endfor %}
                         </div>
-                        {% endfor %}
                     </div>
                     {% endif %}
                 </div>
@@ -257,9 +261,51 @@ function applyFilters() {
 .chat-section {
     background: white;
     border-radius: 6px;
-    padding: 15px;
     border-left: 4px solid #007bff;
     margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    max-height: 800px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.chat-section .section-title {
+    position: sticky;
+    top: 0;
+    background: white;
+    padding: 15px 15px 10px 15px;
+    margin: 0;
+    border-bottom: 1px solid #e9ecef;
+    z-index: 10;
+    flex-shrink: 0;
+}
+
+.chat-section-content {
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 15px;
+    flex: 1;
+}
+
+/* スクロールバーのスタイリング */
+.chat-section-content::-webkit-scrollbar {
+    width: 10px;
+}
+
+.chat-section-content::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.chat-section-content::-webkit-scrollbar-thumb {
+    background: #007bff;
+    border-radius: 10px;
+    transition: background 0.3s;
+}
+
+.chat-section-content::-webkit-scrollbar-thumb:hover {
+    background: #0056b3;
+    width: 12px;
 }
 
 .section-title {

@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash, Response
 import openai
 import os
 from dotenv import load_dotenv
@@ -1362,40 +1362,50 @@ def teacher_logs():
 @app.route('/teacher/export')
 @require_teacher_auth
 def teacher_export():
-    """ログをCSVでエクスポート"""
+    """ログをCSVでエクスポート - ブラウザのダウンロード機能を使用"""
+    from io import StringIO
+    import csv
+    
     date = request.args.get('date', datetime.now().strftime('%Y%m%d'))
     logs = load_learning_logs(date)
     
-    # CSVファイルを作成
-    output_file = f"export_{date}.csv"
-    with open(output_file, 'w', newline='', encoding='utf-8') as csvfile:
-        fieldnames = ['timestamp', 'class_display', 'student_number', 'class_num', 'seat_num', 'unit', 'log_type', 'content']
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        writer.writeheader()
-        
-        for log in logs:
-            content = ""
-            if log.get('log_type') == 'prediction_chat':
-                content = f"質問: {log['data'].get('user_message', '')} / 回答: {log['data'].get('ai_response', '')}"
-            elif log.get('log_type') == 'prediction_summary':
-                content = log['data'].get('summary', '')
-            elif log.get('log_type') == 'reflection_chat':
-                content = f"質問: {log['data'].get('user_message', '')} / 回答: {log['data'].get('ai_response', '')}"
-            elif log.get('log_type') == 'final_summary':
-                content = log['data'].get('final_summary', '')
-            
-            writer.writerow({
-                'timestamp': log.get('timestamp', ''),
-                'class_display': log.get('class_display', ''),
-                'student_number': log.get('student_number', ''),
-                'class_num': log.get('class_num', ''),
-                'seat_num': log.get('seat_num', ''),
-                'unit': log.get('unit', ''),
-                'log_type': log.get('log_type', ''),
-                'content': content
-            })
+    # CSVをメモリに作成
+    output = StringIO()
+    fieldnames = ['timestamp', 'class_display', 'student_number', 'unit', 'log_type', 'content']
+    writer = csv.DictWriter(output, fieldnames=fieldnames)
+    writer.writeheader()
     
-    return jsonify({'message': f'エクスポートが完了しました: {output_file}'})
+    for log in logs:
+        content = ""
+        if log.get('log_type') == 'prediction_chat':
+            content = f"Q: {log['data'].get('user_message', '')}\nA: {log['data'].get('ai_response', '')}"
+        elif log.get('log_type') == 'prediction_summary':
+            content = log['data'].get('summary', '')
+        elif log.get('log_type') == 'reflection_chat':
+            content = f"Q: {log['data'].get('user_message', '')}\nA: {log['data'].get('ai_response', '')}"
+        elif log.get('log_type') == 'final_summary':
+            content = log['data'].get('final_summary', '')
+        
+        writer.writerow({
+            'timestamp': log.get('timestamp', ''),
+            'class_display': log.get('class_display', ''),
+            'student_number': log.get('student_number', ''),
+            'unit': log.get('unit', ''),
+            'log_type': log.get('log_type', ''),
+            'content': content
+        })
+    
+    # CSVをレスポンスとして返す
+    csv_data = output.getvalue()
+    filename = f"learning_logs_{date}.csv"
+    
+    print(f"[EXPORT] Exported CSV for date: {date}, size: {len(csv_data)} bytes")
+    
+    return Response(
+        csv_data,
+        mimetype="text/csv; charset=utf-8-sig",
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{filename}"}
+    )
 
 def get_available_log_dates():
     """利用可能なログファイルの日付一覧を取得"""
