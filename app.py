@@ -1428,7 +1428,7 @@ def teacher_export():
 @app.route('/teacher/analysis')
 @require_teacher_auth
 def teacher_analysis():
-    """クラス×単元ごとの思考傾向分析"""
+    """クラス×単元ごとの思考傾向分析 - AI による深い分析"""
     try:
         # 利用可能な全ログを取得
         all_logs = []
@@ -1460,9 +1460,6 @@ def teacher_analysis():
                     'total_students': set(),
                     'prediction_count': 0,
                     'reflection_count': 0,
-                    'key_phrases': [],
-                    'misconceptions': [],
-                    'understanding_depth': [],
                     'raw_logs': []
                 }
             
@@ -1478,46 +1475,135 @@ def teacher_analysis():
             
             analysis_data[class_num][unit]['raw_logs'].append(log)
         
-        # AI による思考傾向分析（非同期で行う可能性もある）
-        print("[ANALYSIS] Performing AI analysis on learning trends")
+        # AI による思考傾向の深い分析
+        print("[ANALYSIS] Performing deep AI analysis on learning trends")
         
         for class_num in analysis_data:
             for unit in analysis_data[class_num]:
                 unit_data = analysis_data[class_num][unit]
                 
-                # 抽出するべき特徴
+                # 学生数を確定
                 unit_data['total_students'] = len(unit_data['total_students'])
                 
-                # 簡易的な分析（詳細はAIで行う予定）
-                preview_logs = unit_data['raw_logs'][:5]  # 最初の5件でプレビュー
-                
-                # 分析用のプロンプトをOpenAIに送信（オプション）
+                # AI分析を実行
                 if len(unit_data['raw_logs']) > 0:
                     try:
-                        # 対話ログから要点を抽出
-                        chat_messages = []
-                        for log in unit_data['raw_logs'][:10]:  # 最大10件
-                            if log.get('log_type') == 'prediction_chat':
+                        # 対話ログから分析用テキストを構築
+                        chat_texts = []
+                        for log in unit_data['raw_logs'][:20]:  # 最大20件
+                            if log.get('log_type') in ['prediction_chat', 'reflection_chat']:
                                 user_msg = log.get('data', {}).get('user_message', '')
                                 ai_msg = log.get('data', {}).get('ai_response', '')
-                                if user_msg and ai_msg:
-                                    chat_messages.append({
-                                        'user': user_msg,
-                                        'ai': ai_msg
-                                    })
+                                if user_msg:
+                                    chat_texts.append(f"学生: {user_msg}\nAI: {ai_msg}")
                         
-                        unit_data['sample_chats'] = chat_messages[:3]  # サンプルチャット
+                        if chat_texts:
+                            # OpenAI APIで思考傾向を分析
+                            analysis_prompt = f"""
+以下の学生の対話ログを分析して、思考傾向を詳しく説明してください。
+
+【対話ログ】
+{chr(10).join(chat_texts[:5])}
+
+以下の項目について分析結果を提供してください:
+1. 主な思考傾向（3-4個のキーワード）
+2. 理解の深さレベル（初期段階/発展段階/深化段階）
+3. よく見られる誤解や考え違い
+4. 強みと改善点
+5. 指導上のポイント
+
+JSON形式で以下の構造で返してください:
+{{
+    "thinking_patterns": ["キーワード1", "キーワード2", ...],
+    "understanding_level": "初期段階|発展段階|深化段階",
+    "misconceptions": ["誤解1", "誤解2"],
+    "strengths": "強み",
+    "improvements": "改善点",
+    "teaching_points": "指導上のポイント"
+}}
+"""
+                            
+                            print(f"[ANALYSIS] Analyzing {class_num}_{unit} with OpenAI...")
+                            
+                            response = openai.ChatCompletion.create(
+                                model="gpt-3.5-turbo",
+                                messages=[
+                                    {"role": "system", "content": "You are an expert science education analyst. Analyze student learning logs and provide insights about their thinking patterns and misconceptions."},
+                                    {"role": "user", "content": analysis_prompt}
+                                ],
+                                temperature=0.7,
+                                max_tokens=800
+                            )
+                            
+                            # レスポンスを解析
+                            ai_analysis_text = response.choices[0].message.content
+                            print(f"[ANALYSIS] Raw response: {ai_analysis_text[:200]}")
+                            
+                            try:
+                                # JSON部分を抽出
+                                import re
+                                json_match = re.search(r'\{[^{}]*\}', ai_analysis_text, re.DOTALL)
+                                if json_match:
+                                    ai_analysis = json.loads(json_match.group())
+                                else:
+                                    ai_analysis = {
+                                        "thinking_patterns": ["分析処理中"],
+                                        "understanding_level": "発展段階",
+                                        "misconceptions": [],
+                                        "strengths": ai_analysis_text[:200],
+                                        "improvements": "詳細は後ほど",
+                                        "teaching_points": "指導を継続"
+                                    }
+                            except json.JSONDecodeError:
+                                ai_analysis = {
+                                    "thinking_patterns": ["テキスト分析"],
+                                    "understanding_level": "発展段階",
+                                    "misconceptions": [],
+                                    "strengths": ai_analysis_text[:200],
+                                    "improvements": "詳細分析",
+                                    "teaching_points": "指導継続"
+                                }
+                            
+                            unit_data['ai_analysis'] = ai_analysis
+                            
+                        else:
+                            unit_data['ai_analysis'] = {
+                                "thinking_patterns": ["データ不足"],
+                                "understanding_level": "未判定",
+                                "misconceptions": [],
+                                "strengths": "対話数が少ないため判定できません",
+                                "improvements": "さらなる対話を促進",
+                                "teaching_points": "継続的な指導が必要"
+                            }
+                        
+                        # サンプル対話を抽出
+                        sample_chats = []
+                        for log in unit_data['raw_logs'][:3]:
+                            if log.get('log_type') == 'prediction_chat':
+                                sample_chats.append({
+                                    'user': log.get('data', {}).get('user_message', '')[:150],
+                                    'ai': log.get('data', {}).get('ai_response', '')[:150]
+                                })
+                        unit_data['sample_chats'] = sample_chats
                         
                         # 学生数と対話数から活発度を計算
                         avg_chats_per_student = (unit_data['prediction_count'] + unit_data['reflection_count']) / max(unit_data['total_students'], 1)
                         unit_data['engagement_level'] = 'high' if avg_chats_per_student > 5 else 'medium' if avg_chats_per_student > 2 else 'low'
                         
                     except Exception as e:
-                        print(f"[ANALYSIS] Error analyzing unit {class_num}_{unit}: {str(e)}")
+                        print(f"[ANALYSIS] Error analyzing unit {class_num}_{unit}: {type(e).__name__}: {str(e)}")
+                        unit_data['ai_analysis'] = {
+                            "thinking_patterns": ["エラー"],
+                            "understanding_level": "不明",
+                            "misconceptions": [],
+                            "strengths": f"分析エラー: {str(e)[:100]}",
+                            "improvements": "再分析が必要",
+                            "teaching_points": "確認が必要"
+                        }
                         unit_data['sample_chats'] = []
                         unit_data['engagement_level'] = 'unknown'
         
-        print("[ANALYSIS] SUCCESS - analysis complete")
+        print("[ANALYSIS] SUCCESS - deep analysis complete")
         
         return render_template('teacher/analysis.html',
                              analysis_data=analysis_data,

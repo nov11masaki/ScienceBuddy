@@ -96,6 +96,63 @@
                                 </div>
                             </div>
 
+                            <!-- AI 分析結果 -->
+                            {% if unit_data.ai_analysis %}
+                            <div class="ai-analysis-section">
+                                <h5><i class="fas fa-robot"></i> AI分析結果</h5>
+                                
+                                <!-- 理解度レベル -->
+                                <div class="analysis-item">
+                                    <span class="analysis-label">理解度レベル：</span>
+                                    <span class="analysis-value understanding-{{ unit_data.ai_analysis.understanding_level }}">
+                                        {{ unit_data.ai_analysis.understanding_level }}
+                                    </span>
+                                </div>
+                                
+                                <!-- 思考傾向 -->
+                                <div class="analysis-item">
+                                    <span class="analysis-label">主な思考傾向：</span>
+                                    <div class="thinking-patterns">
+                                        {% for pattern in unit_data.ai_analysis.thinking_patterns %}
+                                        <span class="pattern-tag">{{ pattern }}</span>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                
+                                <!-- 誤解と改善 -->
+                                <div class="analysis-item">
+                                    <span class="analysis-label">よくある誤解：</span>
+                                    <div class="misconceptions-list">
+                                        {% if unit_data.ai_analysis.misconceptions %}
+                                            {% for misconception in unit_data.ai_analysis.misconceptions %}
+                                            <div class="misconception">⚠️ {{ misconception }}</div>
+                                            {% endfor %}
+                                        {% else %}
+                                            <div class="misconception">特に誤解は見られません</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <!-- 強み -->
+                                <div class="analysis-item">
+                                    <span class="analysis-label">強み：</span>
+                                    <p class="analysis-text">{{ unit_data.ai_analysis.strengths }}</p>
+                                </div>
+                                
+                                <!-- 改善点 -->
+                                <div class="analysis-item">
+                                    <span class="analysis-label">改善点：</span>
+                                    <p class="analysis-text">{{ unit_data.ai_analysis.improvements }}</p>
+                                </div>
+                                
+                                <!-- 指導上のポイント -->
+                                <div class="analysis-item highlighted">
+                                    <span class="analysis-label">指導上のポイント：</span>
+                                    <p class="analysis-text">{{ unit_data.ai_analysis.teaching_points }}</p>
+                                </div>
+                            </div>
+                            {% endif %}
+
                             <!-- サンプル対話 -->
                             {% if unit_data.sample_chats %}
                             <div class="sample-chats">
@@ -287,6 +344,7 @@
 }
 
 .unit-header {
+
 .unit-stats {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -299,6 +357,126 @@
 
 .stat {
     text-align: center;
+}
+
+.stat-label {
+    display: block;
+    font-size: 0.75rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+    font-weight: 600;
+}
+
+.stat-value {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #005A9C;
+}
+
+/* AI分析結果セクション */
+.ai-analysis-section {
+    background: linear-gradient(135deg, #f0f7ff 0%, #e8f4f8 100%);
+    border-left: 4px solid #005A9C;
+    padding: 15px;
+    margin: 15px 0;
+    border-radius: 6px;
+}
+
+.ai-analysis-section h5 {
+    margin: 0 0 12px 0;
+    color: #005A9C;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.analysis-item {
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(0, 90, 156, 0.1);
+}
+
+.analysis-item:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.analysis-item.highlighted {
+    background: rgba(0, 147, 62, 0.05);
+    padding: 10px;
+    border-radius: 4px;
+    border-left: 3px solid #00933e;
+}
+
+.analysis-label {
+    display: inline-block;
+    font-weight: 600;
+    color: #003d6b;
+    min-width: 120px;
+    font-size: 0.9rem;
+}
+
+.analysis-value {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.analysis-value.understanding-初期段階 {
+    background: #ffeaa7;
+    color: #d63031;
+}
+
+.analysis-value.understanding-発展段階 {
+    background: #74b9ff;
+    color: #0984e3;
+}
+
+.analysis-value.understanding-深化段階 {
+    background: #55efc4;
+    color: #00b894;
+}
+
+.thinking-patterns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.pattern-tag {
+    display: inline-block;
+    background: #005A9C;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.misconceptions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.misconception {
+    background: #ffe3e3;
+    border-left: 2px solid #d2170d;
+    padding: 8px;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    color: #5c0a0a;
+}
+
+.analysis-text {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #202124;
+    line-height: 1.4;
 }
 
 .stat-label {
