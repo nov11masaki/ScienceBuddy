@@ -1668,27 +1668,14 @@ def teacher_analysis_list():
                         if chat_texts:
                             # OpenAI APIで思考傾向を分析
                             analysis_prompt = f"""
-以下の学生の対話ログを分析して、思考傾向を詳しく説明してください。
+科学の学習における児童の対話ログを分析してください。
 
-【対話ログ】
-{chr(10).join(chat_texts[:5])}
+【対話内容サンプル】
+{chr(10).join(chat_texts[:8])}
 
-以下の項目について分析結果を提供してください:
-1. 主な思考傾向（3-4個のキーワード）
-2. 理解の深さレベル（初期段階/発展段階/深化段階）
-3. よく見られる誤解や考え違い
-4. 強みと改善点
-5. 指導上のポイント
+児童の思考や経験との結びつき、既習事項の活用方法、思考プロセスなどをテキストで分析してください。
 
-JSON形式で以下の構造で返してください:
-{{
-    "thinking_patterns": ["キーワード1", "キーワード2", ...],
-    "understanding_level": "初期段階|発展段階|深化段階",
-    "misconceptions": ["誤解1", "誤解2"],
-    "strengths": "強み",
-    "improvements": "改善点",
-    "teaching_points": "指導上のポイント"
-}}
+200〜300字でまとめてください。
 """
                             
                             print(f"[ANALYSIS] Analyzing {class_num}_{unit} with OpenAI...")
@@ -1697,14 +1684,14 @@ JSON形式で以下の構造で返してください:
                             response = client.chat.completions.create(
                                 model="gpt-4o-mini",
                                 messages=[
-                                    {"role": "system", "content": "You are an expert science education analyst. Analyze student learning logs and provide insights about their thinking patterns and misconceptions."},
+                                    {"role": "system", "content": "You are an expert science education analyst. Analyze student learning logs and provide insights about their thinking patterns and how they connect learning to prior knowledge. Always respond in Japanese with clear, readable paragraphs."},
                                     {"role": "user", "content": analysis_prompt}
                                 ],
                                 temperature=0.7,
-                                max_tokens=800
+                                max_tokens=500
                             )
                             
-                            # レスポンスを解析
+                            # レスポンスを取得
                             ai_analysis_text = response.choices[0].message.content
                             print(f"[ANALYSIS] Raw response: {ai_analysis_text[:200]}")
                             
