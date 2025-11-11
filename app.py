@@ -714,6 +714,105 @@ def get_available_log_dates():
     print(f"[DATES] Found {len(dates)} log dates: {dates[:5]}")
     return dates
 
+def perform_clustering_analysis(unit_logs, unit_name, class_num):
+    """学生の対話をエンベディング＆クラスタリング分析
+    
+    Args:
+        unit_logs: 単元のログ一覧
+        unit_name: 単元名
+        class_num: クラス番号
+    
+    Returns:
+        dict: クラスタリング結果
+    """
+    try:
+        import numpy as np
+        from sklearn.cluster import KMeans
+        
+        print(f"[CLUSTERING] Starting analysis for {class_num}_{unit_name}")
+        
+        # 予想と考察を分離
+        prediction_logs = [l for l in unit_logs if l.get('log_type') == 'prediction_chat']
+        reflection_logs = [l for l in unit_logs if l.get('log_type') == 'reflection_chat']
+        
+        clustering_results = {}
+        
+        for phase_name, phase_logs in [('予想段階', prediction_logs), ('考察段階', reflection_logs)]:
+            if not phase_logs:
+                clustering_results[phase_name] = {'clusters': [], 'message': f'{phase_name}のデータがありません'}
+                continue
+            
+            # 学生ごとに対話をグループ化
+            student_messages = {}
+            for log in phase_logs:
+                student_id = log.get('student_number', '不明')
+                msg = log.get('data', {}).get('user_message', '')
+                if msg:
+                    if student_id not in student_messages:
+                        student_messages[student_id] = []
+                    student_messages[student_id].append(msg)
+            
+            if not student_messages:
+                clustering_results[phase_name] = {'clusters': [], 'message': 'テキストデータがありません'}
+                continue
+            
+            # 各学生のテキストをまとめる
+            student_ids = list(student_messages.keys())
+            student_texts = [' '.join(student_messages[sid]) for sid in student_ids]
+            
+            print(f"[CLUSTERING] Getting embeddings for {len(student_ids)} students...")
+            
+            # OpenAI Embedding API を使用
+            client = openai.OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
+            embeddings_response = client.embeddings.create(
+                input=student_texts,
+                model="text-embedding-3-small"
+            )
+            
+            embeddings = np.array([e.embedding for e in embeddings_response.data])
+            
+            # クラスタ数を決定（学生数に基づいて、最大5クラスタ）
+            n_clusters = min(max(2, len(student_ids) // 3), 5)
+            
+            print(f"[CLUSTERING] Performing KMeans clustering with {n_clusters} clusters...")
+            
+            # クラスタリング実行
+            kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+            cluster_labels = kmeans.fit_predict(embeddings)
+            
+            # クラスタごとに学生をグループ化
+            clusters = {}
+            for i, (student_id, label) in enumerate(zip(student_ids, cluster_labels)):
+                if label not in clusters:
+                    clusters[label] = {'students': [], 'sample_texts': []}
+                clusters[label]['students'].append(student_id)
+                clusters[label]['sample_texts'].append(student_texts[i][:200])
+            
+            clustering_results[phase_name] = {
+                'clusters': [
+                    {
+                        'cluster_id': cid,
+                        'students': clusters[cid]['students'],
+                        'student_count': len(clusters[cid]['students']),
+                        'sample_text': clusters[cid]['sample_texts'][0] if clusters[cid]['sample_texts'] else ''
+                    }
+                    for cid in sorted(clusters.keys())
+                ]
+            }
+            
+            print(f"[CLUSTERING] {phase_name}: {len(clusters)} clusters created")
+        
+        return clustering_results
+    
+    except Exception as e:
+        print(f"[CLUSTERING] Error: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return {
+            '予想段階': {'clusters': [], 'error': str(e)},
+            '考察段階': {'clusters': [], 'error': str(e)}
+        }
+
 def parse_student_info(student_number):
     """生徒番号からクラスと出席番号を取得
     
@@ -1542,16 +1641,21 @@ def teacher_analysis_class(class_num):
                     
                     analysis_text = response.choices[0].message.content
                     
+                    # クラスタリング分析を実行
+                    clustering_data = perform_clustering_analysis(logs, unit, class_num)
+                    
                     analysis_results[unit] = {
                         'text': analysis_text,
                         'student_count': len(set(log.get('student_number') for log in logs)),
-                        'chat_count': len([l for l in logs if l.get('log_type') in ['prediction_chat', 'reflection_chat']])
+                        'chat_count': len([l for l in logs if l.get('log_type') in ['prediction_chat', 'reflection_chat']]),
+                        'clustering': clustering_data
                     }
                 else:
                     analysis_results[unit] = {
                         'text': 'このユニットにはまだ十分なデータがありません。',
                         'student_count': 0,
-                        'chat_count': 0
+                        'chat_count': 0,
+                        'clustering': {'予想段階': {'clusters': []}, '考察段階': {'clusters': []}}
                     }
                 
             except Exception as e:
@@ -1559,7 +1663,8 @@ def teacher_analysis_class(class_num):
                 analysis_results[unit] = {
                     'text': f'分析エラーが発生しました: {str(e)[:100]}',
                     'student_count': len(set(log.get('student_number') for log in logs)),
-                    'chat_count': len([l for l in logs if l.get('log_type') in ['prediction_chat', 'reflection_chat']])
+                    'chat_count': len([l for l in logs if l.get('log_type') in ['prediction_chat', 'reflection_chat']]),
+                    'clustering': {'予想段階': {'clusters': [], 'error': str(e)}, '考察段階': {'clusters': [], 'error': str(e)}}
                 }
         
         print("[ANALYSIS] SUCCESS - class analysis complete")
