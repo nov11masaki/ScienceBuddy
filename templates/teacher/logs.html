@@ -122,10 +122,33 @@
                                class="btn btn-sm btn-outline-primary">
                                 <i class="fas fa-eye"></i> 詳細
                             </a>
-                            <button type="button" class="btn btn-sm btn-outline-danger"
-                                    onclick="deleteLog('{{ student_data.student_info.class_num }}', '{{ student_data.student_info.seat_num }}', '{{ unit_name }}', '{{ current_date }}')">
-                                <i class="fas fa-trash"></i> 削除
-                            </button>
+                            <div class="btn-group" role="group">
+                                <button id="btnGroupDrop{{ loop.index }}" type="button" class="btn btn-sm btn-outline-danger dropdown-toggle" 
+                                        data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-trash"></i> 削除
+                                </button>
+                                <ul class="dropdown-menu" aria-labelledby="btnGroupDrop{{ loop.index }}">
+                                    <li>
+                                        <a class="dropdown-item" href="#" 
+                                           onclick="deleteLog('{{ student_data.student_info.class_num }}', '{{ student_data.student_info.seat_num }}', '{{ unit_name }}', '{{ current_date }}', 'unit'); return false;">
+                                            <i class="fas fa-book me-2"></i>このユニットを削除
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="#" 
+                                           onclick="deleteLog('{{ student_data.student_info.class_num }}', '{{ student_data.student_info.seat_num }}', '', '{{ current_date }}', 'student'); return false;">
+                                            <i class="fas fa-user me-2"></i>この学生の全ログを削除
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <a class="dropdown-item text-danger" href="#" 
+                                           onclick="deleteLog(null, null, '', '{{ current_date }}', 'all'); return false;">
+                                            <i class="fas fa-exclamation-triangle me-2"></i>この日付の全ログを削除
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
                         </div>
                         
                         <!-- 予想まとめがある場合は表示 -->
@@ -215,21 +238,44 @@ function exportCurrentData() {
     });
 }
 
-function deleteLog(classNum, seatNum, unit, date) {
-    if (!confirm(`${classNum}組${seatNum}番の「${unit}」のログを削除しますか？\n\nこの操作は取り消せません。`)) {
-        return;
-    }
+function deleteLog(classNum, seatNum, unit, date, deleteType) {
+    // deleteType: 'unit' (単元削除), 'student' (学生全削除), 'all' (日付全削除)
+    deleteType = deleteType || 'unit';
     
-    const confirmMsg = prompt('本当に削除しますか？確認のため「削除」と入力してください:');
-    if (confirmMsg !== '削除') {
-        alert('キャンセルしました。');
-        return;
+    let confirmMsg = '';
+    let warningMsg = '';
+    
+    if (deleteType === 'all') {
+        warningMsg = `⚠️ 警告: ${date} のすべてのログ（全学生・全単元）を削除します。\n\nこの操作は取り消せません！`;
+        confirmMsg = '本当に削除しますか？確認のため「全削除」と入力してください:';
+        if (!confirm(warningMsg)) return;
+        if (prompt(confirmMsg) !== '全削除') {
+            alert('キャンセルしました。');
+            return;
+        }
+    } else if (deleteType === 'student') {
+        warningMsg = `${classNum}組${seatNum}番 の全ログ（全単元）を削除します。\n\nこの操作は取り消せません。`;
+        confirmMsg = '本当に削除しますか？確認のため「削除」と入力してください:';
+        if (!confirm(warningMsg)) return;
+        if (prompt(confirmMsg) !== '削除') {
+            alert('キャンセルしました。');
+            return;
+        }
+    } else {
+        // unit（単元削除）
+        warningMsg = `${classNum}組${seatNum}番 の「${unit}」のログを削除します。`;
+        confirmMsg = '本当に削除しますか？確認のため「削除」と入力してください:';
+        if (!confirm(warningMsg)) return;
+        if (prompt(confirmMsg) !== '削除') {
+            alert('キャンセルしました。');
+            return;
+        }
     }
     
     const data = {
-        class_num: parseInt(classNum),
-        seat_num: parseInt(seatNum),
-        unit: unit,
+        class_num: classNum ? parseInt(classNum) : null,
+        seat_num: seatNum ? parseInt(seatNum) : null,
+        unit: unit || '',
         date: date
     };
     

@@ -1496,7 +1496,7 @@ def student_detail():
 @app.route('/teacher/delete_log', methods=['POST'])
 @require_teacher_auth
 def delete_log():
-    """学習ログを削除"""
+    """学習ログを削除（柔軟な削除条件）"""
     try:
         print(f"[GCS_DELETE] START - teacher: {session.get('teacher_id', 'unknown')}")
         
@@ -1505,18 +1505,39 @@ def delete_log():
             print(f"[GCS_DELETE] ERROR - No JSON data received")
             return jsonify({'error': 'リクエストボディが空です'}), 400
             
-        class_num = int(data.get('class_num', 0))
-        seat_num = int(data.get('seat_num', 0))
-        unit = data.get('unit', '')
-        date = data.get('date', '')
+        # パラメータを取得（0 や空文字列は無視）
+        class_num_raw = data.get('class_num')
+        seat_num_raw = data.get('seat_num')
+        unit = data.get('unit', '').strip()
+        date = data.get('date', '').strip()
         log_ids = data.get('log_ids', [])
+        
+        # クラス番号と出席番号を変換（None か有効な数字のみ）
+        class_num = None
+        seat_num = None
+        try:
+            if class_num_raw not in (None, 0, ''):
+                class_num = int(class_num_raw)
+            if seat_num_raw not in (None, 0, ''):
+                seat_num = int(seat_num_raw)
+        except (ValueError, TypeError):
+            pass
         
         print(f"[GCS_DELETE] PARAMS - class: {class_num}, seat: {seat_num}, unit: '{unit}', date: '{date}'")
         
-        if not (class_num and seat_num and unit and date):
-            error_msg = f'削除に必要な情報が不足しています'
+        # 日付は必須
+        if not date:
+            error_msg = f'日付（date）は必須です'
             print(f"[GCS_DELETE] VALIDATION_FAILED - {error_msg}")
             return jsonify({'error': error_msg}), 400
+        
+        # 削除条件の確認
+        has_student_filter = class_num is not None and seat_num is not None
+        has_unit_filter = bool(unit)
+        has_any_filter = has_student_filter or has_unit_filter
+        
+        if not has_any_filter:
+            print(f"[GCS_DELETE] WARNING - no filter specified, will delete ALL logs for date {date}")
         
         # ログを読み込み
         print(f"[GCS_DELETE] LOAD - loading logs from date: {date}")
@@ -1525,17 +1546,38 @@ def delete_log():
         print(f"[GCS_DELETE] LOAD_RESULT - loaded {original_count} logs")
         
         # 削除対象を特定
+        filtered_logs = []
+        
         if log_ids:
-            logs = [log for i, log in enumerate(logs) if i not in log_ids]
-        else:
-            logs = [log for log in logs if not (
+            # 特定のログをIDで削除
+            filtered_logs = [log for i, log in enumerate(logs) if i not in log_ids]
+            print(f"[GCS_DELETE] FILTER - removed by ID: {len(log_ids)} logs")
+        elif has_student_filter and has_unit_filter:
+            # 学生と単元の両方で絞り込み
+            filtered_logs = [log for log in logs if not (
                 log.get('class_num') == class_num and 
                 log.get('seat_num') == seat_num and 
                 log.get('unit') == unit
             )]
+            print(f"[GCS_DELETE] FILTER - by student and unit: {class_num}組{seat_num}番 - {unit}")
+        elif has_student_filter:
+            # 学生のすべてのログを削除
+            filtered_logs = [log for log in logs if not (
+                log.get('class_num') == class_num and 
+                log.get('seat_num') == seat_num
+            )]
+            print(f"[GCS_DELETE] FILTER - by student: {class_num}組{seat_num}番 (all units)")
+        elif has_unit_filter:
+            # 単元のすべてのログを削除
+            filtered_logs = [log for log in logs if log.get('unit') != unit]
+            print(f"[GCS_DELETE] FILTER - by unit: {unit} (all students)")
+        else:
+            # 日付のすべてのログを削除
+            filtered_logs = []
+            print(f"[GCS_DELETE] FILTER - delete all logs for date {date}")
         
-        deleted_count = original_count - len(logs)
-        print(f"[GCS_DELETE] FILTERED - deleted: {deleted_count}, remaining: {len(logs)}")
+        deleted_count = original_count - len(filtered_logs)
+        print(f"[GCS_DELETE] FILTERED - deleted: {deleted_count}, remaining: {len(filtered_logs)}")
         
         if deleted_count == 0:
             print(f"[GCS_DELETE] NO_MATCH - no logs matched the filter criteria")
@@ -1548,15 +1590,15 @@ def delete_log():
                 blob_name = f"logs/{log_filename}"
                 blob = bucket.blob(blob_name)
                 
-                print(f"[GCS_DELETE] SAVE_START - blob: {blob_name}, logs: {len(logs)}")
+                print(f"[GCS_DELETE] SAVE_START - blob: {blob_name}, logs: {len(filtered_logs)}")
                 
-                if len(logs) > 0:
+                if len(filtered_logs) > 0:
                     # ログが残っている場合は更新
                     blob.upload_from_string(
-                        json.dumps(logs, ensure_ascii=False, indent=2),
+                        json.dumps(filtered_logs, ensure_ascii=False, indent=2),
                         content_type='application/json'
                     )
-                    print(f"[GCS_DELETE] SAVE_SUCCESS - updated file with {len(logs)} logs remaining")
+                    print(f"[GCS_DELETE] SAVE_SUCCESS - updated file with {len(filtered_logs)} logs remaining")
                 else:
                     # ログが空になった場合はファイルを削除
                     blob.delete()
