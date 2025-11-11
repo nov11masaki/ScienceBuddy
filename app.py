@@ -1489,20 +1489,32 @@ def student_detail():
 def delete_log():
     """学習ログを削除"""
     try:
+        print(f"[DEBUG] delete_log called - session: {dict(session)}")
+        print(f"[DEBUG] request.json: {request.json}")
+        
         data = request.json
+        if not data:
+            print(f"[ERROR] No JSON data received")
+            return jsonify({'error': 'リクエストボディが空です'}), 400
+            
         class_num = int(data.get('class_num', 0))
         seat_num = int(data.get('seat_num', 0))
         unit = data.get('unit', '')
         date = data.get('date', '')
         log_ids = data.get('log_ids', [])  # 削除するログのインデックス（複数可）
         
+        print(f"[DEBUG] Received delete request - class: {class_num}, seat: {seat_num}, unit: '{unit}', date: '{date}'")
+        
         if not (class_num and seat_num and unit and date):
-            return jsonify({'error': '削除に必要な情報が不足しています'}), 400
+            error_msg = f'削除に必要な情報が不足しています (class: {class_num}, seat: {seat_num}, unit: "{unit}", date: "{date}")'
+            print(f"[ERROR] {error_msg}")
+            return jsonify({'error': error_msg}), 400
         
         print(f"[DEBUG] Deleting logs - class: {class_num}, seat: {seat_num}, unit: {unit}, date: {date}, ids: {log_ids}")
         
         # ログを読み込み
         logs = load_learning_logs(date)
+        print(f"[DEBUG] Loaded {len(logs)} logs for date {date}")
         
         # 削除対象を特定
         original_count = len(logs)

@@ -241,20 +241,30 @@ function deleteLog(classNum, seatNum, unit, date) {
         body: JSON.stringify(data)
     })
     .then(response => {
-        if (response.ok) {
-            return response.json();
-        } else {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
+        // ステータスコードに関わらず、まずレスポンスを JSON として読む
+        return response.json().then(json => {
+            return {
+                ok: response.ok,
+                status: response.status,
+                data: json
+            };
+        });
     })
-    .then(data => {
-        alert(data.message || 'ログを削除しました。');
-        // ページをリロード
-        window.location.reload();
+    .then(result => {
+        if (result.ok) {
+            alert(result.data.message || 'ログを削除しました。');
+            // ページをリロード
+            window.location.reload();
+        } else {
+            // エラーレスポンスの内容を表示
+            const errorMsg = result.data.error || `エラー（ステータス: ${result.status}）`;
+            console.error('Delete error:', result.data);
+            alert(`ログ削除中にエラーが発生しました:\n${errorMsg}`);
+        }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('ログ削除中にエラーが発生しました。');
+        alert('ログ削除中にエラーが発生しました。\nネットワークエラーまたはサーバーエラーが発生している可能性があります。');
     });
 }
 </script>
