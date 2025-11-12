@@ -16,6 +16,8 @@ import uuid
 from werkzeug.utils import secure_filename
 from google.cloud import storage
 from google.api_core import exceptions as gcs_exceptions
+import numpy as np
+from sklearn.cluster import KMeans
 
 
 # 環境変数を読み込み
@@ -726,9 +728,6 @@ def perform_clustering_analysis(unit_logs, unit_name, class_num):
         dict: クラスタリング結果
     """
     try:
-        import numpy as np
-        from sklearn.cluster import KMeans
-        
         print(f"[CLUSTERING] Starting analysis for {class_num}_{unit_name}")
         
         # 予想と考察を分離
