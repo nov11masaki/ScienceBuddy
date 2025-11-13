@@ -1394,6 +1394,16 @@ def teacher():
                          units=UNITS, 
                          teacher_id=teacher_id)
 
+@app.route('/teacher/dashboard')
+@require_teacher_auth
+def teacher_dashboard():
+    """教員用ダッシュボード（別ルート）"""
+    teacher_id = session.get('teacher_id')
+    
+    return render_template('teacher/dashboard.html', 
+                         units=UNITS, 
+                         teacher_id=teacher_id)
+
 @app.route('/teacher/logs')
 @require_teacher_auth
 def teacher_logs():
