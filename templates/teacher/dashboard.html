@@ -40,7 +40,8 @@
                 <div class="card-icon"><i class="fas fa-download"></i></div>
                 <h2>データエクスポート</h2>
                 <p>学習データをCSVで出力</p>
-                <button onclick="exportData()" class="card-button"><i class="fas fa-file-csv"></i> エクスポート</button>
+                <button onclick="exportData('csv')" class="card-button"><i class="fas fa-file-csv"></i> CSV出力</button>
+                <button onclick="exportData('json')" class="card-button" style="margin-top: 10px;"><i class="fas fa-file-code"></i> JSON出力</button>
             </div>
         </section>
 
@@ -103,21 +104,30 @@ function showToast(message, type = 'success') {
     }, 3000);
 }
 
-function exportData() {
+function exportData(format = 'csv') {
     const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
     
     // ブラウザのダウンロード機能を使用
     const link = document.createElement('a');
-    link.href = `/teacher/export?date=${today}`;
-    link.download = `learning_logs_${today}.csv`;
+    
+    if (format === 'json') {
+        link.href = `/teacher/export_json?date=${today}`;
+        link.download = `dialogue_logs_${today}.zip`;
+        showToast('📥 JSON形式のログをダウンロード中...', 'info');
+    } else {
+        link.href = `/teacher/export?date=${today}`;
+        link.download = `learning_logs_${today}.csv`;
+        showToast('📥 CSV形式のログをダウンロード中...', 'info');
+    }
+    
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     
     // ユーザーへの通知
     setTimeout(() => {
-        showToast('📥 本日のログをダウンロードしました', 'success');
-    }, 500);
+        showToast(format === 'json' ? '✅ JSONのダウンロード完了' : '✅ CSVのダウンロード完了', 'success');
+    }, 1000);
 }
 </script>
 

@@ -13,6 +13,9 @@ import urllib3
 import re
 import glob
 import uuid
+import zipfile
+import tempfile
+from pathlib import Path
 from werkzeug.utils import secure_filename
 from google.cloud import storage
 from google.api_core import exceptions as gcs_exceptions
@@ -1549,6 +1552,80 @@ def teacher_export():
     return Response(
         csv_bytes,
         mimetype="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{filename}"}
+    )
+
+@app.route('/teacher/export_json')
+@require_teacher_auth
+def teacher_export_json():
+    """対話内容をJSONでエクスポート - 単元ごとのディレクトリ構造でzip出力"""
+    from io import BytesIO
+    
+    download_date_str = request.args.get('date', datetime.now().strftime('%Y%m%d'))
+    
+    # ダウンロード日までのすべてのログを取得
+    all_logs = []
+    available_dates = get_available_log_dates()
+    
+    print(f"[EXPORT_JSON] START - exporting logs up to date: {download_date_str}")
+    
+    for date_info in available_dates:
+        current_date_raw = date_info['raw']
+        if current_date_raw <= download_date_str:
+            try:
+                logs = load_learning_logs(current_date_raw)
+                all_logs.extend(logs)
+                print(f"[EXPORT_JSON] Loaded {len(logs)} logs from {current_date_raw}")
+            except Exception as e:
+                print(f"[EXPORT_JSON] ERROR loading logs from {current_date_raw}: {str(e)}")
+    
+    # 児童ごと・単元ごとにグループ化
+    # 構造: {unit: {student_id: [logs]}}
+    structured_logs = {}
+    
+    for log in all_logs:
+        unit = log.get('unit', 'unknown')
+        student_id = log.get('student_number', 'unknown')
+        
+        if unit not in structured_logs:
+            structured_logs[unit] = {}
+        if student_id not in structured_logs[unit]:
+            structured_logs[unit][student_id] = []
+        
+        structured_logs[unit][student_id].append(log)
+    
+    # Zipファイルをメモリに作成
+    zip_buffer = BytesIO()
+    
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        for unit in sorted(structured_logs.keys()):
+            for student_id in sorted(structured_logs[unit].keys()):
+                logs_for_student = structured_logs[unit][student_id]
+                
+                # JSON データの作成
+                json_data = {
+                    'unit': unit,
+                    'student_id': student_id,
+                    'class_display': logs_for_student[0].get('class_display', '') if logs_for_student else '',
+                    'export_date': datetime.now().isoformat(),
+                    'logs': logs_for_student
+                }
+                
+                # ファイルパス: talk/{unit}/student_{student_id}.json
+                file_path = f"talk/{unit}/student_{student_id}.json"
+                
+                # JSONファイルをzipに追加
+                json_string = json.dumps(json_data, ensure_ascii=False, indent=2)
+                zip_file.writestr(file_path, json_string.encode('utf-8'))
+    
+    zip_buffer.seek(0)
+    filename = f"dialogue_logs_up_to_{download_date_str}.zip"
+    
+    print(f"[EXPORT_JSON] SUCCESS - exported JSON with {len(all_logs)} total logs")
+    
+    return Response(
+        zip_buffer.getvalue(),
+        mimetype="application/zip",
         headers={"Content-Disposition": f"attachment; filename*=UTF-8''{filename}"}
     )
 
