@@ -147,7 +147,26 @@
 {% endblock %}
 
 {% block scripts %}
+<!-- 復帰情報をJSONとして埋め込み -->
+<script type="application/json" id="resumption-info">{{ resumption_info | tojson | safe }}</script>
+
+<!-- セッションデータ（復帰用） -->
+<script type="application/json" id="reflection-session-data">
+{
+    "conversationHistory": {{ session.get('reflection_conversation', []) | tojson | safe }},
+    "reflectionSummary": "{{ session.get('reflection_summary', '') | safe }}"
+}
+</script>
+
 <script>
+// セッションデータをJavaScript変数に格納
+const sessionDataElement = document.getElementById('reflection-session-data');
+if (sessionDataElement) {
+    const sessionData = JSON.parse(sessionDataElement.textContent);
+    window.reflectionConversationHistory = sessionData.conversationHistory;
+    window.reflectionSummary = sessionData.reflectionSummary;
+}
+
 let conversationCount = 0;
 let reflectionCount = 0;
 let recognition = null;
@@ -183,6 +202,23 @@ const dakutenMap = {
 
 // ページ読み込み時の初期化
 document.addEventListener('DOMContentLoaded', function() {
+    // 復帰情報を取得
+    const resumptionInfo = {{ resumption_info | tojson | safe }};
+    
+    if (resumptionInfo && resumptionInfo.is_resumption) {
+        console.log('復帰モード: 過去の会話を復元します', resumptionInfo);
+        
+        // 過去の会話を復元
+        if (window.reflectionConversationHistory) {
+            restoreReflectionConversation(window.reflectionConversationHistory);
+        }
+        
+        // まとめが完了している場合はまとめを復元
+        if (resumptionInfo.reflection_summary_created && window.reflectionSummary) {
+            showReflectionSummary(window.reflectionSummary);
+        }
+    }
+    
     // 初期メッセージはHTMLに直接書かれているので、ここでは追加しない
     
     // デフォルトで50音表がOFFなので、入力補助エリアを縮小
@@ -666,6 +702,53 @@ function stopVoiceInput() {
     if (recognition && recognition.isListening) {
         recognition.stop();
         recognition.isListening = false;
+    }
+}
+
+// 復帰時に過去の会話を復元する関数
+function restoreReflectionConversation(conversationHistory) {
+    const messagesContainer = document.getElementById('reflectionMessages');
+    if (!messagesContainer || !conversationHistory || conversationHistory.length === 0) return;
+    
+    // 初期メッセージ以外を削除（初期メッセージはAIメッセージ）
+    const messages = messagesContainer.querySelectorAll('.message');
+    for (let i = messages.length - 1; i > 0; i--) {
+        messages[i].remove();
+    }
+    
+    // 過去の会話を復元
+    conversationHistory.forEach((msg, index) => {
+        const isAI = msg.role === 'assistant';
+        const messageDiv = document.createElement('div');
+        messageDiv.className = isAI ? 'message ai-message' : 'message user-message';
+        
+        if (isAI) {
+            messageDiv.innerHTML = `
+                <div class="message-avatar"></div>
+                <div class="message-content">${msg.content}</div>
+            `;
+        } else {
+            messageDiv.innerHTML = `
+                <div class="user-message-bubble">${msg.content}</div>
+            `;
+        }
+        
+        messagesContainer.appendChild(messageDiv);
+    });
+    
+    // スクロール位置を下に移動
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    conversationCount = conversationHistory.length;
+}
+
+// 復帰時に考察のまとめを復元する関数
+function showReflectionSummary(summary) {
+    const finalSummarySection = document.getElementById('finalSummarySection');
+    const finalSummaryContent = document.getElementById('finalSummaryContent');
+    
+    if (finalSummarySection && finalSummaryContent) {
+        finalSummaryContent.textContent = summary;
+        finalSummarySection.style.display = 'block';
     }
 }
 </script>

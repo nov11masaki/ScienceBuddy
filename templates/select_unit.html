@@ -110,26 +110,36 @@ function selectUnit(unit) {
     const needsResumption = unitProgress[unit] && unitProgress[unit].needs_resumption;
     const predictionSummaryCreated = unitProgress[unit] && unitProgress[unit].prediction_summary_created;
     const reflectionStarted = unitProgress[unit] && unitProgress[unit].reflection_started;
+    const reflectionNeedsResumption = unitProgress[unit] && unitProgress[unit].reflection_needs_resumption;
     const reflectionSummaryCreated = unitProgress[unit] && unitProgress[unit].reflection_summary_created;
     
     // 進捗に応じた適切なステージを決定
     let targetStage = 'prediction';  // デフォルトは予想段階
+    let shouldResume = false;
     
     if (reflectionSummaryCreated) {
         // 考察の要約まで完了している場合は完了画面へ
         alert('この単元はすでに完了しています。');
         return;
+    } else if (reflectionNeedsResumption && reflectionStarted) {
+        // 考察段階に中断がある場合
+        targetStage = 'reflection';
+        shouldResume = true;
     } else if (reflectionStarted) {
         // 考察段階を開始している場合は考察へ
         targetStage = 'reflection';
     } else if (predictionSummaryCreated) {
         // 予想の要約が完了している場合は実験段階へ
         targetStage = 'experiment';
+    } else if (needsResumption && targetStage === 'prediction') {
+        // 予想段階の復帰
+        shouldResume = true;
     }
     
-    if (needsResumption && targetStage === 'prediction') {
-        // 予想段階の復帰確認ダイアログを表示
-        const confirmResume = confirm(`この単元は前回の続きがあります。\n前回の続きから始めますか？\n\n進行状況: ${unitProgress[unit].progress_summary}\n\nOK: 続きから開始\nキャンセル: 最初から開始`);
+    // 復帰確認ダイアログを表示（予想段階または考察段階）
+    if (shouldResume) {
+        const progressSummary = unitProgress[unit] ? unitProgress[unit].progress_summary : '';
+        const confirmResume = confirm(`この単元は前回の続きがあります。\n前回の続きから始めますか？\n\n進行状況: ${progressSummary}\n\nOK: 続きから開始\nキャンセル: 最初から開始`);
         
         setTimeout(() => {
             if (confirmResume) {
@@ -139,13 +149,9 @@ function selectUnit(unit) {
             }
         }, 300);
     } else {
-        // 通常の開始または進捗に応じたステージへ遷移
+        // 通常の開始
         setTimeout(() => {
-            if (targetStage === 'prediction' && needsResumption) {
-                window.location.href = `/${targetStage}?class=${classNumber}&number=${studentNumber}&unit=${encodeURIComponent(unit)}&resume=true`;
-            } else {
-                window.location.href = `/${targetStage}?class=${classNumber}&number=${studentNumber}&unit=${encodeURIComponent(unit)}`;
-            }
+            window.location.href = `/${targetStage}?class=${classNumber}&number=${studentNumber}&unit=${encodeURIComponent(unit)}`;
         }, 300);
     }
 }

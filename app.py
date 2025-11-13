@@ -919,6 +919,7 @@ def select_unit():
         experiment_started = stage_progress.get('experiment', {}).get('started', False)
         reflection_started = stage_progress.get('reflection', {}).get('started', False)
         reflection_summary_created = stage_progress.get('reflection', {}).get('summary_created', False)
+        reflection_needs_resumption = reflection_started and stage_progress.get('reflection', {}).get('conversation_count', 0) > 0 and not reflection_summary_created
         
         unit_progress[unit] = {
             'current_stage': progress['current_stage'],
@@ -930,7 +931,8 @@ def select_unit():
             'prediction_summary_created': prediction_summary_created,
             'experiment_started': experiment_started,
             'reflection_started': reflection_started,
-            'reflection_summary_created': reflection_summary_created
+            'reflection_summary_created': reflection_summary_created,
+            'reflection_needs_resumption': reflection_needs_resumption
         }
     
     return render_template('select_unit.html', units=UNITS, unit_progress=unit_progress)
@@ -1159,16 +1161,49 @@ def reflection():
     class_number = session.get('class_number', '1')
     student_number = session.get('student_number')
     prediction_summary = session.get('prediction_summary')
+    resume = request.args.get('resume', 'false').lower() == 'true'
     
-    # 考察段階開始を記録
-    if unit and student_number:
-        update_student_progress(
-            class_number,
-            student_number,
-            unit,
-            stage='reflection',
-            started=True
-        )
+    # 進行状況をチェック
+    progress = get_student_progress(class_number, student_number, unit)
+    stage_progress = progress.get('stage_progress', {})
+    reflection_stage = stage_progress.get('reflection', {})
+    
+    # 考察のまとめが既に生成されている場合
+    reflection_summary_created = reflection_stage.get('summary_created', False)
+    
+    if resume and reflection_stage.get('conversation_count', 0) > 0:
+        # 対話履歴を復元
+        session['reflection_conversation'] = progress.get('reflection_conversation_history', [])
+        resumption_info = {
+            'is_resumption': True,
+            'last_conversation_count': reflection_stage.get('conversation_count', 0),
+            'last_access': progress.get('last_access', ''),
+            'reflection_summary_created': reflection_summary_created
+        }
+        
+        # まとめが完了している場合は保存されたまとめを復元
+        if reflection_summary_created:
+            logs = load_learning_logs(datetime.now().strftime('%Y%m%d'))
+            for log in logs:
+                if (log.get('student_number') == student_number and 
+                    log.get('unit') == unit and 
+                    log.get('log_type') == 'final_summary'):
+                    session['reflection_summary'] = log.get('data', {}).get('summary', '')
+                    break
+    else:
+        # 新規開始
+        session['reflection_conversation'] = []
+        resumption_info = {'is_resumption': False, 'reflection_summary_created': False}
+        
+        # 考察段階開始を記録
+        if unit and student_number:
+            update_student_progress(
+                class_number,
+                student_number,
+                unit,
+                stage='reflection',
+                started=True
+            )
     
     # 単元に応じた最初のAIメッセージを取得
     initial_ai_message = get_initial_ai_message(unit, stage='reflection')
@@ -1176,7 +1211,8 @@ def reflection():
     return render_template('reflection.html', 
                          unit=unit,
                          prediction_summary=prediction_summary,
-                         initial_ai_message=initial_ai_message)
+                         initial_ai_message=initial_ai_message,
+                         resumption_info=resumption_info)
 
 @app.route('/reflect_chat', methods=['POST'])
 def reflect_chat():
@@ -1245,6 +1281,15 @@ def reflect_chat():
                 'conversation_count': len(reflection_conversation) // 2
             },
             class_number=session.get('class_number')
+        )
+        
+        # 進行状況に考察の対話履歴を保存
+        update_student_progress(
+            session.get('class_number'),
+            session.get('student_number'),
+            unit,
+            stage='reflection',
+            conversation_count=len(reflection_conversation) // 2
         )
         
         # 対話が2往復以上あれば、考察のまとめを作成可能
