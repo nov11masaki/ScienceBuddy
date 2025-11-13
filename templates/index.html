@@ -4,12 +4,17 @@
 
 {% block content %}
 <div class="hero-section">
-    <div class="container text-center">
-        <h1 class="display-4 mb-4">
-            <i class="fas fa-flask text-primary"></i>
+    <div class="hero-card text-center">
+        <span class="hero-tag"><i class="fas fa-compass me-2"></i>理科AI学習サポート</span>
+        <h1 class="display-5 mb-3">
+            <i class="fas fa-flask text-primary me-2"></i>
             ScienceBuddy
         </h1>
-        <p class="lead mb-5">予想と考察を通して理科の学習を深めよう！</p>
+        <p class="hero-lead mb-4">予想→実験→考察の流れをAIが伴走してサポートします。</p>
+        <ul class="hero-benefits list-unstyled d-flex flex-column flex-md-row justify-content-center gap-3 mb-4">
+            <li><i class="fas fa-comments text-primary me-2"></i>対話で根拠を引き出す予想支援</li>
+            <li><i class="fas fa-seedling text-success me-2"></i>振り返りの視点や問い掛けを提案</li>
+        </ul>
         <div class="hero-buttons">
             <a href="/select_class" class="btn btn-primary btn-lg px-5 py-3">
                 <i class="fas fa-play me-2"></i>
@@ -21,26 +26,27 @@
 
 <div class="features-section">
     <div class="container">
-        <div class="row">
-            <div class="col-md-4 text-center mb-4">
-                <div class="feature-card">
-                    <i class="fas fa-brain feature-icon"></i>
-                    <h4>予想を立てる</h4>
-                    <p>AIとの対話を通して、根拠のある予想を立てます</p>
+        <h2 class="home-section-title text-center mb-5">ScienceBuddyでできること</h2>
+        <div class="row g-4 home-features">
+            <div class="col-md-4">
+                <div class="home-feature-card h-100 text-center">
+                    <div class="home-feature-icon"><i class="fas fa-brain"></i></div>
+                    <h3>予想を立てる</h3>
+                    <p>経験や既習事項を引き出し、根拠のある予想へ導きます。</p>
                 </div>
             </div>
-            <div class="col-md-4 text-center mb-4">
-                <div class="feature-card">
-                    <i class="fas fa-microscope feature-icon"></i>
-                    <h4>実験を行う</h4>
-                    <p>実際に実験を行い、結果を観察します</p>
+            <div class="col-md-4">
+                <div class="home-feature-card h-100 text-center">
+                    <div class="home-feature-icon"><i class="fas fa-microscope"></i></div>
+                    <h3>実験を見通す</h3>
+                    <p>観察の視点や記録の仕方を整理し、変化に気づく目を育てます。</p>
                 </div>
             </div>
-            <div class="col-md-4 text-center mb-4">
-                <div class="feature-card">
-                    <i class="fas fa-lightbulb feature-icon"></i>
-                    <h4>考察をまとめる</h4>
-                    <p>結果と予想を比較し、学びを深めます</p>
+            <div class="col-md-4">
+                <div class="home-feature-card h-100 text-center">
+                    <div class="home-feature-icon"><i class="fas fa-lightbulb"></i></div>
+                    <h3>考察をまとめる</h3>
+                    <p>結果と予想を比べて「さらに言えること」を言語化します。</p>
                 </div>
             </div>
         </div>
