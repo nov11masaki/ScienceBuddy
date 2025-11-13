@@ -52,31 +52,6 @@
             </div>
         </section>
 
-        <!-- 単元フィルター -->
-        <section class="unit-filters">
-            <h2><i class="fas fa-filter"></i> 単元で検索</h2>
-            <div class="unit-grid">
-                {% for unit in units %}
-                <a href="/teacher/logs?unit={{ unit|urlencode }}" class="unit-card">
-                    <div class="unit-icon">
-                        {% if '温度' in unit %}
-                            <i class="fas fa-thermometer-half"></i>
-                        {% elif 'あたたまり' in unit %}
-                            <i class="fas fa-fire"></i>
-                        {% elif 'ふっとう' in unit %}
-                            <i class="fas fa-tint"></i>
-                        {% elif '冷やした' in unit %}
-                            <i class="fas fa-snowflake"></i>
-                        {% else %}
-                            <i class="fas fa-flask"></i>
-                        {% endif %}
-                    </div>
-                    <span>{{ unit }}</span>
-                </a>
-                {% endfor %}
-            </div>
-        </section>
-
         <!-- フッター -->
         <footer class="dashboard-footer-section">
             <a href="/" class="home-button"><i class="fas fa-home"></i> 学習システムに戻る</a>
