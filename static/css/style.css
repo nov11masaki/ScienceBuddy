@@ -1,23 +1,23 @@
 /* UD（ユニバーサルデザイン）対応カラーパレット - WCAG AA以上 */
 :root {
-    /* メインカラー - 濃い紺（色盲対応） */
-    --primary-color: #005A9C;            /* 濃い青 */
-    --primary-dark: #003d6b;             /* より濃い青 */
-    --primary-light: #0074d9;            /* より明るい青 */
+    /* メインカラー - 明るい青（色盲対応） */
+    --primary-color: #1C6DD0;            /* 明るい青 */
+    --primary-dark: #0e4a99;             /* より濃い青 */
+    --primary-light: #4087e8;            /* より明るい青 */
     
-    /* セカンダリーカラー - 濃い緑（色盲対応） */
-    --secondary-color: #00933e;          /* 濃い緑 */
-    --secondary-dark: #005228;           /* より濃い緑 */
+    /* アクセントカラー - ティール（色盲対応） */
+    --secondary-color: #00A5A5;          /* ティール */
+    --secondary-dark: #007a7a;           /* より濃いティール */
     
     /* 状態色 - 区別しやすい色組み合わせ */
-    --success-color: #00933e;            /* 成功 - 濃い緑 */
+    --success-color: #00A5A5;            /* 成功 - ティール */
     --danger-color: #d2170d;             /* エラー - 濃い赤 */
     --warning-color: #cc7000;            /* 警告 - 濃いオレンジ */
-    --info-color: #005A9C;               /* 情報 - 濃い青 */
+    --info-color: #1C6DD0;               /* 情報 - 明るい青 */
     
     /* ニュートラル色 */
     --white-color: #ffffff;              /* 純白 */
-    --light-bg: #f7f8f9;                 /* 背景グレー */
+    --light-bg: #F4F7FB;                 /* 背景グレー（新） */
     --light-color: #e8eaed;              /* 薄いグレー */
     --dark-color: #202124;               /* 濃いグレー */
     --border-color: #d3d3d7;             /* ボーダー */
@@ -45,35 +45,168 @@ body {
 
 /* ホームページ - 明るく親しみやすく */
 .hero-section {
-    height: 100vh;
-    max-height: 100vh;
+    min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--primary-color);
-    color: white;
-    text-align: center;
-    padding: 20px 0;
+    padding: 80px 20px;
+    background: #F4F7FB;
     box-sizing: border-box;
 }
 
-.hero-section h1 {
-    font-weight: 700;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    font-size: 3.5rem;
-    margin-bottom: 20px;
-    letter-spacing: 0.02em;
+.hero-card {
+    max-width: 720px;
+    background: #ffffff;
+    border-radius: 28px;
+    padding: 48px 40px;
+    box-shadow: var(--shadow-medium);
+    color: #12395c;
 }
 
-.hero-section .lead {
-    font-size: 1.3rem;
-    opacity: 0.95;
-    margin-bottom: 40px;
-    font-weight: 400;
+.hero-card .display-5 {
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: #0f3558;
+}
+
+.hero-card .display-5 i {
+    color: var(--primary-color) !important;
+}
+
+.hero-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #d4f4f4;
+    color: #005A5A;
+    font-weight: 600;
+    padding: 8px 18px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    margin-bottom: 18px;
+}
+
+.hero-lead {
+    font-size: 1.25rem;
+    color: #12395c;
+    line-height: 1.6;
+}
+
+.hero-benefits {
+    font-size: 0.95rem;
+    color: #0f3558;
+}
+
+.hero-benefits li {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f2f7fd;
+    border: 1px solid #d5e4f7;
+    border-radius: 16px;
+    padding: 10px 18px;
+}
+
+.hero-benefits li i {
+    font-size: 1.1rem;
+}
+
+.hero-buttons .btn {
+    box-shadow: 0 10px 24px rgba(0, 90, 156, 0.25);
+}
+
+.hero-buttons .btn:hover {
+    box-shadow: 0 12px 28px rgba(0, 90, 156, 0.32);
 }
 
 .features-section {
-    display: none; /* デスクトップでは非表示にして1ページに収める */
+    padding: 60px 0 80px;
+    background: #ffffff;
+}
+
+.home-section-title {
+    font-size: 2rem;
+    color: #0f3558;
+    font-weight: 700;
+}
+
+.home-features .col-md-4 {
+    display: flex;
+}
+
+.home-feature-card {
+    background: #f5f8ff;
+    border: 1px solid #dbe6f5;
+    border-radius: 24px;
+    padding: 32px 24px;
+    box-shadow: 0 4px 18px rgba(15, 53, 88, 0.08);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    color: #113654;
+}
+
+.home-feature-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 14px 30px rgba(15, 53, 88, 0.12);
+}
+
+.home-feature-card h3 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin: 18px 0 12px;
+}
+
+.home-feature-card p {
+    font-size: 0.95rem;
+    color: #476481;
+    margin: 0;
+}
+
+.home-feature-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 18px;
+    background: var(--primary-color);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+    .hero-section {
+        padding: 60px 16px;
+    }
+    .hero-card {
+        padding: 40px 28px;
+    }
+    .hero-benefits {
+        gap: 12px;
+    }
+    .hero-benefits li {
+        font-size: 0.9rem;
+    }
+    .home-feature-card {
+        padding: 28px 20px;
+    }
+}
+
+@media (max-width: 576px) {
+    .hero-card .display-5 {
+        font-size: 2.2rem;
+    }
+    .hero-lead {
+        font-size: 1.1rem;
+    }
+    .hero-benefits li {
+        flex-direction: column;
+        text-align: center;
+        padding: 12px;
+    }
+    .home-feature-card h3 {
+        font-size: 1.1rem;
+    }
 }
 
 /* 選択ページ - 明るく親しみやすく */
