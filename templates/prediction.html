@@ -159,6 +159,14 @@
 <!-- 復帰情報をJSONとして埋め込み -->
 <script type="application/json" id="resumption-data">{{ resumption_info | tojson | safe }}</script>
 
+<!-- セッションデータ（復帰用） -->
+<script type="application/json" id="prediction-session-data">
+{
+    "conversationHistory": {{ session.get('conversation', []) | tojson | safe }},
+    "predictionSummary": "{{ session.get('prediction_summary', '') | safe }}"
+}
+</script>
+
 <script>
 let conversationCount = 0;
 let lastMessage = '';
@@ -166,6 +174,14 @@ let lastMessage = '';
 // 復帰情報を取得
 const resuptionDataElement = document.getElementById('resumption-data');
 const resumptionInfo = resuptionDataElement ? JSON.parse(resuptionDataElement.textContent) : {is_resumption: false};
+
+// セッションデータを取得
+const sessionDataElement = document.getElementById('prediction-session-data');
+if (sessionDataElement) {
+    const sessionData = JSON.parse(sessionDataElement.textContent);
+    window.predictionConversationHistory = sessionData.conversationHistory;
+    window.predictionSummary = sessionData.predictionSummary;
+}
 
 // デジタル学習ツイン用の入力行動追跡
 // 入力補助用の設定（シンプルなひらがなのみ）
@@ -877,18 +893,42 @@ function restorePastConversations() {
         return;
     }
     
-    // 現在のメッセージを一度クリア（初期AIメッセージと入力エリアを除く）
-    const messages = messagesContainer.querySelectorAll('.message:not(.user-input-area)');
-    // 最初のメッセージ（初期AI）は保持、2番目以降を削除
-    for (let i = 1; i < messages.length; i++) {
+    if (!window.predictionConversationHistory || window.predictionConversationHistory.length === 0) {
+        console.log('復元する会話履歴がありません');
+        return;
+    }
+    
+    // 初期メッセージ以外を削除（初期メッセージはAIメッセージ）
+    const messages = messagesContainer.querySelectorAll('.message');
+    for (let i = messages.length - 1; i > 0; i--) {
         messages[i].remove();
     }
     
-    // セッションから会話履歴を再取得するためにサーバーに問い合わせ
-    // （または、テンプレート変数に過去の会話を含める方法）
-    // ここではシンプルに、セッションに保存されているデータを使用
+    // 過去の会話を復元
+    window.predictionConversationHistory.forEach((msg, index) => {
+        const isAI = msg.role === 'assistant';
+        const messageDiv = document.createElement('div');
+        messageDiv.className = isAI ? 'message ai-message' : 'message user-message';
+        
+        if (isAI) {
+            messageDiv.innerHTML = `
+                <div class="message-avatar"></div>
+                <div class="message-content">${msg.content}</div>
+            `;
+        } else {
+            messageDiv.innerHTML = `
+                <div class="user-message-bubble">${msg.content}</div>
+            `;
+        }
+        
+        messagesContainer.appendChild(messageDiv);
+    });
     
-    console.log('過去の会話復元完了');
+    // スクロール位置を下に移動
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    conversationCount = window.predictionConversationHistory.length;
+    
+    console.log('過去の会話復元完了:', window.predictionConversationHistory.length, '件');
 }
 
 // 復帰時に予想のまとめを復元する関数
