@@ -94,6 +94,9 @@ STUDENT_CLASS_MAPPING = {
     "lab": list(range(5001, 5031)),     # 5001-5030 (研究室1-30番)
 }
 
+# ログ削除用パスワード
+LOG_DELETE_PASSWORD = "RIKA"  # ログを消す際のパスワード
+
 # 同時セッション管理用（同じアカウントの同時ログインを防止）
 active_sessions = {}  # {student_id: session_id}
 session_devices = {}  # {session_id: device_info}
@@ -2479,6 +2482,61 @@ def api_download_note_photos():
     except Exception as e:
         print(f"Error creating ZIP: {e}")
         return jsonify({'success': False, 'message': f'エラー: {e}'}), 500
+
+
+# ========== ログ削除エンドポイント ==========
+@app.route('/api/teacher/delete-all-logs', methods=['POST'])
+@require_teacher_auth
+def delete_all_logs():
+    """パスワード保護されたログ削除エンドポイント"""
+    try:
+        data = request.get_json()
+        password = data.get('password', '')
+        
+        # パスワード確認
+        if password != LOG_DELETE_PASSWORD:
+            return jsonify({
+                'success': False,
+                'message': 'パスワードが間違っています'
+            }), 403
+        
+        # ローカルのログファイルを削除
+        import shutil
+        logs_dir = 'logs'
+        if os.path.exists(logs_dir):
+            # 写真ディレクトリ以外を削除
+            for filename in os.listdir(logs_dir):
+                filepath = os.path.join(logs_dir, filename)
+                # learning_log_*.json ファイルのみ削除
+                if filename.startswith('learning_log_') and filename.endswith('.json'):
+                    try:
+                        os.remove(filepath)
+                        print(f"[DELETE] Deleted: {filepath}")
+                    except Exception as e:
+                        print(f"[DELETE] Failed to delete {filepath}: {e}")
+        
+        # GCSのログも削除（本番環境）
+        if USE_GCS and bucket:
+            try:
+                blobs = bucket.list_blobs(prefix='logs/')
+                for blob in blobs:
+                    if 'learning_log_' in blob.name and blob.name.endswith('.json'):
+                        blob.delete()
+                        print(f"[DELETE_GCS] Deleted: {blob.name}")
+            except Exception as e:
+                print(f"[DELETE_GCS] Warning: {e}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'すべての学習ログを削除しました'
+        }), 200
+    
+    except Exception as e:
+        print(f"Error deleting logs: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'エラー: {e}'
+        }), 500
 
 
 if __name__ == '__main__':
