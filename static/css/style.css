@@ -1467,12 +1467,12 @@ body {
 /* ===== 教員ダッシュボード（UD対応） ===== */
 .teacher-dashboard-page {
     min-height: 100vh;
-    background: linear-gradient(135deg, #f7f8f9 0%, #e8eaed 100%);
+    background: #f5f5f5;
 }
 
 /* ヘッダー */
 .teacher-header {
-    background: linear-gradient(135deg, #005A9C 0%, #003d6b 100%);
+    background: #005A9C;
     color: white;
     padding: 0;
     box-shadow: 0 6px 16px rgba(0, 90, 156, 0.3);
@@ -1557,7 +1557,7 @@ body {
 /* 機能カード */
 .feature-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: 30px;
     margin-bottom: 50px;
 }
@@ -1577,7 +1577,7 @@ body {
 }
 
 .feature-card.primary-card {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #4299e1;
     color: white;
 }
 
@@ -1767,6 +1767,14 @@ body {
     
     .feature-cards {
         grid-template-columns: 1fr;
+    }
+    
+    .unit-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    }
+    
+    .unit-filters {
+        padding: 25px 20px;
     }
     
     .unit-grid {
