@@ -76,16 +76,27 @@
         <div class="students-grid">
             {% for student_number, student_data in students_data.items() %}
             <div class="student-card">
+                {% set student_info = student_data.student_info %}
+                {% set class_num = student_info.class_num if student_info else None %}
+                {% set seat_num = student_info.seat_num if student_info else None %}
                 <div class="student-header">
                     <h4>
                         <i class="fas fa-user-graduate"></i>
-                        {% if student_data.student_info %}
-                            {{ student_data.student_info.display }}
-                            <span class="student-id-badge">(ID: {{ student_number }})</span>
+                        {% if class_num is not none and seat_num is not none %}
+                            {{ class_num }}組 {{ seat_num }}番
+                            <span class="student-id-badge">ID: {{ student_number }}</span>
                         {% else %}
-                            {{ student_number }}番
+                            ID: {{ student_number }}
+                            {% if student_info and student_info.display %}
+                                <span class="student-id-badge">{{ student_info.display }}</span>
+                            {% else %}
+                                <span class="student-id-badge">クラス情報なし</span>
+                            {% endif %}
                         {% endif %}
                     </h4>
+                    {% if student_info and student_info.display %}
+                        <div class="student-sub-info text-muted small">{{ student_info.display }}</div>
+                    {% endif %}
                 </div>
                 
                 <div class="units-list">
@@ -118,7 +129,7 @@
                         </div>
                         
                         <div class="unit-actions">
-                            <a href="/teacher/student_detail?class={{ student_data.student_info.class_num }}&seat={{ student_data.student_info.seat_num }}&unit={{ unit_name|urlencode }}" 
+                            <a href="/teacher/student_detail?class={{ class_num if class_num is not none else '' }}&seat={{ seat_num if seat_num is not none else '' }}&student={{ student_number }}&unit={{ unit_name|urlencode }}&date={{ current_date }}" 
                                class="btn btn-sm btn-outline-primary">
                                 <i class="fas fa-eye"></i> 詳細
                             </a>

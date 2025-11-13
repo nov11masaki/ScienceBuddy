@@ -2084,11 +2084,8 @@ def student_detail():
     # クラスと出席番号をクエリパラメータから取得
     class_num = request.args.get('class', type=int)
     seat_num = request.args.get('seat', type=int)
+    student_id = request.args.get('student')
     unit = request.args.get('unit', '')
-    
-    if not class_num or not seat_num:
-        flash('クラスと出席番号が指定されていません。', 'error')
-        return redirect(url_for('teacher_logs'))
     
     # デフォルト日付を最新のログがある日付に設定
     available_dates = get_available_log_dates()
@@ -2099,13 +2096,30 @@ def student_detail():
     logs = load_learning_logs(selected_date)
     
     # 該当する学生のログを抽出（クラスと出席番号で絞り込み）
-    student_logs = [log for log in logs if 
-                   log.get('class_num') == class_num and 
-                   log.get('seat_num') == seat_num and 
-                   (not unit or log.get('unit') == unit)]
+    student_logs = []
+    if class_num and seat_num:
+        student_logs = [log for log in logs if 
+                        log.get('class_num') == class_num and 
+                        log.get('seat_num') == seat_num and 
+                        (not unit or log.get('unit') == unit)]
+    elif student_id:
+        student_logs = [log for log in logs if 
+                        str(log.get('student_number')) == str(student_id) and 
+                        (not unit or log.get('unit') == unit)]
+        if student_logs:
+            class_num = student_logs[0].get('class_num') or class_num
+            seat_num = student_logs[0].get('seat_num') or seat_num
+    else:
+        flash('クラスと出席番号が指定されていません。', 'error')
+        return redirect(url_for('teacher_logs'))
     
     # 学生表示名
-    student_display = f"{class_num}組{seat_num}番"
+    if class_num and seat_num:
+        student_display = f"{class_num}組{seat_num}番"
+    elif student_id:
+        student_display = f"ID: {student_id}"
+    else:
+        student_display = "対象の学生"
     
     if not student_logs:
         flash(f'{student_display}のログがありません。日付や単元を変更してお試しください。', 'warning')
