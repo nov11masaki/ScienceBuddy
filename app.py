@@ -1369,7 +1369,6 @@ def teacher_login():
         if teacher_id in TEACHER_CREDENTIALS and TEACHER_CREDENTIALS[teacher_id] == password:
             session['teacher_authenticated'] = True
             session['teacher_id'] = teacher_id
-            flash('ログインしました', 'success')
             return redirect(url_for('teacher'))
         else:
             flash('IDまたはパスワードが正しくありません', 'error')
@@ -1381,7 +1380,6 @@ def teacher_logout():
     """教員ログアウト"""
     session.pop('teacher_authenticated', None)
     session.pop('teacher_id', None)
-    flash('ログアウトしました', 'info')
     return redirect(url_for('index'))
 
 @app.route('/teacher')
