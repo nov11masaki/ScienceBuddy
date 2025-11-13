@@ -2191,6 +2191,288 @@ def delete_log():
         traceback.print_exc()
         return jsonify({'error': f'ログ削除中にエラーが発生しました: {error_msg}'}), 500
 
+# ノート写真撮影ページ
+@app.route('/note_photo')
+def note_photo():
+    """ノート写真撮影ページ"""
+    class_num = request.args.get('class', '1')
+    student_number = request.args.get('number', '1')
+    unit = request.args.get('unit', '')
+    
+    return render_template('note_photo.html')
+
+# ノート写真アップロード
+@app.route('/upload_note_photos', methods=['POST'])
+def upload_note_photos():
+    """ノート写真をアップロード"""
+    try:
+        class_num = request.form.get('class', '1')
+        student_number = request.form.get('number', '1')
+        unit = request.form.get('unit', '')
+        
+        # ローカル保存用ディレクトリ作成
+        note_photos_dir = os.path.join('logs', 'note_photos', f'class_{class_num}')
+        os.makedirs(note_photos_dir, exist_ok=True)
+        
+        # 複数のファイルを保存
+        files = request.files.getlist('photos')
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        saved_filenames = []
+        
+        for i, file in enumerate(files):
+            if file and file.filename:
+                filename = f"student_{student_number}_{unit}_{timestamp}_{i+1}.jpg"
+                filepath = os.path.join(note_photos_dir, secure_filename(filename))
+                file.save(filepath)
+                saved_filenames.append(filename)
+                
+                print(f"[NOTE_PHOTO] Saved: {filepath}")
+        
+        # メタデータログを作成
+        metadata = {
+            'timestamp': datetime.now().isoformat(),
+            'class': class_num,
+            'student_number': student_number,
+            'unit': unit,
+            'photo_count': len(saved_filenames),
+            'filenames': saved_filenames
+        }
+        
+        log_entry = {
+            'timestamp': datetime.now().isoformat(),
+            'class_display': f'{class_num}組',
+            'student_number': student_number,
+            'log_type': 'note_photo',
+            'data': metadata
+        }
+        
+        # ログファイルに追記
+        current_date = datetime.now().strftime('%Y%m%d')
+        log_file = os.path.join('logs', f'learning_log_{current_date}.json')
+        
+        try:
+            if os.path.exists(log_file):
+                with open(log_file, 'r', encoding='utf-8') as f:
+                    logs = json.load(f)
+            else:
+                logs = []
+            
+            logs.append(log_entry)
+            
+            with open(log_file, 'w', encoding='utf-8') as f:
+                json.dump(logs, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"[NOTE_PHOTO] Error saving log: {e}")
+        
+        print(f"[NOTE_PHOTO] SUCCESS - {len(saved_filenames)} photos uploaded for student {student_number}")
+        
+        return jsonify({
+            'success': True,
+            'message': f'{len(saved_filenames)}枚の写真を保存しました',
+            'photo_count': len(saved_filenames)
+        })
+    
+    except Exception as e:
+        print(f"[NOTE_PHOTO] ERROR: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+# ===== 教師用ノート写真管理エンドポイント =====
+
+@app.route('/teacher/note_photos')
+@require_teacher_auth
+def teacher_note_photos():
+    """ノート写真確認ページを表示"""
+    units = [
+        '水のあたたまり方',
+        '金属のあたたまり方',
+        '空気の温度と体積',
+        '水を熱し続けた時の温度と様子'
+    ]
+    
+    classes = []
+    note_photos_dir = os.path.join('logs', 'note_photos')
+    if os.path.exists(note_photos_dir):
+        for folder in os.listdir(note_photos_dir):
+            if folder.startswith('class_'):
+                class_num = folder.replace('class_', '')
+                classes.append(class_num)
+    
+    classes = sorted(classes)
+    
+    return render_template('teacher/note_photos.html', 
+                         units=units, 
+                         classes=classes)
+
+
+@app.route('/api/teacher/students-by-class')
+@require_teacher_auth
+def api_students_by_class():
+    """クラスごとの学生情報をJSON形式で返す"""
+    students_by_class = {}
+    
+    # learning_progress.jsonから学生情報を取得
+    if os.path.exists(LEARNING_PROGRESS_FILE):
+        try:
+            with open(LEARNING_PROGRESS_FILE, 'r', encoding='utf-8') as f:
+                progress_data = json.load(f)
+            
+            for class_num in ['1', '2', '3', '4', '5', '6']:
+                students_by_class[class_num] = []
+                
+                if f'class_{class_num}' in progress_data:
+                    class_data = progress_data[f'class_{class_num}']
+                    for student_id in sorted(class_data.keys(), key=lambda x: int(x) if x.isdigit() else 0):
+                        student_info = class_data[student_id]
+                        students_by_class[class_num].append({
+                            'number': student_id,
+                            'name': student_info.get('name', f'学生{student_id}')
+                        })
+        except Exception as e:
+            print(f"Error loading students: {e}")
+    
+    return jsonify(students_by_class)
+
+
+@app.route('/api/teacher/note-photos')
+@require_teacher_auth
+def api_note_photos():
+    """クラスと学生番号で絞り込んだノート写真情報を返す"""
+    class_num = request.args.get('class', '')
+    student_num = request.args.get('student', '')
+    unit = request.args.get('unit', '')
+    
+    photos = []
+    note_photos_dir = os.path.join('logs', 'note_photos', f'class_{class_num}')
+    
+    if not os.path.exists(note_photos_dir):
+        return jsonify({'photos': []})
+    
+    try:
+        for filename in sorted(os.listdir(note_photos_dir)):
+            # ファイル名形式: student_{number}_{unit}_{timestamp}_{index}.jpg
+            if filename.startswith(f'student_{student_num}_'):
+                # ユニットでフィルター
+                if unit and f'_{unit}_' not in filename and not filename.startswith(f'student_{student_num}_{unit}_'):
+                    continue
+                
+                filepath = os.path.join(note_photos_dir, filename)
+                
+                # ファイル情報を取得
+                try:
+                    stat = os.stat(filepath)
+                    parts = filename[:-4].split('_')  # .jpgを除去して分割
+                    
+                    # student_{number}_{unit}_{timestamp}_{index} の形式を想定
+                    photo_unit = parts[2] if len(parts) > 2 else '単元未設定'
+                    timestamp_str = parts[3] if len(parts) > 3 else '不明'
+                    
+                    # タイムスタンプをタイムゾーン対応のdatetimeに変換
+                    try:
+                        dt = datetime.strptime(timestamp_str, '%Y%m%d_%H%M%S')
+                    except:
+                        dt = datetime.fromtimestamp(stat.st_mtime)
+                    
+                    photos.append({
+                        'filename': filename,
+                        'url': f'/logs/note_photos/class_{class_num}/{filename}',
+                        'unit': photo_unit,
+                        'timestamp': dt.isoformat()
+                    })
+                except Exception as e:
+                    print(f"Error processing photo {filename}: {e}")
+                    continue
+    
+    except Exception as e:
+        print(f"Error listing photos: {e}")
+    
+    # タイムスタンプでソート（新しい順）
+    photos.sort(key=lambda x: x['timestamp'], reverse=True)
+    
+    return jsonify({'photos': photos})
+
+
+@app.route('/api/teacher/delete-note-photo', methods=['POST'])
+@require_teacher_auth
+def api_delete_note_photo():
+    """ノート写真を削除"""
+    data = request.get_json()
+    filename = data.get('filename', '')
+    
+    if not filename or '..' in filename:
+        return jsonify({'success': False, 'message': '不正なファイル名です'}), 400
+    
+    # ファイルを探して削除
+    note_photos_dir = os.path.join('logs', 'note_photos')
+    for class_folder in os.listdir(note_photos_dir):
+        if class_folder.startswith('class_'):
+            filepath = os.path.join(note_photos_dir, class_folder, filename)
+            if os.path.exists(filepath):
+                try:
+                    os.remove(filepath)
+                    return jsonify({'success': True, 'message': '削除しました'})
+                except Exception as e:
+                    return jsonify({'success': False, 'message': f'削除エラー: {e}'}), 500
+    
+    return jsonify({'success': False, 'message': 'ファイルが見つかりません'}), 404
+
+
+@app.route('/api/teacher/download-note-photos')
+@require_teacher_auth
+def api_download_note_photos():
+    """ノート写真をZIP形式でダウンロード"""
+    class_num = request.args.get('class', '')
+    student_num = request.args.get('student', '')
+    unit = request.args.get('unit', '')
+    
+    source_dir = os.path.join('logs', 'note_photos', f'class_{class_num}')
+    
+    if not os.path.exists(source_dir):
+        return jsonify({'success': False, 'message': 'ディレクトリが見つかりません'}), 404
+    
+    try:
+        # 一時ディレクトリでZIPを作成
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zip_path = os.path.join(tmpdir, 'note_photos.zip')
+            
+            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+                for filename in os.listdir(source_dir):
+                    if filename.startswith(f'student_{student_num}_'):
+                        # ユニットでフィルター
+                        if unit and f'_{unit}_' not in filename and not filename.startswith(f'student_{student_num}_{unit}_'):
+                            continue
+                        
+                        filepath = os.path.join(source_dir, filename)
+                        # ZIPの内部パス: class_{class_num}/filename
+                        arcname = f'class_{class_num}/{filename}'
+                        zf.write(filepath, arcname)
+            
+            # ファイルを読み込んでレスポンス
+            with open(zip_path, 'rb') as f:
+                zip_data = f.read()
+            
+            # ダウンロードファイル名を作成
+            if unit:
+                filename = f'note_photos_{class_num}_{student_num}_{unit}.zip'
+            else:
+                filename = f'note_photos_{class_num}_{student_num}.zip'
+            
+            return Response(
+                zip_data,
+                mimetype='application/zip',
+                headers={'Content-Disposition': f'attachment; filename={filename}'}
+            )
+    
+    except Exception as e:
+        print(f"Error creating ZIP: {e}")
+        return jsonify({'success': False, 'message': f'エラー: {e}'}), 500
+
+
 if __name__ == '__main__':
     # 環境変数からポート番号を取得（CloudRun用）
     port = int(os.environ.get('PORT', 5014))

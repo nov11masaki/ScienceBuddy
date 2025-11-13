@@ -21,39 +21,47 @@
                 <div class="row g-4">
                     {% for unit in units %}
                     <div class="col-lg-4 col-md-6">
-                        <div class="unit-card" onclick="selectUnit('{{ unit }}')">
-                            <div class="unit-icon">
-                                {% if '温度' in unit %}
-                                    <i class="fas fa-thermometer-half"></i>
-                                {% elif 'あたたまり' in unit %}
-                                    <i class="fas fa-fire"></i>
-                                {% elif 'ふっとう' in unit %}
-                                    <i class="fas fa-tint"></i>
-                                {% elif '冷やした' in unit %}
-                                    <i class="fas fa-snowflake"></i>
-                                {% else %}
-                                    <i class="fas fa-flask"></i>
+                        <div class="unit-card-wrapper">
+                            <div class="unit-card" onclick="selectUnit('{{ unit }}')">
+                                <div class="unit-icon">
+                                    {% if '温度' in unit %}
+                                        <i class="fas fa-thermometer-half"></i>
+                                    {% elif 'あたたまり' in unit %}
+                                        <i class="fas fa-fire"></i>
+                                    {% elif 'ふっとう' in unit %}
+                                        <i class="fas fa-tint"></i>
+                                    {% elif '冷やした' in unit %}
+                                        <i class="fas fa-snowflake"></i>
+                                    {% else %}
+                                        <i class="fas fa-flask"></i>
+                                    {% endif %}
+                                </div>
+                                <h5 class="unit-title">{{ unit }}</h5>
+                                
+                                {% if unit_progress and unit in unit_progress %}
+                                    {% set progress = unit_progress[unit] %}
+                                    {% if progress.needs_resumption %}
+                                        <div class="progress-indicator">
+                                            <span class="badge bg-warning">
+                                                <i class="fas fa-play-circle"></i> {{ progress.progress_summary }}
+                                            </span>
+                                            <small class="text-muted d-block mt-1">前回の続きから</small>
+                                        </div>
+                                    {% elif progress.progress_summary != "未開始" %}
+                                        <div class="progress-indicator">
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check-circle"></i> {{ progress.progress_summary }}
+                                            </span>
+                                        </div>
+                                    {% endif %}
                                 {% endif %}
                             </div>
-                            <h5 class="unit-title">{{ unit }}</h5>
                             
-                            {% if unit_progress and unit in unit_progress %}
-                                {% set progress = unit_progress[unit] %}
-                                {% if progress.needs_resumption %}
-                                    <div class="progress-indicator">
-                                        <span class="badge bg-warning">
-                                            <i class="fas fa-play-circle"></i> {{ progress.progress_summary }}
-                                        </span>
-                                        <small class="text-muted d-block mt-1">前回の続きから</small>
-                                    </div>
-                                {% elif progress.progress_summary != "未開始" %}
-                                    <div class="progress-indicator">
-                                        <span class="badge bg-success">
-                                            <i class="fas fa-check-circle"></i> {{ progress.progress_summary }}
-                                        </span>
-                                    </div>
-                                {% endif %}
-                            {% endif %}
+                            <!-- ノート写真撮影ボタン -->
+                            <button class="btn btn-outline-info btn-sm w-100 mt-2" 
+                                    onclick="takeNotePhoto('{{ unit }}')">
+                                <i class="fas fa-camera"></i> ノート撮影
+                            </button>
                         </div>
                     </div>
                     {% endfor %}
@@ -144,6 +152,10 @@ function selectUnit(unit) {
 
 function goBack() {
     window.location.href = `/select_number?class=${classNumber}`;
+}
+
+function takeNotePhoto(unit) {
+    window.location.href = `/note_photo?class=${classNumber}&number=${studentNumber}&unit=${encodeURIComponent(unit)}`;
 }
 </script>
 {% endblock %}

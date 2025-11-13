@@ -1,0 +1,282 @@
+{% extends 'base.html' %}
+
+{% block title %}ノート確認 - 教師ダッシュボード{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">
+                <i class="fas fa-images"></i> ノート写真確認
+            </h1>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <label class="form-label fw-bold">クラス</label>
+            <select id="classSelect" class="form-select" onchange="updateStudents()">
+                <option value="">クラスを選択...</option>
+                {% for class_num in classes %}
+                <option value="{{ class_num }}">{{ class_num }}年</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label fw-bold">児童</label>
+            <select id="studentSelect" class="form-select" onchange="loadPhotos()">
+                <option value="">児童を選択...</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label fw-bold">単元</label>
+            <select id="unitSelect" class="form-select" onchange="loadPhotos()">
+                <option value="">すべて</option>
+                {% for unit in units %}
+                <option value="{{ unit }}">{{ unit }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+            <button class="btn btn-primary w-100" onclick="downloadPhotos()">
+                <i class="fas fa-download"></i> 写真をダウンロード
+            </button>
+        </div>
+    </div>
+
+    <div id="loadingSpinner" class="text-center" style="display: none;">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">読み込み中...</span>
+        </div>
+    </div>
+
+    <div id="photosContainer" class="row" style="display: none;">
+        <!-- 写真はここに表示される -->
+    </div>
+
+    <div id="noPhotosMessage" class="alert alert-info text-center mt-4" style="display: none;">
+        <i class="fas fa-info-circle"></i> 写真がまだアップロードされていません
+    </div>
+</div>
+
+<!-- 写真拡大表示用モーダル -->
+<div class="modal fade" id="photoModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="photoModalTitle">写真詳細</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="enlargedPhoto" src="" class="img-fluid" style="max-height: 70vh;">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+                <button type="button" class="btn btn-danger" onclick="deletePhoto()">削除</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.photo-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.2s;
+}
+
+.photo-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.photo-card img {
+    width: 100%;
+    height: 250px;
+    object-fit: cover;
+    cursor: pointer;
+}
+
+.photo-info {
+    padding: 12px;
+    background: #f8f9fa;
+    font-size: 0.85rem;
+}
+
+.photo-info-row {
+    margin: 4px 0;
+    display: flex;
+    justify-content: space-between;
+}
+
+.photo-timestamp {
+    color: #666;
+    font-size: 0.8rem;
+}
+</style>
+
+<script>
+let studentsByClass = {};
+let currentPhotos = [];
+let currentDeletePath = '';
+
+// 初期化
+document.addEventListener('DOMContentLoaded', function() {
+    // サーバーから学生データを取得
+    fetch('/api/teacher/students-by-class')
+        .then(r => r.json())
+        .then(data => {
+            studentsByClass = data;
+        })
+        .catch(err => console.error('Error loading students:', err));
+});
+
+function updateStudents() {
+    const classNum = document.getElementById('classSelect').value;
+    const studentSelect = document.getElementById('studentSelect');
+    
+    studentSelect.innerHTML = '<option value="">児童を選択...</option>';
+    
+    if (classNum && studentsByClass[classNum]) {
+        studentsByClass[classNum].forEach(student => {
+            const option = document.createElement('option');
+            option.value = student.number;
+            option.textContent = `${student.number}番: ${student.name || '名前未設定'}`;
+            studentSelect.appendChild(option);
+        });
+    }
+    
+    document.getElementById('photosContainer').innerHTML = '';
+    document.getElementById('noPhotosMessage').style.display = 'none';
+}
+
+function loadPhotos() {
+    const classNum = document.getElementById('classSelect').value;
+    const studentNum = document.getElementById('studentSelect').value;
+    const unit = document.getElementById('unitSelect').value;
+    
+    if (!classNum || !studentNum) {
+        document.getElementById('noPhotosMessage').style.display = 'block';
+        document.getElementById('photosContainer').innerHTML = '';
+        return;
+    }
+    
+    document.getElementById('loadingSpinner').style.display = 'block';
+    document.getElementById('photosContainer').style.display = 'none';
+    document.getElementById('noPhotosMessage').style.display = 'none';
+    
+    let url = `/api/teacher/note-photos?class=${classNum}&student=${studentNum}`;
+    if (unit) {
+        url += `&unit=${encodeURIComponent(unit)}`;
+    }
+    
+    fetch(url)
+        .then(r => r.json())
+        .then(data => {
+            currentPhotos = data.photos || [];
+            displayPhotos(currentPhotos);
+            document.getElementById('loadingSpinner').style.display = 'none';
+        })
+        .catch(err => {
+            console.error('Error loading photos:', err);
+            document.getElementById('loadingSpinner').style.display = 'none';
+            document.getElementById('noPhotosMessage').style.display = 'block';
+        });
+}
+
+function displayPhotos(photos) {
+    const container = document.getElementById('photosContainer');
+    
+    if (photos.length === 0) {
+        document.getElementById('noPhotosMessage').style.display = 'block';
+        container.innerHTML = '';
+        return;
+    }
+    
+    container.innerHTML = '';
+    
+    photos.forEach(photo => {
+        const col = document.createElement('div');
+        col.className = 'col-md-4 col-lg-3 mb-4';
+        
+        col.innerHTML = `
+            <div class="photo-card">
+                <img src="${photo.url}" alt="写真" 
+                     onclick="showPhotoModal('${photo.url}', '${photo.filename}')">
+                <div class="photo-info">
+                    <div class="photo-info-row">
+                        <strong>${photo.unit || '単元未設定'}</strong>
+                    </div>
+                    <div class="photo-timestamp">
+                        ${new Date(photo.timestamp).toLocaleString('ja-JP')}
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        container.appendChild(col);
+    });
+    
+    container.style.display = 'flex';
+    container.parentElement.classList.add('row');
+}
+
+function showPhotoModal(photoUrl, filename) {
+    document.getElementById('enlargedPhoto').src = photoUrl;
+    document.getElementById('photoModalTitle').textContent = filename || '写真詳細';
+    currentDeletePath = photoUrl;
+    
+    const modal = new bootstrap.Modal(document.getElementById('photoModal'));
+    modal.show();
+}
+
+function deletePhoto() {
+    if (!confirm('この写真を削除してもよろしいですか？')) {
+        return;
+    }
+    
+    fetch('/api/teacher/delete-note-photo', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            filename: currentDeletePath.split('/').pop()
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('photoModal')).hide();
+            loadPhotos();
+        } else {
+            alert('削除に失敗しました: ' + (data.message || ''));
+        }
+    })
+    .catch(err => {
+        console.error('Error deleting photo:', err);
+        alert('削除中にエラーが発生しました');
+    });
+}
+
+function downloadPhotos() {
+    const classNum = document.getElementById('classSelect').value;
+    const studentNum = document.getElementById('studentSelect').value;
+    
+    if (!classNum || !studentNum) {
+        alert('クラスと児童を選択してください');
+        return;
+    }
+    
+    let url = `/api/teacher/download-note-photos?class=${classNum}&student=${studentNum}`;
+    const unit = document.getElementById('unitSelect').value;
+    if (unit) {
+        url += `&unit=${encodeURIComponent(unit)}`;
+    }
+    
+    window.location.href = url;
+}
+</script>
+{% endblock %}
