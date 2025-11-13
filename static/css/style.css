@@ -1,31 +1,31 @@
 /* UD（ユニバーサルデザイン）対応カラーパレット - WCAG AA以上 */
 :root {
-    /* メインカラー - 明るい青（色盲対応） */
-    --primary-color: #1C6DD0;            /* 明るい青 */
-    --primary-dark: #0e4a99;             /* より濃い青 */
-    --primary-light: #4087e8;            /* より明るい青 */
+    /* メインカラー - 明るい水色（色盲対応） */
+    --primary-color: #00B4D8;            /* 明るい水色 */
+    --primary-dark: #0086B3;             /* より濃い水色 */
+    --primary-light: #4DD9F0;            /* より明るい水色 */
     
-    /* アクセントカラー - ティール（色盲対応） */
-    --secondary-color: #00A5A5;          /* ティール */
-    --secondary-dark: #007a7a;           /* より濃いティール */
+    /* アクセントカラー - 薄い水色（色盲対応） */
+    --secondary-color: #7FE0E7;          /* 薄い水色 */
+    --secondary-dark: #4FC5D0;           /* より濃い薄い水色 */
     
     /* 状態色 - 区別しやすい色組み合わせ */
-    --success-color: #00A5A5;            /* 成功 - ティール */
+    --success-color: #00B4D8;            /* 成功 - 明るい水色 */
     --danger-color: #d2170d;             /* エラー - 濃い赤 */
     --warning-color: #cc7000;            /* 警告 - 濃いオレンジ */
-    --info-color: #1C6DD0;               /* 情報 - 明るい青 */
+    --info-color: #00B4D8;               /* 情報 - 明るい水色 */
     
     /* ニュートラル色 */
     --white-color: #ffffff;              /* 純白 */
-    --light-bg: #F4F7FB;                 /* 背景グレー（新） */
+    --light-bg: #ffffff;                 /* 背景白 */
     --light-color: #e8eaed;              /* 薄いグレー */
     --dark-color: #202124;               /* 濃いグレー */
     --border-color: #d3d3d7;             /* ボーダー */
     
     /* シャドウ */
-    --shadow-light: 0 2px 8px rgba(0, 90, 156, 0.12);
-    --shadow-medium: 0 4px 16px rgba(0, 90, 156, 0.16);
-    --shadow-heavy: 0 8px 24px rgba(0, 90, 156, 0.2);
+    --shadow-light: 0 2px 8px rgba(0, 180, 216, 0.12);
+    --shadow-medium: 0 4px 16px rgba(0, 180, 216, 0.16);
+    --shadow-heavy: 0 8px 24px rgba(0, 180, 216, 0.2);
     
     --border-radius: 12px;              /* 丸みのある角 */
     --transition: all 0.3s ease;        /* スムーズなアニメーション */
@@ -50,7 +50,7 @@ body {
     align-items: center;
     justify-content: center;
     padding: 80px 20px;
-    background: #F4F7FB;
+    background: #ffffff;
     box-sizing: border-box;
 }
 
@@ -77,8 +77,8 @@ body {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    background: #d4f4f4;
-    color: #005A5A;
+    background: #B3EDF7;
+    color: #0086B3;
     font-weight: 600;
     padding: 8px 18px;
     border-radius: 999px;
@@ -101,8 +101,8 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #f2f7fd;
-    border: 1px solid #d5e4f7;
+    background: #E3F7FB;
+    border: 1px solid #B3EDF7;
     border-radius: 16px;
     padding: 10px 18px;
 }
@@ -112,11 +112,11 @@ body {
 }
 
 .hero-buttons .btn {
-    box-shadow: 0 10px 24px rgba(0, 90, 156, 0.25);
+    box-shadow: 0 10px 24px rgba(0, 180, 216, 0.25);
 }
 
 .hero-buttons .btn:hover {
-    box-shadow: 0 12px 28px rgba(0, 90, 156, 0.32);
+    box-shadow: 0 12px 28px rgba(0, 180, 216, 0.32);
 }
 
 .features-section {
