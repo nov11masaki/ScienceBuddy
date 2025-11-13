@@ -76,6 +76,14 @@ ScienceBuddy は、小学校理科の学習過程において、子ども達が*
   - クラス・出席番号・単元・日付でフィルタリング可能
 - **学習進捗管理** - 学生ごとの学習状況把握
   - 各単元の完了状況
+- **クラス別分析** - 各単元ごとの学習パターン分析
+  - 全学生の対話をテキスト形式で分析
+  - 思考傾向や着想の傾向を自動抽出
+- **学習パターンのクラスタリング** - 学生グループ化機能
+  - OpenAI Embedding による対話パターン分析
+  - KMeans クラスタリングで学生を自動グループ化
+  - 予想段階と考察段階を分離して分析
+  - 同じような思考パターンを持つ学生をグループ化
   - 学生の詳細ログへのアクセス
 
 ---
@@ -107,6 +115,9 @@ ScienceBuddy は、小学校理科の学習過程において、子ども達が*
 |--------|-----------|
 | **バックエンド** | Flask (Python 3.9+) |
 | **AI** | OpenAI API (gpt-4o-mini) |
+| **AI Embedding** | OpenAI API (text-embedding-3-small) |
+| **機械学習** | scikit-learn (KMeans クラスタリング) |
+| **数値計算** | NumPy |
 | **AIコスト最適化** | OpenAI Prompt Caching (入力トークン90%削減) |
 | **フロントエンド** | HTML5, CSS3, JavaScript, Bootstrap 5 |
 | **クラウド環境** | Google Cloud Run, Cloud Storage, Cloud Build |
