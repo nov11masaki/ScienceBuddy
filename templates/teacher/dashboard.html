@@ -50,33 +50,7 @@
                 <button onclick="exportData('csv')" class="card-button"><i class="fas fa-file-csv"></i> CSV出力</button>
                 <button onclick="exportData('json')" class="card-button" style="margin-top: 10px;"><i class="fas fa-file-code"></i> JSON出力</button>
             </div>
-
-            <div class="feature-card">
-                <div class="card-icon"><i class="fas fa-trash-alt"></i></div>
-                <h2>ログを消す</h2>
-                <p>すべての学習ログを削除（パスワード必須）</p>
-                <button onclick="deleteAllLogs()" class="card-button delete-button"><i class="fas fa-exclamation-triangle"></i> ログを削除</button>
-            </div>
         </section>
-
-        <!-- パスワードダイアログ -->
-        <div id="deleteLogsModal" class="modal" style="display: none;">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2><i class="fas fa-lock"></i> ログ削除確認</h2>
-                    <button class="modal-close" onclick="closeDeleteModal()">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <p style="margin-bottom: 15px; color: #d32f2f;">⚠️ この操作は取り消せません。すべての学習ログが削除されます。</p>
-                    <label for="deletePassword" style="display: block; margin-bottom: 8px; font-weight: 600;">パスワード:</label>
-                    <input type="password" id="deletePassword" placeholder="パスワードを入力" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; margin-bottom: 20px;">
-                    <div style="text-align: right; gap: 10px; display: flex; justify-content: flex-end;">
-                        <button onclick="closeDeleteModal()" class="modal-cancel-btn"><i class="fas fa-times"></i> キャンセル</button>
-                        <button onclick="confirmDeleteLogs()" class="modal-delete-btn"><i class="fas fa-trash"></i> 削除する</button>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <!-- フッター -->
         <footer class="dashboard-footer-section">
@@ -137,65 +111,6 @@ function exportData(format = 'csv') {
         showToast(format === 'json' ? '✅ JSONのダウンロード完了' : '✅ CSVのダウンロード完了', 'success');
     }, 1000);
 }
-
-// ログ削除ダイアログを開く
-function deleteAllLogs() {
-    document.getElementById('deleteLogsModal').style.display = 'flex';
-    document.getElementById('deletePassword').focus();
-}
-
-// ログ削除ダイアログを閉じる
-function closeDeleteModal() {
-    document.getElementById('deleteLogsModal').style.display = 'none';
-    document.getElementById('deletePassword').value = '';
-}
-
-// ログ削除を実行
-function confirmDeleteLogs() {
-    const password = document.getElementById('deletePassword').value;
-    
-    if (!password) {
-        showToast('⚠️ パスワードを入力してください', 'error');
-        return;
-    }
-    
-    // 確認ダイアログ
-    if (!confirm('⚠️ 警告: すべての学習ログが削除されます。この操作は取り消せません。\n本当に削除しますか？')) {
-        return;
-    }
-    
-    showToast('🗑️ ログを削除中...', 'info');
-    
-    fetch('/api/teacher/delete-all-logs', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ password })
-    })
-    .then(response => response.json())
-    .then(data => {
-        closeDeleteModal();
-        if (data.success) {
-            showToast('✅ ' + data.message, 'success');
-        } else {
-            showToast('❌ ' + data.message, 'error');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showToast('❌ エラーが発生しました', 'error');
-    });
-}
-
-// Enter キーでダイアログを送信
-document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('deletePassword')?.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            confirmDeleteLogs();
-        }
-    });
-});
 </script>
 
 <style>
@@ -368,58 +283,17 @@ document.addEventListener('DOMContentLoaded', function() {
     gap: 10px;
 }
 
-.modal-close {
-    background: none;
-    border: none;
-    font-size: 28px;
-    cursor: pointer;
-    color: #999;
-    padding: 0;
-    width: 30px;
-    height: 30px;
+.no-permission {
+    text-align: center;
+    padding: 15px;
+    background: rgba(255, 193, 7, 0.2);
+    border-radius: 8px;
+    color: #ffc107;
+    font-size: 0.9rem;
     display: flex;
     align-items: center;
     justify-content: center;
-}
-
-.modal-close:hover {
-    color: #333;
-}
-
-.modal-body {
-    padding: 20px;
-}
-
-.modal-cancel-btn,
-.modal-delete-btn {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 8px;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
     gap: 8px;
-}
-
-.modal-cancel-btn {
-    background-color: #f5f5f5;
-    color: #333;
-}
-
-.modal-cancel-btn:hover {
-    background-color: #e0e0e0;
-}
-
-.modal-delete-btn {
-    background-color: #d32f2f;
-    color: white;
-}
-
-.modal-delete-btn:hover {
-    background-color: #c62828;
 }
 </style>
 {% endblock %}

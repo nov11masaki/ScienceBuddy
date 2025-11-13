@@ -246,6 +246,14 @@ function deleteLog(classNum, seatNum, unit, date, deleteType) {
     // deleteType: 'unit' (単元削除), 'student' (学生全削除), 'all' (日付全削除)
     deleteType = deleteType || 'unit';
     
+    // パスワード入力
+    const password = prompt('ログを削除するにはパスワードを入力してください:');
+    if (password === null) return; // キャンセル
+    if (password !== 'RIKA') {
+        alert('❌ パスワードが間違っています');
+        return;
+    }
+    
     let confirmMsg = '';
     let warningMsg = '';
     
