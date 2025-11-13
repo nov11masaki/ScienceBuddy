@@ -502,20 +502,29 @@ function startVoiceInput() {
             }
         }
         
-        // リアルタイムで入力欄に反映
-        if (interimTranscript) {
-            // 途中結果を表示（確定していない部分）
-            input.value = input.value.substring(0, startPosition) + finalTranscript + interimTranscript;
-            statusText.textContent = '認識中: ' + interimTranscript;
-            console.log('途中結果:', interimTranscript);
-        }
-        
-        if (finalTranscript) {
-            // 確定した結果を入力欄に追加
-            input.value = input.value.substring(0, startPosition) + finalTranscript;
-            startPosition = input.value.length;  // 新しい開始位置を更新
-            statusText.textContent = '認識完了: ' + finalTranscript;
-            console.log('確定結果:', finalTranscript);
+        // リアルタイムで入力欄に反映（即座に更新）
+        if (interimTranscript || finalTranscript) {
+            // 確定した結果と途中結果を合わせて表示
+            const currentText = input.value.substring(0, startPosition);
+            const newText = finalTranscript + interimTranscript;
+            input.value = currentText + newText;
+            
+            // 入力欄のスクロール位置をカーソル位置に合わせる
+            input.focus();
+            input.scrollTop = input.scrollHeight;
+            
+            // 途中結果か確定結果かで表示を分ける
+            if (interimTranscript) {
+                statusText.textContent = '🎤 認識中: ' + interimTranscript;
+                console.log('途中結果:', interimTranscript);
+            }
+            
+            if (finalTranscript) {
+                // 確定した結果を入力欄に追加
+                startPosition = input.value.length;  // 新しい開始位置を更新
+                statusText.textContent = '✅ 認識完了: ' + finalTranscript;
+                console.log('確定結果:', finalTranscript);
+            }
         }
         
         // 入力欄を最後までスクロール

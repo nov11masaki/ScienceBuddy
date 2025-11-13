@@ -603,20 +603,29 @@ function startVoiceInput() {
         const input = document.getElementById('reflectionInput');
         const placeholderText = document.getElementById('inputPlaceholderText');
         
-        if (interimTranscript) {
-            statusText.textContent = '認識中: ' + interimTranscript;
+        // リアルタイムで入力欄に反映（即座に更新）
+        if (interimTranscript || finalTranscript) {
+            // 最新の音声入力を追加
+            input.value += finalTranscript + interimTranscript;
+            
+            // 入力欄をフォーカスしてスクロール
+            input.focus();
+            input.scrollTop = input.scrollHeight;
+            
             // プレースホルダーテキストにもリアルタイム表示
-            if (placeholderText && input.value + interimTranscript) {
-                placeholderText.textContent = input.value + interimTranscript;
-            }
-        }
-        
-        if (finalTranscript) {
-            input.value += finalTranscript;
-            statusText.textContent = '認識完了: ' + finalTranscript;
-            // プレースホルダーテキストにもリアルタイム表示
-            if (placeholderText && input.value) {
+            if (placeholderText) {
                 placeholderText.textContent = input.value;
+            }
+            
+            // 途中結果か確定結果かで表示を分ける
+            if (interimTranscript) {
+                statusText.textContent = '🎤 認識中: ' + interimTranscript;
+                console.log('途中結果:', interimTranscript);
+            }
+            
+            if (finalTranscript) {
+                statusText.textContent = '✅ 認識完了: ' + finalTranscript;
+                console.log('確定結果:', finalTranscript);
             }
         }
     };
