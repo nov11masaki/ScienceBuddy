@@ -797,9 +797,12 @@ function sendMessageToAPI(message) {
             addMessage(data.response, 'ai', true); // タイピングエフェクト有効
             conversationCount++;
             
-            // 会話回数が5回以上、またはAIが「まとめ」を促したら要約ボタンを表示
-            if (data.suggest_summary || conversationCount >= 2 || data.response.includes('まとめ') || data.response.includes('要約')) {
-                showPredictionSummaryButton(`会話回数:${conversationCount} / suggest:${data.suggest_summary}`);
+            // ユーザーメッセージ数をカウント（往復数 * 2 でメッセージ総数を算出）
+            const totalMessages = conversationCount * 2;
+            
+            // 6メッセージ以上またはAIが「まとめ」を促したら要約ボタンを表示
+            if (totalMessages >= 6 || data.suggest_summary || data.response.includes('まとめ') || data.response.includes('要約')) {
+                showPredictionSummaryButton(`会話数:${totalMessages}/${6} / suggest:${data.suggest_summary}`);
             }
             
             // デジタル学習ツインのインサイトを表示（開発時のみ）
@@ -974,8 +977,11 @@ function restorePastConversations() {
     const exchanges = Math.min(userHistoryCount, aiHistoryCount);
     conversationCount = exchanges;
     
-    if (!resumptionInfo.prediction_summary_created && exchanges >= 2) {
-        showPredictionSummaryButton(`履歴から規定回数達成（${exchanges}回）`);
+    // ユーザーメッセージ数をカウント（ユーザー数 + AI数 = 総メッセージ数）
+    const totalMessages = userHistoryCount + aiHistoryCount;
+    
+    if (!resumptionInfo.prediction_summary_created && totalMessages >= 6) {
+        showPredictionSummaryButton(`履歴から規定回数達成（${totalMessages}メッセージ）`);
     }
     
     console.log('過去の会話復元完了:', window.predictionConversationHistory.length, '件');

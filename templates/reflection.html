@@ -484,8 +484,12 @@ function sendReflection() {
             addReflectionMessage(data.response, 'ai', true); // タイピングエフェクト有効
             reflectionExchangeCount++;
             
-            if (data.suggest_final_summary || reflectionExchangeCount >= 2 || data.response.includes('まとめ') || data.response.includes('要約')) {
-                showFinalSummaryButton(`会話回数:${reflectionExchangeCount} / suggest:${data.suggest_final_summary}`);
+            // ユーザーメッセージ数をカウント（往復数 * 2 でメッセージ総数を算出）
+            const totalMessages = reflectionExchangeCount * 2;
+            
+            // 6メッセージ以上またはAIが要約を提案した場合に表示
+            if (totalMessages >= 6 || data.suggest_final_summary || data.response.includes('まとめ') || data.response.includes('要約')) {
+                showFinalSummaryButton(`会話数:${totalMessages}/${6} / suggest:${data.suggest_final_summary}`);
             }
         }
     })
@@ -821,11 +825,14 @@ function restoreReflectionConversation(conversationHistory) {
     const exchanges = Math.min(userHistoryCount, aiHistoryCount);
     reflectionExchangeCount = exchanges;
     
-    console.log('【DEBUG】会話統計: ユーザー=', userHistoryCount, 'AI=', aiHistoryCount, '往復=', exchanges);
+    // ユーザーメッセージ数をカウント（ユーザー数 + AI数 = 総メッセージ数）
+    const totalMessages = userHistoryCount + aiHistoryCount;
     
-    // 要約ボタン表示判定
-    if (reflectionResumptionInfo && !reflectionResumptionInfo.reflection_summary_created && exchanges >= 2) {
-        showFinalSummaryButton(`履歴から規定回数達成（${exchanges}回）`);
+    console.log('【DEBUG】会話統計: ユーザー=', userHistoryCount, 'AI=', aiHistoryCount, '往復=', exchanges, 'メッセージ総数=', totalMessages);
+    
+    // 要約ボタン表示判定（メッセージが6件以上）
+    if (reflectionResumptionInfo && !reflectionResumptionInfo.reflection_summary_created && totalMessages >= 6) {
+        showFinalSummaryButton(`履歴から規定回数達成（${totalMessages}メッセージ）`);
     }
 }
 
