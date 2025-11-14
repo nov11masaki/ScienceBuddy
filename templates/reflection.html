@@ -208,12 +208,22 @@ document.addEventListener('DOMContentLoaded', function() {
     // 復帰情報を取得
     const resumptionInfo = reflectionResumptionInfo;
     
+    console.log('【DEBUG】DOMContentLoaded:', {
+        is_resumption: resumptionInfo?.is_resumption,
+        conversation_history_length: window.reflectionConversationHistory?.length,
+        last_conversation_count: resumptionInfo?.last_conversation_count
+    });
+    
     if (resumptionInfo && resumptionInfo.is_resumption) {
         console.log('復帰モード: 過去の会話を復元します', resumptionInfo);
+        console.log('会話履歴:', window.reflectionConversationHistory);
         
         // 過去の会話を復元
-        if (window.reflectionConversationHistory) {
+        if (window.reflectionConversationHistory && window.reflectionConversationHistory.length > 0) {
+            console.log('会話履歴から復元開始, 件数:', window.reflectionConversationHistory.length);
             restoreReflectionConversation(window.reflectionConversationHistory);
+        } else {
+            console.warn('会話履歴がありません');
         }
         
         // まとめが完了している場合はまとめを復元
@@ -733,16 +743,23 @@ function restoreReflectionConversation(conversationHistory) {
     const initialAIMessage = messages[0]; // 最初のAIメッセージ
     const userInputArea = messagesContainer.querySelector('.user-input-area'); // 入力エリア
     
-    console.log('【DEBUG】削除前メッセージ数=', messages.length, '入力エリア=', !!userInputArea);
+    console.log('【DEBUG】削除前状態:', {
+        メッセージ数: messages.length, 
+        入力エリア存在: !!userInputArea,
+        入力エリアHTML: userInputArea?.outerHTML?.substring(0, 80)
+    });
     
     // 初期メッセージと入力エリア以外を削除
     for (let i = messages.length - 1; i > 0; i--) {
+        console.log('【DEBUG】削除中:', i);
         messages[i].remove();
     }
     
     // 過去の会話を復元（初期メッセージと入力エリアの間に挿入）
     conversationHistory.forEach((msg, index) => {
         const isAI = msg.role === 'assistant';
+        console.log(`【DEBUG】メッセージ${index+1}:`, {role: msg.role, preview: msg.content.substring(0, 30)});
+        
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${isAI ? 'ai-message' : 'user-message'}`;
         
@@ -765,6 +782,8 @@ function restoreReflectionConversation(conversationHistory) {
             messageDiv.appendChild(contentDiv);
         }
         
+        console.log('【DEBUG】メッセージ作成:', messageDiv.className);
+        
         // 入力エリアの直前に挿入
         if (userInputArea) {
             userInputArea.parentNode.insertBefore(messageDiv, userInputArea);
@@ -774,11 +793,18 @@ function restoreReflectionConversation(conversationHistory) {
     });
     
     console.log('【DEBUG】会話復元完了: 追加メッセージ数=', conversationHistory.length);
+    console.log('【DEBUG】復元後の入力エリア:', {
+        存在: !!userInputArea,
+        表示状態: userInputArea?.style.display,
+        親要素: userInputArea?.parentElement?.className
+    });
     
     // スクロール位置を入力フィールド近くに
     if (userInputArea) {
+        console.log('【DEBUG】入力フィールドにスクロール');
         userInputArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     } else {
+        console.warn('【DEBUG】入力フィールドが見つかりません！');
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
     
