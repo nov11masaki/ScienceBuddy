@@ -560,21 +560,37 @@ def save_learning_log(student_number, unit, log_type, data, class_number=None):
     """学習ログをFirestoreに保存
     
     Args:
-        student_number: 出席番号 (例: "3", "15")
+        student_number: 生徒番号 (例: "4103"=1組3番, "5015"=研究室15番) または出席番号
         unit: 単元名
         log_type: ログタイプ
         data: ログデータ
-        class_number: クラス番号 (例: "1", "2")
+        class_number: クラス番号 (例: "1", "2") - 省略時は student_number から自動解析
     """
-    # クラス番号と出席番号を整数に変換
-    try:
-        class_num = int(class_number) if class_number else None
-        seat_num = int(student_number) if student_number else None
-        class_display = f'{class_num}組{seat_num}番' if class_num and seat_num else f'{student_number}'
-    except (ValueError, TypeError):
-        class_num = None
-        seat_num = None
-        class_display = str(student_number)
+    # parse_student_info を使って正しくパースする
+    parsed_info = parse_student_info(student_number)
+    
+    if parsed_info:
+        # 生徒番号から自動解析できた場合
+        class_num = parsed_info['class_num']
+        seat_num = parsed_info['seat_num']
+        class_display = parsed_info['display']
+    else:
+        # 従来の方法（class_numberから）
+        try:
+            class_num = int(class_number) if class_number else None
+            seat_num = int(student_number) if student_number else None
+            if class_num and seat_num:
+                # 研究室（class_num=5）の場合
+                if class_num == 5:
+                    class_display = f'研究室{seat_num}番'
+                else:
+                    class_display = f'{class_num}組{seat_num}番'
+            else:
+                class_display = str(student_number)
+        except (ValueError, TypeError):
+            class_num = None
+            seat_num = None
+            class_display = str(student_number)
     
     log_entry = {
         'timestamp': datetime.now().isoformat(),
@@ -893,7 +909,7 @@ def parse_student_info(student_number):
     """生徒番号からクラスと出席番号を取得
     
     Args:
-        student_number: 生徒番号 (str) 例: "4103" = 4年1組3番
+        student_number: 生徒番号 (str) 例: "4103" = 4年1組3番, "5015" = 研究室5組15番
     
     Returns:
         dict: {'class_num': 1, 'seat_num': 3, 'display': '1組3番'} または None
@@ -903,14 +919,29 @@ def parse_student_info(student_number):
             return {'class_num': 0, 'seat_num': 0, 'display': 'テスト'}
         
         student_str = str(student_number)
-        if len(student_str) == 4 and student_str.startswith('4'):
-            class_num = int(student_str[1])  # 2桁目がクラス番号
-            seat_num = int(student_str[2:])  # 3-4桁目が出席番号
-            return {
-                'class_num': class_num,
-                'seat_num': seat_num,
-                'display': f'{class_num}組{seat_num}番'
-            }
+        if len(student_str) == 4:
+            prefix = student_str[0]
+            
+            # 4年生（1-4組）
+            if prefix == '4':
+                class_num = int(student_str[1])  # 2桁目がクラス番号
+                seat_num = int(student_str[2:])  # 3-4桁目が出席番号
+                return {
+                    'class_num': class_num,
+                    'seat_num': seat_num,
+                    'display': f'{class_num}組{seat_num}番'
+                }
+            
+            # 研究室（5組）
+            elif prefix == '5':
+                class_num = 5  # 研究室は5組
+                seat_num = int(student_str[1:])  # 後ろ3桁が出席番号
+                return {
+                    'class_num': class_num,
+                    'seat_num': seat_num,
+                    'display': f'研究室{seat_num}番'
+                }
+        
         return None
     except (ValueError, TypeError):
         return None
@@ -2217,6 +2248,122 @@ def teacher_analysis_list():
 # プロンプト管理機能
 # プロンプト編集機能は削除されました
 # システムで自動的に最適化されたプロンプトを使用します
+
+@app.route('/teacher/manage_logs')
+@require_teacher_auth
+def teacher_manage_logs():
+    """ログ管理画面 - 一括削除・バックアップ"""
+    try:
+        available_dates_raw = get_available_log_dates()
+        available_dates = [
+            {'raw': d, 'formatted': f"{d[:4]}/{d[4:6]}/{d[6:8]}"}
+            for d in available_dates_raw
+        ]
+        
+        # 各日付のログ数を集計
+        log_stats = []
+        for date_info in available_dates:
+            try:
+                logs = load_learning_logs(date_info['raw'])
+                
+                # ユーザー数と対話数を集計
+                users = set()
+                prediction_chats = 0
+                reflection_chats = 0
+                
+                for log in logs:
+                    users.add(log.get('student_number'))
+                    if log.get('log_type') == 'prediction_chat':
+                        prediction_chats += 1
+                    elif log.get('log_type') == 'reflection_chat':
+                        reflection_chats += 1
+                
+                log_stats.append({
+                    'date': date_info,
+                    'log_count': len(logs),
+                    'user_count': len(users),
+                    'prediction_chats': prediction_chats,
+                    'reflection_chats': reflection_chats
+                })
+            except Exception as e:
+                print(f"[MANAGE_LOGS] Error loading stats for {date_info['raw']}: {e}")
+                log_stats.append({
+                    'date': date_info,
+                    'log_count': 0,
+                    'user_count': 0,
+                    'prediction_chats': 0,
+                    'reflection_chats': 0,
+                    'error': str(e)
+                })
+        
+        return render_template('teacher/manage_logs.html',
+                             available_dates=available_dates,
+                             log_stats=log_stats,
+                             teacher_id=session.get('teacher_id'))
+    
+    except Exception as e:
+        print(f"[MANAGE_LOGS] Error: {e}")
+        flash(f'ログ管理画面の読み込みに失敗しました: {str(e)}', 'error')
+        return redirect(url_for('teacher'))
+
+@app.route('/api/teacher/delete_all_logs_for_date', methods=['POST'])
+@require_teacher_auth
+def api_delete_all_logs_for_date():
+    """指定日付のすべてのログを削除"""
+    try:
+        data = request.json
+        date = data.get('date', '').strip()
+        
+        if not date or len(date) != 8 or not date.isdigit():
+            return jsonify({'error': '有効な日付を指定してください'}), 400
+        
+        print(f"[DELETE_ALL] Deleting all logs for date: {date}")
+        
+        # ログを読み込み
+        logs = load_learning_logs(date)
+        original_count = len(logs)
+        
+        if original_count == 0:
+            return jsonify({'error': f'{date} のログはありません'}), 404
+        
+        # ローカルファイルの場合
+        if not USE_FIRESTORE:
+            try:
+                log_filename = f"learning_log_{date}.json"
+                log_file = f"logs/{log_filename}"
+                
+                if os.path.exists(log_file):
+                    os.remove(log_file)
+                    print(f"[DELETE_ALL] SUCCESS - deleted {log_file}")
+                    
+                    return jsonify({
+                        'success': True,
+                        'message': f'{date} のログ {original_count} 件を削除しました',
+                        'deleted_count': original_count
+                    })
+            except Exception as e:
+                print(f"[DELETE_ALL] Error: {e}")
+                return jsonify({'error': f'削除中にエラーが発生しました: {str(e)}'}), 500
+        else:
+            # Firestore の場合
+            try:
+                db.collection('learning_logs').document(f'date_{date}').delete()
+                print(f"[DELETE_ALL] SUCCESS - Firestore deleted date_{date}")
+                
+                return jsonify({
+                    'success': True,
+                    'message': f'{date} のログ {original_count} 件を削除しました',
+                    'deleted_count': original_count
+                })
+            except Exception as e:
+                print(f"[DELETE_ALL] Error: {e}")
+                return jsonify({'error': f'削除中にエラーが発生しました: {str(e)}'}), 500
+    
+    except Exception as e:
+        print(f"[DELETE_ALL] FATAL: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/teacher/student_detail')
 @require_teacher_auth

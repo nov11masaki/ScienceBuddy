@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+
+{% block title %}ログ管理{% endblock %}
+
+{% block content %}
+<div class="teacher-manage-logs">
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>
+                <i class="fas fa-database text-primary"></i>
+                ログ管理
+            </h2>
+            <div>
+                <a href="/teacher/logs" class="btn btn-outline-secondary me-2">
+                    <i class="fas fa-arrow-left"></i> ログ一覧に戻る
+                </a>
+                <a href="/teacher/logout" class="btn btn-outline-secondary">
+                    <i class="fas fa-sign-out-alt"></i> ログアウト
+                </a>
+            </div>
+        </div>
+
+        <!-- タブ -->
+        <ul class="nav nav-tabs mb-4" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="delete-tab" data-bs-toggle="tab" data-bs-target="#delete-panel" type="button">
+                    <i class="fas fa-trash"></i> ログ削除
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="stats-tab" data-bs-toggle="tab" data-bs-target="#stats-panel" type="button">
+                    <i class="fas fa-chart-bar"></i> ログ統計
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="export-tab" data-bs-toggle="tab" data-bs-target="#export-panel" type="button">
+                    <i class="fas fa-download"></i> エクスポート
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            <!-- 削除パネル -->
+            <div class="tab-pane fade show active" id="delete-panel" role="tabpanel">
+                <div class="card">
+                    <div class="card-header bg-danger text-white">
+                        <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> ログ削除</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-warning" role="alert">
+                            <strong>⚠️ 注意:</strong> 削除したログは復旧できません。必ずバックアップを取ってから削除してください。
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5>特定日付のすべてのログを削除</h5>
+                                <div class="mb-3">
+                                    <label class="form-label">日付を選択:</label>
+                                    <select id="deleteDate" class="form-select">
+                                        <option value="">-- 選択してください --</option>
+                                        {% for stat in log_stats %}
+                                        <option value="{{ stat.date.raw }}">
+                                            {{ stat.date.formatted }} 
+                                            (ユーザ: {{ stat.user_count }}, ログ: {{ stat.log_count }})
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <button class="btn btn-danger" onclick="deleteAllLogsForDate()">
+                                    <i class="fas fa-trash"></i> この日付のログをすべて削除
+                                </button>
+                            </div>
+
+                            <div class="col-md-6">
+                                <h5>古いログを一括削除</h5>
+                                <div class="mb-3">
+                                    <label class="form-label">この日付より前のログをすべて削除:</label>
+                                    <input type="date" id="deleteBefore" class="form-control">
+                                </div>
+                                <button class="btn btn-danger" onclick="deleteOldLogs()">
+                                    <i class="fas fa-trash"></i> 古いログをすべて削除
+                                </button>
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <h5>個別削除</h5>
+                        <p class="text-muted">特定のユーザーまたは単元のログを削除する場合は、<a href="/teacher/logs">ログ一覧</a>から削除してください。</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 統計パネル -->
+            <div class="tab-pane fade" id="stats-panel" role="tabpanel">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-chart-bar"></i> ログ統計</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>日付</th>
+                                        <th>ユーザー数</th>
+                                        <th>総ログ数</th>
+                                        <th>予想チャット</th>
+                                        <th>考察チャット</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for stat in log_stats %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ stat.date.formatted }}</strong>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-primary">{{ stat.user_count }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">{{ stat.log_count }}</span>
+                                        </td>
+                                        <td>{{ stat.prediction_chats }}</td>
+                                        <td>{{ stat.reflection_chats }}</td>
+                                        <td>
+                                            <a href="/teacher/logs?date={{ stat.date.raw }}" class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-eye"></i> 表示
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- エクスポートパネル -->
+            <div class="tab-pane fade" id="export-panel" role="tabpanel">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-download"></i> ログをエクスポート</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5>CSV形式でダウンロード</h5>
+                                <p>すべてのログをCSV形式でダウンロードできます。</p>
+                                <select id="exportDateCsv" class="form-select mb-3">
+                                    <option value="">-- 最新のログまで --</option>
+                                    {% for date_info in available_dates %}
+                                    <option value="{{ date_info.raw }}">
+                                        {{ date_info.formatted }} までのログ
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <button class="btn btn-success" onclick="exportCsv()">
+                                    <i class="fas fa-file-csv"></i> CSVをダウンロード
+                                </button>
+                            </div>
+
+                            <div class="col-md-6">
+                                <h5>JSON形式でダウンロード</h5>
+                                <p>対話内容をJSON形式（ZIP）でダウンロードできます。</p>
+                                <select id="exportDateJson" class="form-select mb-3">
+                                    <option value="">-- 最新のログまで --</option>
+                                    {% for date_info in available_dates %}
+                                    <option value="{{ date_info.raw }}">
+                                        {{ date_info.formatted }} までのログ
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <button class="btn btn-success" onclick="exportJson()">
+                                    <i class="fas fa-file-code"></i> JSONをダウンロード
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="alert alert-info mt-4" role="alert">
+            <strong>💡 ヒント:</strong>
+            <ul class="mb-0">
+                <li>削除前に必ずCSV・JSON形式でバックアップを取ってください</li>
+                <li>大量削除は時間がかかることがあります</li>
+                <li>個別削除（ユーザー単位）は「ログ一覧」から行ってください</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<style>
+.teacher-manage-logs {
+    background-color: #f8f9fa;
+    min-height: 100vh;
+    padding-bottom: 2rem;
+}
+
+.table-hover tbody tr:hover {
+    background-color: #f5f5f5 !important;
+}
+
+.badge {
+    font-size: 0.9rem;
+    padding: 0.4rem 0.6rem;
+}
+</style>
+
+<script>
+function deleteAllLogsForDate() {
+    const date = document.getElementById('deleteDate').value;
+    
+    if (!date) {
+        alert('日付を選択してください');
+        return;
+    }
+    
+    const confirmMsg = `${date.substring(0, 4)}年${date.substring(4, 6)}月${date.substring(6, 8)}日のすべてのログを削除します。\n\n本当に削除しますか？\n\nこの操作は取り消せません。`;
+    
+    if (!confirm(confirmMsg)) {
+        alert('キャンセルしました');
+        return;
+    }
+    
+    if (prompt('確認のため「削除」と入力してください:') !== '削除') {
+        alert('キャンセルしました');
+        return;
+    }
+    
+    fetch('/api/teacher/delete_all_logs_for_date', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ date: date })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(`✓ ${data.deleted_count} 件のログを削除しました`);
+            location.reload();
+        } else {
+            alert(`エラー: ${data.error}`);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('エラーが発生しました');
+    });
+}
+
+function deleteOldLogs() {
+    const date = document.getElementById('deleteBefore').value;
+    
+    if (!date) {
+        alert('削除対象の日付を選択してください');
+        return;
+    }
+    
+    const dateObj = new Date(date);
+    const formattedDate = dateObj.toISOString().split('T')[0].replace(/-/g, '');
+    
+    const confirmMsg = `${dateObj.toLocaleDateString('ja-JP')} より前のすべてのログを削除します。\n\n本当に削除しますか？\n\nこの操作は取り消せません。`;
+    
+    if (!confirm(confirmMsg)) {
+        alert('キャンセルしました');
+        return;
+    }
+    
+    alert('この機能は実装準備中です。個別削除をご利用ください。');
+}
+
+function exportCsv() {
+    const date = document.getElementById('exportDateCsv').value || new Date().toISOString().split('T')[0].replace(/-/g, '');
+    window.location.href = `/teacher/export?date=${date}`;
+}
+
+function exportJson() {
+    const date = document.getElementById('exportDateJson').value || new Date().toISOString().split('T')[0].replace(/-/g, '');
+    window.location.href = `/teacher/export_json?date=${date}`;
+}
+</script>
+{% endblock %}
