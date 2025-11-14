@@ -61,7 +61,7 @@
             </div>
             
             <div class="action-buttons text-center mt-2">
-                <button class="btn btn-success" id="summaryButton" style="display: none;">
+                <button class="btn btn-success" id="summaryButton">
                     <i class="fas fa-check me-2"></i>
                     予想をまとめる
                 </button>
@@ -857,18 +857,39 @@ function getSummary() {
         console.log('【DEBUG】要約データ:', data);
         if (data.error) {
             alert('エラーが発生しました: ' + data.error);
+            document.getElementById('summaryButton').disabled = false;
         } else {
             console.log('【DEBUG】要約を表示します:', data.summary);
-            document.getElementById('summaryContent').textContent = data.summary;
-            document.getElementById('summarySection').style.display = 'block';
-            document.getElementById('summaryButton').style.display = 'none';
             
-            // スクロールして要約セクションを見やすく
+            // チャットにAIメッセージとして要約を追加
+            const messagesContainer = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message ai-message';
+            messageDiv.innerHTML = `
+                <div class="message-avatar"></div>
+                <div class="message-content">${data.summary}</div>
+            `;
+            
+            // ユーザー入力エリアの直前に挿入
+            const userInputArea = messagesContainer.querySelector('.user-input-area');
+            if (userInputArea) {
+                userInputArea.parentNode.insertBefore(messageDiv, userInputArea);
+            } else {
+                messagesContainer.appendChild(messageDiv);
+            }
+            
+            // スクロール
             setTimeout(() => {
-                document.getElementById('summarySection').scrollIntoView({ behavior: 'smooth' });
-            }, 500);
+                messageDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 300);
+            
+            // 要約後の状態を保存
+            session['prediction_summary'] = data.summary;
+            
+            // ボタンを無効化（1度だけ生成）
+            document.getElementById('summaryButton').disabled = true;
+            document.getElementById('summaryButton').textContent = '✓ 予想をまとめました';
         }
-        document.getElementById('summaryButton').disabled = false;
     })
     .catch(error => {
         console.error('【DEBUG】Error:', error);

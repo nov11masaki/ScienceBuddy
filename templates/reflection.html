@@ -52,8 +52,8 @@
             </div>
             
             <div class="action-buttons text-center mt-2">
-                <button class="btn btn-success" id="finalSummaryButton" style="display: none;">
-                    <i class="fas fa-file-alt me-2"></i>
+                <button class="btn btn-success" id="finalSummaryButton">
+                    <i class="fas fa-check me-2"></i>
                     考察をまとめる
                 </button>
             </div>
@@ -594,18 +594,39 @@ function getFinalSummary() {
         console.log('【DEBUG】最終要約データ:', data);
         if (data.error) {
             alert('エラーが発生しました: ' + data.error);
+            document.getElementById('finalSummaryButton').disabled = false;
         } else {
             console.log('【DEBUG】最終要約を表示します:', data.summary);
-            document.getElementById('finalSummaryContent').textContent = data.summary;
-            document.getElementById('finalSummarySection').style.display = 'block';
-            document.getElementById('finalSummaryButton').style.display = 'none';
             
-            // スクロールして要約セクションを見やすく
+            // チャットにAIメッセージとして最終要約を追加
+            const messagesContainer = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message ai-message';
+            messageDiv.innerHTML = `
+                <div class="message-avatar"></div>
+                <div class="message-content">${data.summary}</div>
+            `;
+            
+            // ユーザー入力エリアの直前に挿入
+            const userInputArea = messagesContainer.querySelector('.user-input-area');
+            if (userInputArea) {
+                userInputArea.parentNode.insertBefore(messageDiv, userInputArea);
+            } else {
+                messagesContainer.appendChild(messageDiv);
+            }
+            
+            // スクロール
             setTimeout(() => {
-                document.getElementById('finalSummarySection').scrollIntoView({ behavior: 'smooth' });
-            }, 500);
+                messageDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 300);
+            
+            // 最終要約後の状態を保存
+            session['reflection_summary'] = data.summary;
+            
+            // ボタンを無効化（1度だけ生成）
+            document.getElementById('finalSummaryButton').disabled = true;
+            document.getElementById('finalSummaryButton').textContent = '✓ 考察をまとめました';
         }
-        document.getElementById('finalSummaryButton').disabled = false;
     })
     .catch(error => {
         console.error('【DEBUG】Error:', error);

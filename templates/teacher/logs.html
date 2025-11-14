@@ -129,7 +129,7 @@
                         </div>
                         
                         <div class="unit-actions">
-                            <a href="/teacher/student_detail?class={{ class_num if class_num is not none else '' }}&seat={{ seat_num if seat_num is not none else '' }}&student={{ student_number }}&unit={{ unit_name|urlencode }}&date={{ current_date }}" 
+                            <a href="/teacher/student_detail?student={{ student_number }}&unit={{ unit_name|urlencode }}&date={{ current_date }}" 
                                class="btn btn-sm btn-outline-primary">
                                 <i class="fas fa-eye"></i> 詳細
                             </a>
@@ -141,13 +141,13 @@
                                 <ul class="dropdown-menu" aria-labelledby="btnGroupDrop{{ loop.index }}">
                                     <li>
                                         <a class="dropdown-item" href="#" 
-                                           onclick="deleteLog('{{ student_data.student_info.class_num }}', '{{ student_data.student_info.seat_num }}', '{{ unit_name }}', '{{ current_date }}', 'unit'); return false;">
+                                           onclick="deleteLog('', '', '{{ unit_name }}', '{{ current_date }}', 'unit'); return false;">
                                             <i class="fas fa-book me-2"></i>このユニットを削除
                                         </a>
                                     </li>
                                     <li>
                                         <a class="dropdown-item" href="#" 
-                                           onclick="deleteLog('{{ student_data.student_info.class_num }}', '{{ student_data.student_info.seat_num }}', '', '{{ current_date }}', 'student'); return false;">
+                                           onclick="deleteLog('', '', '', '{{ current_date }}', 'student'); return false;">
                                             <i class="fas fa-user me-2"></i>この学生の全ログを削除
                                         </a>
                                     </li>
