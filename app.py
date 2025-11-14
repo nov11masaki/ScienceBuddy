@@ -1028,8 +1028,14 @@ def prediction():
     prediction_stage = stage_progress.get('prediction', {})
     prediction_summary_created = prediction_stage.get('summary_created', False)
     conversation_count = prediction_stage.get('conversation_count', 0)
-    has_existing_conversation = conversation_count > 0
+    
+    # セッションに会話履歴があるか、または保存された履歴があるかをチェック
     session_conversation = session.get('conversation')
+    has_existing_conversation = (
+        conversation_count > 0 or 
+        session_conversation or 
+        len(progress.get('conversation_history', [])) > 0
+    )
     
     if (resume or has_existing_conversation):
         # 対話履歴を復元（セッションに無ければ進行状況から取得）
@@ -1282,10 +1288,17 @@ def reflection():
     reflection_stage = stage_progress.get('reflection', {})
     reflection_summary_created = reflection_stage.get('summary_created', False)
     reflection_conversation_count = reflection_stage.get('conversation_count', 0)
-    has_reflection_progress = reflection_conversation_count > 0
+    
+    # セッションに会話履歴があるか、または保存された履歴があるかをチェック
     session_reflection_conversation = session.get('reflection_conversation')
+    has_reflection_progress = (
+        reflection_conversation_count > 0 or 
+        session_reflection_conversation or 
+        len(progress.get('reflection_conversation_history', [])) > 0
+    )
     
     if (resume or has_reflection_progress):
+        # セッションに会話履歴がなければ、保存されたものから復元
         if not session_reflection_conversation and has_reflection_progress:
             session['reflection_conversation'] = progress.get('reflection_conversation_history', [])
         elif not session_reflection_conversation:
