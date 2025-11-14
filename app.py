@@ -169,6 +169,88 @@ def require_teacher_auth(f):
     decorated_function.__name__ = f.__name__
     return decorated_function
 
+# セッション管理機能（ブラウザ閉鎖後の復帰対応）
+SESSION_STORAGE_FILE = 'session_storage.json'
+
+def save_session_to_db(student_id, unit, stage, conversation_data):
+    """セッションデータをデータベースに保存（復帰用）"""
+    session_entry = {
+        'timestamp': datetime.now().isoformat(),
+        'student_id': student_id,
+        'unit': unit,
+        'stage': stage,  # 'prediction' or 'reflection'
+        'conversation': conversation_data
+    }
+    
+    if USE_FIRESTORE and db:
+        try:
+            doc_id = f"session_{student_id}_{unit}_{stage}"
+            db.collection('session_storage').document(doc_id).set(session_entry)
+            print(f"[SESSION_SAVE] Firestore - {doc_id}")
+        except Exception as e:
+            print(f"[SESSION_SAVE] Firestore Error: {e}")
+            # フォールバック: ローカル保存
+            _save_session_local(session_entry)
+    else:
+        # ローカルに保存
+        _save_session_local(session_entry)
+
+def _save_session_local(session_entry):
+    """セッションをローカルファイルに保存"""
+    try:
+        sessions = {}
+        if os.path.exists(SESSION_STORAGE_FILE):
+            with open(SESSION_STORAGE_FILE, 'r', encoding='utf-8') as f:
+                sessions = json.load(f)
+        
+        student_id = session_entry['student_id']
+        unit = session_entry['unit']
+        stage = session_entry['stage']
+        key = f"{student_id}_{unit}_{stage}"
+        sessions[key] = session_entry
+        
+        with open(SESSION_STORAGE_FILE, 'w', encoding='utf-8') as f:
+            json.dump(sessions, f, ensure_ascii=False, indent=2)
+        print(f"[SESSION_SAVE] Local - {key}")
+    except Exception as e:
+        print(f"[SESSION_SAVE] Local Error: {e}")
+
+def load_session_from_db(student_id, unit, stage):
+    """セッションデータをデータベースから復元"""
+    if USE_FIRESTORE and db:
+        try:
+            doc_id = f"session_{student_id}_{unit}_{stage}"
+            doc = db.collection('session_storage').document(doc_id).get()
+            if doc.exists:
+                data = doc.to_dict()
+                print(f"[SESSION_LOAD] Firestore - {doc_id}")
+                return data.get('conversation', [])
+        except Exception as e:
+            print(f"[SESSION_LOAD] Firestore Error: {e}")
+            # フォールバック: ローカル読み込み
+            return _load_session_local(student_id, unit, stage)
+    else:
+        # ローカルから読み込み
+        return _load_session_local(student_id, unit, stage)
+
+def _load_session_local(student_id, unit, stage):
+    """セッションをローカルファイルから復元"""
+    try:
+        if not os.path.exists(SESSION_STORAGE_FILE):
+            return []
+        
+        with open(SESSION_STORAGE_FILE, 'r', encoding='utf-8') as f:
+            sessions = json.load(f)
+        
+        key = f"{student_id}_{unit}_{stage}"
+        if key in sessions:
+            print(f"[SESSION_LOAD] Local - {key}")
+            return sessions[key].get('conversation', [])
+    except Exception as e:
+        print(f"[SESSION_LOAD] Local Error: {e}")
+    
+    return []
+
 # OpenAI APIの設定
 api_key = os.getenv('OPENAI_API_KEY')
 try:
@@ -1090,6 +1172,17 @@ def prediction():
     
     # セッションに会話履歴があるか、または保存された履歴があるかをチェック
     session_conversation = session.get('conversation')
+    student_id = f"{class_number}_{student_number}"
+    
+    # 復元順序: セッション → DB保存 → ローカルログ
+    if not session_conversation:
+        # DB から復元を試みる
+        db_conversation = load_session_from_db(student_id, unit, 'prediction')
+        if db_conversation:
+            session['conversation'] = db_conversation
+            session_conversation = db_conversation
+            print(f"[PREDICTION] DB から会話を復元: {len(db_conversation)} メッセージ")
+    
     has_existing_conversation = (
         conversation_count > 0 or 
         session_conversation or 
@@ -1099,7 +1192,9 @@ def prediction():
     if (resume or has_existing_conversation):
         # 対話履歴を復元（セッションに無ければ進行状況から取得）
         if not session_conversation and has_existing_conversation:
+            # DB復元に失敗した場合、ローカルログから取得
             session['conversation'] = progress.get('conversation_history', [])
+            session_conversation = session['conversation']
         elif not session_conversation:
             session['conversation'] = []
         
@@ -1183,6 +1278,10 @@ def chat():
         
         conversation.append({'role': 'assistant', 'content': ai_message})
         session['conversation'] = conversation
+        
+        # セッションをDBに保存（ブラウザ閉鎖後の復帰対応）
+        student_id = f"{session.get('class_number')}_{session.get('student_number')}"
+        save_session_to_db(student_id, unit, 'prediction', conversation)
         
         # 学習ログを保存
         save_learning_log(
@@ -1367,6 +1466,17 @@ def reflection():
     
     # セッションに会話履歴があるか、または保存された履歴があるかをチェック
     session_reflection_conversation = session.get('reflection_conversation')
+    student_id = f"{class_number}_{student_number}"
+    
+    # 復元順序: セッション → DB保存 → ローカルログ
+    if not session_reflection_conversation:
+        # DB から復元を試みる
+        db_reflection_conversation = load_session_from_db(student_id, unit, 'reflection')
+        if db_reflection_conversation:
+            session['reflection_conversation'] = db_reflection_conversation
+            session_reflection_conversation = db_reflection_conversation
+            print(f"[REFLECTION] DB から会話を復元: {len(db_reflection_conversation)} メッセージ")
+    
     has_reflection_progress = (
         reflection_conversation_count > 0 or 
         session_reflection_conversation or 
@@ -1376,7 +1486,9 @@ def reflection():
     if (resume or has_reflection_progress):
         # セッションに会話履歴がなければ、保存されたものから復元
         if not session_reflection_conversation and has_reflection_progress:
+            # DB復元に失敗した場合、ローカルログから取得
             session['reflection_conversation'] = progress.get('reflection_conversation_history', [])
+            session_reflection_conversation = session['reflection_conversation']
         elif not session_reflection_conversation:
             session['reflection_conversation'] = []
         
@@ -1487,6 +1599,10 @@ def reflect_chat():
         
         reflection_conversation.append({'role': 'assistant', 'content': ai_message})
         session['reflection_conversation'] = reflection_conversation
+        
+        # セッションをDBに保存（ブラウザ閉鎖後の復帰対応）
+        student_id = f"{session.get('class_number')}_{session.get('student_number')}"
+        save_session_to_db(student_id, unit, 'reflection', reflection_conversation)
         
         # 考察チャットのログを保存
         save_learning_log(
