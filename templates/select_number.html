@@ -49,13 +49,9 @@ document.addEventListener('DOMContentLoaded', function() {
         classNumber = jinja2Class;
     }
     
-    // クラス番号を表示（研究室の場合は特別に表示）
+    // クラス番号を表示（5組も通常クラスと同様に扱う）
     const classDisplayText = document.getElementById('classDisplayText');
-    if (classNumber === 'lab') {
-        classDisplayText.textContent = '研究室';
-    } else {
-        classDisplayText.innerHTML = `４年${classNumber}組`;
-    }
+    classDisplayText.innerHTML = `４年${classNumber}組`;
     
     // 1-30番のカードを生成
     const numberCards = document.getElementById('numberCards');

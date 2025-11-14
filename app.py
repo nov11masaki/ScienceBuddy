@@ -160,6 +160,27 @@ def clear_session(session_id):
     if session_id in session_devices:
         del session_devices[session_id]
 
+def normalize_class_value(class_value):
+    """クラス指定の表記ゆれを統一（lab -> '5' など）"""
+    if class_value is None:
+        return None
+    value_str = str(class_value).strip()
+    if not value_str:
+        return None
+    if value_str.lower() == 'lab':
+        return '5'
+    return value_str
+
+def normalize_class_value_int(class_value):
+    """クラス指定を整数に変換（lab も 5 として扱う）"""
+    normalized = normalize_class_value(class_value)
+    if normalized is None:
+        return None
+    try:
+        return int(normalized)
+    except ValueError:
+        return None
+
 # 認証チェック用デコレータ
 def require_teacher_auth(f):
     def decorated_function(*args, **kwargs):
@@ -335,8 +356,18 @@ def save_learning_progress(progress_data):
 
 def get_student_progress(class_number, student_number, unit):
     """特定の学習者の単元進行状況を取得"""
-    progress_data = load_learning_progress()
+    normalized_class = normalize_class_value(class_number)
+    class_number = normalized_class if normalized_class is not None else class_number
+    legacy_ids = []
+    if class_number == '5':
+        legacy_ids.append(f"lab_{student_number}")
     student_id = f"{class_number}_{student_number}"
+    progress_data = load_learning_progress()
+    for legacy_id in legacy_ids:
+        if legacy_id in progress_data and student_id not in progress_data:
+            progress_data[student_id] = progress_data.pop(legacy_id)
+            save_learning_progress(progress_data)
+            break
     
     if student_id not in progress_data:
         progress_data[student_id] = {}
@@ -370,6 +401,8 @@ def get_student_progress(class_number, student_number, unit):
 
 def update_student_progress(class_number, student_number, unit, stage=None, **kwargs):
     """学習者の進行状況を更新"""
+    normalized_class = normalize_class_value(class_number)
+    class_number = normalized_class if normalized_class is not None else class_number
     progress_data = load_learning_progress()
     student_id = f"{class_number}_{student_number}"
     
@@ -412,6 +445,8 @@ def update_student_progress(class_number, student_number, unit, stage=None, **kw
 
 def check_resumption_needed(class_number, student_number, unit):
     """復帰が必要かチェック"""
+    normalized_class = normalize_class_value(class_number)
+    class_number = normalized_class if normalized_class is not None else class_number
     progress = get_student_progress(class_number, student_number, unit)
     
     # 予想段階で対話がある場合
@@ -667,6 +702,7 @@ def save_learning_log(student_number, unit, log_type, data, class_number=None):
         data: ログデータ
         class_number: クラス番号 (例: "1", "2") - 省略時は student_number から自動解析
     """
+    class_number = normalize_class_value(class_number) or class_number
     # parse_student_info を使って正しくパースする
     parsed_info = parse_student_info(student_number)
     
@@ -681,11 +717,7 @@ def save_learning_log(student_number, unit, log_type, data, class_number=None):
             class_num = int(class_number) if class_number else None
             seat_num = int(student_number) if student_number else None
             if class_num and seat_num:
-                # 研究室（class_num=5）の場合
-                if class_num == 5:
-                    class_display = f'研究室{seat_num}番'
-                else:
-                    class_display = f'{class_num}組{seat_num}番'
+                class_display = f'{class_num}組{seat_num}番'
             else:
                 class_display = str(student_number)
         except (ValueError, TypeError):
@@ -834,7 +866,8 @@ def save_error_log(student_number, class_number, error_message, error_type, stag
         additional_info: 追加情報 (dict)
     """
     try:
-        class_num = int(class_number) if class_number else None
+        normalized_class = normalize_class_value(class_number) or class_number
+        class_num = int(normalized_class) if normalized_class else None
         seat_num = int(student_number) if student_number else None
         class_display = f'{class_num}組{seat_num}番' if class_num and seat_num else str(student_number)
     except (ValueError, TypeError):
@@ -1035,12 +1068,12 @@ def parse_student_info(student_number):
             
             # 研究室（5組）
             elif prefix == '5':
-                class_num = 5  # 研究室は5組
+                class_num = 5  # 研究室は5組（ログ表示は通常クラスと同様）
                 seat_num = int(student_str[1:])  # 後ろ3桁が出席番号
                 return {
                     'class_num': class_num,
                     'seat_num': seat_num,
-                    'display': f'研究室{seat_num}番'
+                    'display': f'{class_num}組{seat_num}番'
                 }
         
         return None
@@ -1086,11 +1119,13 @@ def select_class():
 @app.route('/select_number')
 def select_number():
     class_number = request.args.get('class', '1')
+    class_number = normalize_class_value(class_number) or '1'
     return render_template('select_number.html', class_number=class_number)
 
 @app.route('/select_unit')
 def select_unit():
     class_number = request.args.get('class', '1')
+    class_number = normalize_class_value(class_number) or '1'
     student_number = request.args.get('number')
     session['class_number'] = class_number
     session['student_number'] = student_number
@@ -1143,6 +1178,7 @@ def select_unit():
 @app.route('/prediction')
 def prediction():
     class_number = request.args.get('class', session.get('class_number', '1'))
+    class_number = normalize_class_value(class_number) or normalize_class_value(session.get('class_number')) or '1'
     student_number = request.args.get('number', session.get('student_number', '1'))
     unit = request.args.get('unit')
     resume = request.args.get('resume', 'false').lower() == 'true'
@@ -1439,8 +1475,9 @@ def experiment():
 @app.route('/reflection')
 def reflection():
     unit = request.args.get('unit', session.get('unit'))
-    class_number = session.get('class_number', '1')
+    class_number = normalize_class_value(session.get('class_number', '1')) or '1'
     student_number = session.get('student_number')
+    session['class_number'] = class_number
     prediction_summary = session.get('prediction_summary')
     resume = request.args.get('resume', 'false').lower() == 'true'
     
@@ -1794,7 +1831,14 @@ def teacher_logs():
     
     date = request.args.get('date', default_date)
     unit = request.args.get('unit', '')
-    class_filter = request.args.get('class', '')
+    raw_class_filter = request.args.get('class', '')
+    class_filter = normalize_class_value(raw_class_filter) or ''
+    class_filter_int = None
+    if class_filter:
+        try:
+            class_filter_int = int(class_filter)
+        except ValueError:
+            class_filter_int = None
     student = request.args.get('student', '')
     
     logs = load_learning_logs(date)
@@ -1804,15 +1848,15 @@ def teacher_logs():
         logs = [log for log in logs if log.get('unit') == unit]
     
     # クラスと出席番号でフィルター（両方を組み合わせる）
-    if class_filter and student:
+    if class_filter_int is not None and student:
         # クラスと出席番号の両方が指定された場合
         logs = [log for log in logs 
-                if log.get('class_num') == int(class_filter) 
+                if log.get('class_num') == class_filter_int 
                 and log.get('seat_num') == int(student)]
-    elif class_filter:
+    elif class_filter_int is not None:
         # クラスのみ指定された場合
         logs = [log for log in logs 
-                if log.get('class_num') == int(class_filter)]
+                if log.get('class_num') == class_filter_int]
     elif student:
         # 出席番号のみ指定された場合（全クラスから該当番号を検索）
         logs = [log for log in logs 
@@ -1830,10 +1874,14 @@ def teacher_logs():
         
         if student_key not in students_data:
             # ログから直接クラスと出席番号の情報を取得
+            if class_num is not None and seat_num is not None:
+                display_label = f'{class_num}組{seat_num}番'
+            else:
+                display_label = log.get('class_display', str(student_num))
             student_info = {
                 'class_num': class_num,
                 'seat_num': seat_num,
-                'display': log.get('class_display', f'{class_num}組{seat_num}番' if class_num and seat_num else str(student_num))
+                'display': display_label
             }
             students_data[student_key] = {
                 'student_number': student_num,
@@ -2505,7 +2553,8 @@ def api_delete_all_logs_for_date():
 def student_detail():
     """学生の詳細ログページ"""
     # クラスと出席番号をクエリパラメータから取得
-    class_num = request.args.get('class', type=int)
+    class_param = request.args.get('class')
+    class_num = normalize_class_value_int(class_param)
     seat_num = request.args.get('seat', type=int)
     student_id = request.args.get('student')
     unit = request.args.get('unit', '')
@@ -2727,6 +2776,7 @@ def delete_log():
 def note_photo():
     """ノート写真撮影ページ"""
     class_num = request.args.get('class', '1')
+    class_num = normalize_class_value(class_num) or '1'
     student_number = request.args.get('number', '1')
     unit = request.args.get('unit', '')
     
@@ -2738,6 +2788,7 @@ def upload_note_photos():
     """ノート写真をアップロード"""
     try:
         class_num = request.form.get('class', '1')
+        class_num = normalize_class_value(class_num) or '1'
         student_number = request.form.get('number', '1')
         unit = request.form.get('unit', '')
         
@@ -2875,6 +2926,7 @@ def api_students_by_class():
 def api_note_photos():
     """クラスと学生番号で絞り込んだノート写真情報を返す"""
     class_num = request.args.get('class', '')
+    class_num = normalize_class_value(class_num) or ''
     student_num = request.args.get('student', '')
     unit = request.args.get('unit', '')
     
@@ -3011,7 +3063,8 @@ def api_download_note_photos():
 def teacher_errors():
     """教員用エラーモニタリングページ"""
     date = request.args.get('date', datetime.now().strftime('%Y%m%d'))
-    class_filter = request.args.get('class', '')
+    raw_class_filter = request.args.get('class', '')
+    class_filter = normalize_class_value(raw_class_filter) or ''
     
     # 利用可能な日付を取得
     try:
