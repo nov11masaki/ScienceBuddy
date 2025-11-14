@@ -1483,9 +1483,15 @@ def teacher_logs():
     """学習ログ一覧"""
     # デフォルト日付を現在の日付に設定
     try:
-        available_dates = get_available_log_dates()
-        default_date = available_dates[0]['raw'] if available_dates else datetime.now().strftime('%Y%m%d')
-    except:
+        available_dates_raw = get_available_log_dates()
+        default_date = available_dates_raw[0] if available_dates_raw else datetime.now().strftime('%Y%m%d')
+        # フロントエンド用に辞書形式に変換
+        available_dates = [
+            {'raw': d, 'formatted': f"{d[:4]}/{d[4:6]}/{d[6:8]}"}
+            for d in available_dates_raw
+        ]
+    except Exception as e:
+        print(f"[LOGS] Error getting available dates: {str(e)}")
         default_date = datetime.now().strftime('%Y%m%d')
         available_dates = []
     
@@ -1587,8 +1593,9 @@ def teacher_export():
     
     print(f"[EXPORT] START - exporting logs up to date: {download_date_str}")
     
-    for date_info in available_dates:
-        current_date_raw = date_info['raw']
+    for date_str in available_dates:
+        # date_str は文字列 (YYYYMMDD format)
+        current_date_raw = date_str if isinstance(date_str, str) else date_str.get('raw', '')
         # ダウンロード日以下の日付のみを対象
         if current_date_raw <= download_date_str:
             try:
@@ -1597,6 +1604,7 @@ def teacher_export():
                 print(f"[EXPORT] Loaded {len(logs)} logs from {current_date_raw}")
             except Exception as e:
                 print(f"[EXPORT] ERROR loading logs from {current_date_raw}: {str(e)}")
+                continue
     
     # CSVをメモリに作成（UTF-8 BOM付き）
     output = StringIO()
@@ -1652,8 +1660,9 @@ def teacher_export_json():
     
     print(f"[EXPORT_JSON] START - exporting logs up to date: {download_date_str}")
     
-    for date_info in available_dates:
-        current_date_raw = date_info['raw']
+    for date_str in available_dates:
+        # date_str は文字列 (YYYYMMDD format)
+        current_date_raw = date_str if isinstance(date_str, str) else date_str.get('raw', '')
         if current_date_raw <= download_date_str:
             try:
                 logs = load_learning_logs(current_date_raw)
@@ -1661,6 +1670,7 @@ def teacher_export_json():
                 print(f"[EXPORT_JSON] Loaded {len(logs)} logs from {current_date_raw}")
             except Exception as e:
                 print(f"[EXPORT_JSON] ERROR loading logs from {current_date_raw}: {str(e)}")
+                continue
     
     # 児童ごと・単元ごとにグループ化
     # 構造: {unit: {student_id: [logs]}}
@@ -2088,8 +2098,19 @@ def student_detail():
     unit = request.args.get('unit', '')
     
     # デフォルト日付を最新のログがある日付に設定
-    available_dates = get_available_log_dates()
-    default_date = available_dates[0]['raw'] if available_dates else datetime.now().strftime('%Y%m%d')
+    try:
+        available_dates_raw = get_available_log_dates()
+        default_date = available_dates_raw[0] if available_dates_raw else datetime.now().strftime('%Y%m%d')
+        # フロントエンド用に辞書形式に変換
+        available_dates = [
+            {'raw': d, 'formatted': f"{d[:4]}/{d[4:6]}/{d[6:8]}"}
+            for d in available_dates_raw
+        ]
+    except Exception as e:
+        print(f"[DETAIL] Error getting available dates: {str(e)}")
+        default_date = datetime.now().strftime('%Y%m%d')
+        available_dates = []
+    
     selected_date = request.args.get('date', default_date)
     
     # 学習ログを読み込み
