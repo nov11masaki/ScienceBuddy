@@ -28,6 +28,7 @@ load_dotenv()
 
 # 学習進行状況管理用のファイルパス
 LEARNING_PROGRESS_FILE = 'learning_progress.json'
+PROMPTS_DIR = Path('prompts')
 
 # Firestore設定
 USE_FIRESTORE = os.getenv('FLASK_ENV') == 'production'
@@ -685,10 +686,28 @@ def get_initial_ai_message(unit_name, stage='prediction'):
 def load_unit_prompt(unit_name):
     """単元専用のプロンプトファイルを読み込む"""
     try:
-        with open(f'prompts/{unit_name}.md', 'r', encoding='utf-8') as f:
+        prompt_path = PROMPTS_DIR / f"{unit_name}.md"
+        with open(prompt_path, 'r', encoding='utf-8') as f:
             return f.read().strip()
     except FileNotFoundError:
         return "児童の発言をよく聞いて、適切な質問で考えを引き出してください。"
+
+def load_prompt_template(filename):
+    """汎用テンプレートを読み込み"""
+    try:
+        template_path = PROMPTS_DIR / filename
+        with open(template_path, 'r', encoding='utf-8') as f:
+            return f.read()
+    except FileNotFoundError:
+        print(f"[PROMPTS] Warning: template '{filename}' not found")
+        return ""
+
+def render_prompt_template(template: str, **placeholders):
+    """テンプレート内の{{KEY}}を置換"""
+    rendered = template
+    for key, value in placeholders.items():
+        rendered = rendered.replace(f"{{{{{key}}}}}", str(value) if value is not None else "")
+    return rendered
 
 
 # 学習ログを保存する関数
@@ -1593,9 +1612,16 @@ def reflect_chat():
     
     # プロンプトファイルからベースプロンプトを取得
     unit_prompt = load_unit_prompt(unit)
-    
-    # 考察段階用のシステムプロンプト（予想と考察段階の指示を明示的に組み込む）
-    reflection_system_prompt = f"""
+    template = load_prompt_template('reflection_system_template.md')
+    if template:
+        reflection_system_prompt = render_prompt_template(
+            template,
+            UNIT_PROMPT=unit_prompt,
+            PREDICTION_SUMMARY=prediction_summary or '予想がまだ記録されていません。'
+        )
+    else:
+        # フォールバック: 旧実装と同等の文字列
+        reflection_system_prompt = f"""
 {unit_prompt}
 
 【現在の学習段階】
@@ -2107,6 +2133,10 @@ def teacher_analysis_class(class_num):
         
         # 各単元の分析を実行
         analysis_results = {}
+        summary_request_template = load_prompt_template('analysis_summary_request.md')
+        summary_system_prompt = load_prompt_template('analysis_summary_system.md')
+        default_summary_request = """科学の学習における児童の対話ログを分析してください。\n\n【対話内容サンプル】\n{samples}\n\n以下の観点から、児童の思考や経験との結びつき、既習事項の活用方法などをテキストで分析してください：\n\n1. 児童がどんな既習事項や経験と新しい学習を結びつけているか\n2. どのような思考プロセスで予想や考察を立てているか\n3. 児童の質問や気づきの特徴\n4. 日常生活との関連付けの傾向\n\n200〜300字でまとめてください。"""
+        default_summary_system = "You are an expert science education analyst. Analyze student dialogue and provide insights about their thinking patterns and how they connect learning to prior knowledge. Always respond in Japanese with clear, readable paragraphs."
         
         for unit, logs in units_data.items():
             try:
@@ -2120,21 +2150,15 @@ def teacher_analysis_class(class_num):
                 
                 if chat_texts:
                     # OpenAI で思考傾向を分析
-                    analysis_prompt = f"""
-科学の学習における児童の対話ログを分析してください。
-
-【対話内容サンプル】
-{chr(10).join(chat_texts[:10])}
-
-以下の観点から、児童の思考や経験との結びつき、既習事項の活用方法などをテキストで分析してください：
-
-1. 児童がどんな既習事項や経験と新しい学習を結びつけているか
-2. どのような思考プロセスで予想や考察を立てているか
-3. 児童の質問や気づきの特徴
-4. 日常生活との関連付けの傾向
-
-200〜300字でまとめてください。
-"""
+                    chat_samples = "\n".join(chat_texts[:10])
+                    if summary_request_template:
+                        analysis_prompt = render_prompt_template(
+                            summary_request_template,
+                            CHAT_SAMPLES=chat_samples
+                        )
+                    else:
+                        analysis_prompt = default_summary_request.format(samples=chat_samples)
+                    analysis_system_message = summary_system_prompt.strip() if summary_system_prompt else default_summary_system
                     
                     print(f"[ANALYSIS] Analyzing {class_num}_{unit} with OpenAI...")
                     
@@ -2142,7 +2166,7 @@ def teacher_analysis_class(class_num):
                     response = client.chat.completions.create(
                         model="gpt-4o-mini",
                         messages=[
-                            {"role": "system", "content": "You are an expert science education analyst. Analyze student dialogue and provide insights about their thinking patterns and how they connect learning to prior knowledge. Always respond in Japanese with clear, readable paragraphs."},
+                            {"role": "system", "content": analysis_system_message},
                             {"role": "user", "content": analysis_prompt}
                         ],
                         temperature=0.7,
@@ -2260,6 +2284,10 @@ def teacher_analysis_list():
         
         # AI による思考傾向の深い分析
         print("[ANALYSIS] Performing deep AI analysis on learning trends")
+        deep_request_template = load_prompt_template('analysis_deep_request.md')
+        deep_system_prompt = load_prompt_template('analysis_deep_system.md')
+        default_deep_request = """科学の学習における児童の対話ログを分析してください。\n\n【対話内容サンプル】\n{samples}\n\n児童の思考や経験との結びつき、既習事項の活用方法、思考プロセスなどをテキストで分析してください。\n\n200〜300字でまとめてください。"""
+        default_deep_system = "You are an expert science education analyst. Analyze student learning logs and provide insights about their thinking patterns and how they connect learning to prior knowledge. Always respond in Japanese with clear, readable paragraphs."
         
         for class_num in analysis_data:
             for unit in analysis_data[class_num]:
@@ -2282,16 +2310,15 @@ def teacher_analysis_list():
                         
                         if chat_texts:
                             # OpenAI APIで思考傾向を分析
-                            analysis_prompt = f"""
-科学の学習における児童の対話ログを分析してください。
-
-【対話内容サンプル】
-{chr(10).join(chat_texts[:8])}
-
-児童の思考や経験との結びつき、既習事項の活用方法、思考プロセスなどをテキストで分析してください。
-
-200〜300字でまとめてください。
-"""
+                            chat_samples = "\n".join(chat_texts[:8])
+                            if deep_request_template:
+                                analysis_prompt = render_prompt_template(
+                                    deep_request_template,
+                                    CHAT_SAMPLES=chat_samples
+                                )
+                            else:
+                                analysis_prompt = default_deep_request.format(samples=chat_samples)
+                            analysis_system_message = deep_system_prompt.strip() if deep_system_prompt else default_deep_system
                             
                             print(f"[ANALYSIS] Analyzing {class_num}_{unit} with OpenAI...")
                             
@@ -2299,7 +2326,7 @@ def teacher_analysis_list():
                             response = client.chat.completions.create(
                                 model="gpt-4o-mini",
                                 messages=[
-                                    {"role": "system", "content": "You are an expert science education analyst. Analyze student learning logs and provide insights about their thinking patterns and how they connect learning to prior knowledge. Always respond in Japanese with clear, readable paragraphs."},
+                                    {"role": "system", "content": analysis_system_message},
                                     {"role": "user", "content": analysis_prompt}
                                 ],
                                 temperature=0.7,
