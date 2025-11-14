@@ -165,6 +165,7 @@ if (sessionDataElement) {
     const sessionData = JSON.parse(sessionDataElement.textContent);
     window.reflectionConversationHistory = sessionData.conversationHistory;
     window.reflectionSummary = sessionData.reflectionSummary;
+    console.log('【DEBUG】セッションから会話履歴を取得:', window.reflectionConversationHistory);
 }
 
 const resumptionInfoElement = document.getElementById('resumption-info');
@@ -720,12 +721,19 @@ function stopVoiceInput() {
 // 復帰時に過去の会話を復元する関数
 function restoreReflectionConversation(conversationHistory) {
     const messagesContainer = document.getElementById('reflectionMessages');
-    if (!messagesContainer || !conversationHistory || conversationHistory.length === 0) return;
+    console.log('【DEBUG】restoreReflectionConversation: メッセージコンテナ=', !!messagesContainer, '会話数=', conversationHistory?.length);
+    
+    if (!messagesContainer || !conversationHistory || conversationHistory.length === 0) {
+        console.warn('【DEBUG】復元スキップ: container=', !!messagesContainer, 'history=', conversationHistory);
+        return;
+    }
     
     // 初期メッセージと入力エリアを保存
     const messages = messagesContainer.querySelectorAll('.message');
     const initialAIMessage = messages[0]; // 最初のAIメッセージ
     const userInputArea = messagesContainer.querySelector('.user-input-area'); // 入力エリア
+    
+    console.log('【DEBUG】削除前メッセージ数=', messages.length, '入力エリア=', !!userInputArea);
     
     // 初期メッセージと入力エリア以外を削除
     for (let i = messages.length - 1; i > 0; i--) {
@@ -736,17 +744,25 @@ function restoreReflectionConversation(conversationHistory) {
     conversationHistory.forEach((msg, index) => {
         const isAI = msg.role === 'assistant';
         const messageDiv = document.createElement('div');
-        messageDiv.className = isAI ? 'message ai-message' : 'message user-message';
+        messageDiv.className = `message ${isAI ? 'ai-message' : 'user-message'}`;
         
         if (isAI) {
+            // AIメッセージ: avatar + message-content 構造
             messageDiv.innerHTML = `
                 <div class="message-avatar"></div>
                 <div class="message-content">${msg.content}</div>
             `;
         } else {
-            messageDiv.innerHTML = `
-                <div class="user-message-bubble">${msg.content}</div>
-            `;
+            // ユーザーメッセージ: avatar + message-content 構造（sendReflection()と同じ）
+            const avatarDiv = document.createElement('div');
+            avatarDiv.className = 'message-avatar';
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.innerHTML = msg.content;
+            
+            messageDiv.appendChild(avatarDiv);
+            messageDiv.appendChild(contentDiv);
         }
         
         // 入力エリアの直前に挿入
@@ -756,6 +772,8 @@ function restoreReflectionConversation(conversationHistory) {
             messagesContainer.appendChild(messageDiv);
         }
     });
+    
+    console.log('【DEBUG】会話復元完了: 追加メッセージ数=', conversationHistory.length);
     
     // スクロール位置を入力フィールド近くに
     if (userInputArea) {
@@ -776,6 +794,8 @@ function restoreReflectionConversation(conversationHistory) {
     });
     const exchanges = Math.min(userHistoryCount, aiHistoryCount);
     reflectionExchangeCount = exchanges;
+    
+    console.log('【DEBUG】会話統計: ユーザー=', userHistoryCount, 'AI=', aiHistoryCount, '往復=', exchanges);
     
     // 要約ボタン表示判定
     if (reflectionResumptionInfo && !reflectionResumptionInfo.reflection_summary_created && exchanges >= 2) {

@@ -896,7 +896,7 @@ function switchInputMode() {
 
 // 復帰時に過去の会話を復元する関数
 function restorePastConversations() {
-    console.log('restorePastConversations: 過去の会話を復元中...');
+    console.log('【DEBUG】restorePastConversations: 過去の会話を復元中...');
     
     const messagesContainer = document.getElementById('chatMessages');
     if (!messagesContainer) {
@@ -909,9 +909,13 @@ function restorePastConversations() {
         return;
     }
     
+    console.log('【DEBUG】会話数:', window.predictionConversationHistory.length);
+    
     // 初期メッセージと入力エリアを保存
     const messages = messagesContainer.querySelectorAll('.message');
     const userInputArea = messagesContainer.querySelector('.user-input-area');
+    
+    console.log('【DEBUG】削除前メッセージ数=', messages.length, '入力エリア=', !!userInputArea);
     
     // 初期メッセージと入力エリア以外を削除
     for (let i = messages.length - 1; i > 0; i--) {
@@ -922,17 +926,25 @@ function restorePastConversations() {
     window.predictionConversationHistory.forEach((msg, index) => {
         const isAI = msg.role === 'assistant';
         const messageDiv = document.createElement('div');
-        messageDiv.className = isAI ? 'message ai-message' : 'message user-message';
+        messageDiv.className = `message ${isAI ? 'ai-message' : 'user-message'}`;
         
         if (isAI) {
+            // AIメッセージ: avatar + message-content 構造
             messageDiv.innerHTML = `
                 <div class="message-avatar"></div>
                 <div class="message-content">${msg.content}</div>
             `;
         } else {
-            messageDiv.innerHTML = `
-                <div class="user-message-bubble">${msg.content}</div>
-            `;
+            // ユーザーメッセージ: avatar + message-content 構造（sendMessage()と同じ）
+            const avatarDiv = document.createElement('div');
+            avatarDiv.className = 'message-avatar';
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.innerHTML = msg.content;
+            
+            messageDiv.appendChild(avatarDiv);
+            messageDiv.appendChild(contentDiv);
         }
         
         // 入力エリアの直前に挿入
