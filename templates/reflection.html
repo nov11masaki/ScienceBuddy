@@ -722,13 +722,17 @@ function restoreReflectionConversation(conversationHistory) {
     const messagesContainer = document.getElementById('reflectionMessages');
     if (!messagesContainer || !conversationHistory || conversationHistory.length === 0) return;
     
-    // 初期メッセージ以外を削除（初期メッセージはAIメッセージ）
+    // 初期メッセージと入力エリアを保存
     const messages = messagesContainer.querySelectorAll('.message');
+    const initialAIMessage = messages[0]; // 最初のAIメッセージ
+    const userInputArea = messagesContainer.querySelector('.user-input-area'); // 入力エリア
+    
+    // 初期メッセージと入力エリア以外を削除
     for (let i = messages.length - 1; i > 0; i--) {
         messages[i].remove();
     }
     
-    // 過去の会話を復元
+    // 過去の会話を復元（初期メッセージと入力エリアの間に挿入）
     conversationHistory.forEach((msg, index) => {
         const isAI = msg.role === 'assistant';
         const messageDiv = document.createElement('div');
@@ -745,11 +749,22 @@ function restoreReflectionConversation(conversationHistory) {
             `;
         }
         
-        messagesContainer.appendChild(messageDiv);
+        // 入力エリアの直前に挿入
+        if (userInputArea) {
+            userInputArea.parentNode.insertBefore(messageDiv, userInputArea);
+        } else {
+            messagesContainer.appendChild(messageDiv);
+        }
     });
     
-    // スクロール位置を下に移動
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    // スクロール位置を入力フィールド近くに
+    if (userInputArea) {
+        userInputArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } else {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+    
+    // 会話回数をカウント
     let userHistoryCount = 0;
     let aiHistoryCount = 0;
     conversationHistory.forEach(msg => {
@@ -760,11 +775,11 @@ function restoreReflectionConversation(conversationHistory) {
         }
     });
     const exchanges = Math.min(userHistoryCount, aiHistoryCount);
-    if (!reflectionResumptionInfo || typeof reflectionResumptionInfo.last_conversation_count !== 'number') {
-        reflectionExchangeCount = exchanges;
-    }
-    if (!reflectionResumptionInfo.reflection_summary_created && exchanges >= 2) {
-        showFinalSummaryButton('履歴から規定回数達成');
+    reflectionExchangeCount = exchanges;
+    
+    // 要約ボタン表示判定
+    if (reflectionResumptionInfo && !reflectionResumptionInfo.reflection_summary_created && exchanges >= 2) {
+        showFinalSummaryButton(`履歴から規定回数達成（${exchanges}回）`);
     }
 }
 

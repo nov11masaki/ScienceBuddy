@@ -909,13 +909,16 @@ function restorePastConversations() {
         return;
     }
     
-    // 初期メッセージ以外を削除（初期メッセージはAIメッセージ）
+    // 初期メッセージと入力エリアを保存
     const messages = messagesContainer.querySelectorAll('.message');
+    const userInputArea = messagesContainer.querySelector('.user-input-area');
+    
+    // 初期メッセージと入力エリア以外を削除
     for (let i = messages.length - 1; i > 0; i--) {
         messages[i].remove();
     }
     
-    // 過去の会話を復元
+    // 過去の会話を復元（入力エリアの直前に挿入）
     window.predictionConversationHistory.forEach((msg, index) => {
         const isAI = msg.role === 'assistant';
         const messageDiv = document.createElement('div');
@@ -932,11 +935,21 @@ function restorePastConversations() {
             `;
         }
         
-        messagesContainer.appendChild(messageDiv);
+        // 入力エリアの直前に挿入
+        if (userInputArea) {
+            userInputArea.parentNode.insertBefore(messageDiv, userInputArea);
+        } else {
+            messagesContainer.appendChild(messageDiv);
+        }
     });
     
-    // スクロール位置を下に移動
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    // スクロール位置を入力フィールド近くに
+    if (userInputArea) {
+        userInputArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } else {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+    
     let userHistoryCount = 0;
     let aiHistoryCount = 0;
     window.predictionConversationHistory.forEach(msg => {
@@ -947,11 +960,10 @@ function restorePastConversations() {
         }
     });
     const exchanges = Math.min(userHistoryCount, aiHistoryCount);
-    if (!resumptionInfo || typeof resumptionInfo.last_conversation_count !== 'number') {
-        conversationCount = exchanges;
-    }
+    conversationCount = exchanges;
+    
     if (!resumptionInfo.prediction_summary_created && exchanges >= 2) {
-        showPredictionSummaryButton('履歴から規定回数達成');
+        showPredictionSummaryButton(`履歴から規定回数達成（${exchanges}回）`);
     }
     
     console.log('過去の会話復元完了:', window.predictionConversationHistory.length, '件');
