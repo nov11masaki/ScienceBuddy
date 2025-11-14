@@ -578,7 +578,6 @@ function showCompletionMessage() {
 
 function getFinalSummary() {
     console.log('【DEBUG】getFinalSummary 呼び出し');
-    document.getElementById('finalSummaryButton').disabled = true;
     
     fetch('/final_summary', {
         method: 'POST',
@@ -623,15 +622,12 @@ function getFinalSummary() {
             // 最終要約後の状態を保存
             session['reflection_summary'] = data.summary;
             
-            // ボタンを無効化（1度だけ生成）
-            document.getElementById('finalSummaryButton').disabled = true;
-            document.getElementById('finalSummaryButton').textContent = '✓ 考察をまとめました';
+            // ボタンは常時利用可能（回数制限なし）
         }
     })
     .catch(error => {
         console.error('【DEBUG】Error:', error);
         alert('通信エラーが発生しました。');
-        document.getElementById('finalSummaryButton').disabled = false;
     });
 }
 

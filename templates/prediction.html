@@ -841,7 +841,6 @@ function showExperimentButton() {
 
 function getSummary() {
     console.log('【DEBUG】getSummary 呼び出し');
-    document.getElementById('summaryButton').disabled = true;
     
     fetch('/summary', {
         method: 'POST',
@@ -886,15 +885,12 @@ function getSummary() {
             // 要約後の状態を保存
             session['prediction_summary'] = data.summary;
             
-            // ボタンを無効化（1度だけ生成）
-            document.getElementById('summaryButton').disabled = true;
-            document.getElementById('summaryButton').textContent = '✓ 予想をまとめました';
+            // ボタンは常時利用可能（回数制限なし）
         }
     })
     .catch(error => {
         console.error('【DEBUG】Error:', error);
         alert('通信エラーが発生しました。');
-        document.getElementById('summaryButton').disabled = false;
     });
 }
 
