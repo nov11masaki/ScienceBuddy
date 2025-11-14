@@ -2794,6 +2794,19 @@ def teacher_errors():
                          available_dates=available_dates)
 
 
+# ===== ノート写真ファイル配信 =====
+
+@app.route('/logs/note_photos/<path:path>')
+def serve_note_photos(path):
+    """ノート写真ファイルを配信"""
+    from flask import send_from_directory
+    try:
+        return send_from_directory(os.path.join('logs', 'note_photos'), path)
+    except Exception as e:
+        print(f"[ERROR] Failed to serve note photo: {e}")
+        return jsonify({'error': 'File not found'}), 404
+
+
 if __name__ == '__main__':
     # 環境変数からポート番号を取得（CloudRun用）
     port = int(os.environ.get('PORT', 5014))
