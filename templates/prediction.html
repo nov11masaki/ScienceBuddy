@@ -162,7 +162,7 @@
 <!-- セッションデータ（復帰用） -->
 <script type="application/json" id="prediction-session-data">
 {
-    "conversationHistory": {{ session.get('conversation', []) | tojson | safe }},
+    "conversationHistory": {{ conversation_history | tojson | safe }},
     "predictionSummary": "{{ session.get('prediction_summary', '') | safe }}"
 }
 </script>

@@ -1086,8 +1086,12 @@ def prediction():
     # 単元に応じた最初のAIメッセージを取得
     initial_ai_message = get_initial_ai_message(unit, stage='prediction')
     
+    # セッションデータをテンプレートに明示的に渡す
+    conversation_history = session.get('conversation', [])
+    
     return render_template('prediction.html', unit=unit, task_content=task_content, 
-                         resumption_info=resumption_info, initial_ai_message=initial_ai_message)
+                         resumption_info=resumption_info, initial_ai_message=initial_ai_message,
+                         conversation_history=conversation_history)
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -1285,7 +1289,7 @@ def experiment():
 
 @app.route('/reflection')
 def reflection():
-    unit = session.get('unit')
+    unit = request.args.get('unit', session.get('unit'))
     class_number = session.get('class_number', '1')
     student_number = session.get('student_number')
     prediction_summary = session.get('prediction_summary')
@@ -1293,11 +1297,16 @@ def reflection():
     
     print(f"[REFLECTION] アクセス: unit={unit}, student={class_number}_{student_number}, resume={resume}")
     
-    # セッションに保存された unit が異なる場合、セッションをクリア
-    if unit and session.get('reflection_conversation'):
-        # reflection_conversation が存在する場合、異なる単元からのアクセスでないか確認
-        # (予防的な確認)
-        pass
+    # 異なる単元に移動した場合、セッションをクリア（単元混在防止）
+    current_unit = session.get('unit')
+    if current_unit and current_unit != unit:
+        print(f"[REFLECTION] 単元変更: {current_unit} → {unit}")
+        session.pop('reflection_conversation', None)
+        session.pop('reflection_summary', None)
+        session.pop('conversation', None)
+        session.pop('prediction_summary', None)
+    
+    session['unit'] = unit
     
     # 進行状況をチェック
     progress = get_student_progress(class_number, student_number, unit)
@@ -1363,11 +1372,15 @@ def reflection():
     # 単元に応じた最初のAIメッセージを取得
     initial_ai_message = get_initial_ai_message(unit, stage='reflection')
     
+    # セッションデータをテンプレートに明示的に渡す
+    reflection_conversation_history = session.get('reflection_conversation', [])
+    
     return render_template('reflection.html', 
                          unit=unit,
                          prediction_summary=prediction_summary,
                          initial_ai_message=initial_ai_message,
-                         resumption_info=resumption_info)
+                         resumption_info=resumption_info,
+                         reflection_conversation_history=reflection_conversation_history)
 
 @app.route('/reflect_chat', methods=['POST'])
 def reflect_chat():
