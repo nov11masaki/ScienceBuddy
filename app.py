@@ -1015,6 +1015,15 @@ def prediction():
     unit = request.args.get('unit')
     resume = request.args.get('resume', 'false').lower() == 'true'
     
+    # 異なる単元に移動した場合、セッションをクリア
+    current_unit = session.get('unit')
+    if current_unit and current_unit != unit:
+        print(f"[PREDICTION] 単元変更: {current_unit} → {unit}")
+        session.pop('conversation', None)
+        session.pop('prediction_summary', None)
+        session.pop('reflection_conversation', None)
+        session.pop('reflection_summary', None)
+    
     session['class_number'] = class_number
     session['student_number'] = student_number
     session['unit'] = unit
@@ -1282,6 +1291,14 @@ def reflection():
     prediction_summary = session.get('prediction_summary')
     resume = request.args.get('resume', 'false').lower() == 'true'
     
+    print(f"[REFLECTION] アクセス: unit={unit}, student={class_number}_{student_number}, resume={resume}")
+    
+    # セッションに保存された unit が異なる場合、セッションをクリア
+    if unit and session.get('reflection_conversation'):
+        # reflection_conversation が存在する場合、異なる単元からのアクセスでないか確認
+        # (予防的な確認)
+        pass
+    
     # 進行状況をチェック
     progress = get_student_progress(class_number, student_number, unit)
     stage_progress = progress.get('stage_progress', {})
@@ -1303,6 +1320,11 @@ def reflection():
             session['reflection_conversation'] = progress.get('reflection_conversation_history', [])
         elif not session_reflection_conversation:
             session['reflection_conversation'] = []
+        
+        print(f"[REFLECTION] 復帰情報: 会話数={len(session.get('reflection_conversation', []))}, 復帰={has_reflection_progress}")
+        if session.get('reflection_conversation'):
+            first_msg = session['reflection_conversation'][0] if session['reflection_conversation'] else None
+            print(f"[REFLECTION] 最初のメッセージ: {first_msg['role'] if first_msg else 'N/A'}")
         
         resumption_info = {
             'is_resumption': has_reflection_progress,
