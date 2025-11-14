@@ -47,6 +47,25 @@ if USE_FIRESTORE:
 else:
     db = None
 
+# GCS設定（本番環境用）
+USE_GCS = os.getenv('FLASK_ENV') == 'production' and os.getenv('GCP_PROJECT_ID')
+
+if USE_GCS:
+    try:
+        from google.cloud import storage
+        gcp_project = os.getenv('GCP_PROJECT_ID')
+        storage_client = storage.Client(project=gcp_project)
+        bucket_name = os.getenv('GCS_BUCKET_NAME', 'science-buddy-logs')
+        bucket = storage_client.bucket(bucket_name)
+        # バケット接続確認
+        print(f"[INIT] GCS bucket '{bucket_name}' initialized successfully")
+    except Exception as e:
+        print(f"[INIT] Warning: GCS initialization failed: {e}")
+        USE_GCS = False
+        bucket = None
+else:
+    bucket = None
+
 # SSL証明書の設定
 ssl_context = ssl.create_default_context(cafile=certifi.where())
 
