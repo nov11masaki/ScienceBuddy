@@ -174,6 +174,19 @@ let lastMessage = '';
 // 復帰情報を取得
 const resuptionDataElement = document.getElementById('resumption-data');
 const resumptionInfo = resuptionDataElement ? JSON.parse(resuptionDataElement.textContent) : {is_resumption: false};
+if (resumptionInfo && typeof resumptionInfo.last_conversation_count === 'number') {
+    conversationCount = resumptionInfo.last_conversation_count;
+}
+
+function showPredictionSummaryButton(reason) {
+    if (resumptionInfo && resumptionInfo.prediction_summary_created) return;
+    const summaryButton = document.getElementById('summaryButton');
+    if (!summaryButton) return;
+    summaryButton.style.display = 'block';
+    if (reason) {
+        console.log('【DEBUG】まとめボタン表示:', reason);
+    }
+}
 
 // セッションデータを取得
 const sessionDataElement = document.getElementById('prediction-session-data');
@@ -212,14 +225,13 @@ document.addEventListener('DOMContentLoaded', function() {
         // サーバーから過去のログを取得して復元
         restorePastConversations();
         
-        // 会話回数を復元
-        conversationCount = resumptionInfo.last_conversation_count;
-        
         // 予想のまとめが完了していれば表示
         if (resumptionInfo.prediction_summary_created) {
             console.log('予想のまとめが完了しています');
             // サーバーから予想のまとめを取得
             restorePredictionSummary();
+        } else if ((resumptionInfo.last_conversation_count || 0) >= 2) {
+            showPredictionSummaryButton('復帰時に規定回数達成');
         }
     }
     
@@ -786,9 +798,8 @@ function sendMessageToAPI(message) {
             conversationCount++;
             
             // 会話回数が5回以上、またはAIが「まとめ」を促したら要約ボタンを表示
-            if (conversationCount >= 5 || data.response.includes('まとめ') || data.response.includes('要約')) {
-                console.log('【DEBUG】要約ボタンを表示します (会話回数:', conversationCount, ')');
-                document.getElementById('summaryButton').style.display = 'block';
+            if (data.suggest_summary || conversationCount >= 2 || data.response.includes('まとめ') || data.response.includes('要約')) {
+                showPredictionSummaryButton(`会話回数:${conversationCount} / suggest:${data.suggest_summary}`);
             }
             
             // デジタル学習ツインのインサイトを表示（開発時のみ）
@@ -926,7 +937,22 @@ function restorePastConversations() {
     
     // スクロール位置を下に移動
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    conversationCount = window.predictionConversationHistory.length;
+    let userHistoryCount = 0;
+    let aiHistoryCount = 0;
+    window.predictionConversationHistory.forEach(msg => {
+        if (msg.role === 'assistant') {
+            aiHistoryCount++;
+        } else if (msg.role === 'user') {
+            userHistoryCount++;
+        }
+    });
+    const exchanges = Math.min(userHistoryCount, aiHistoryCount);
+    if (!resumptionInfo || typeof resumptionInfo.last_conversation_count !== 'number') {
+        conversationCount = exchanges;
+    }
+    if (!resumptionInfo.prediction_summary_created && exchanges >= 2) {
+        showPredictionSummaryButton('履歴から規定回数達成');
+    }
     
     console.log('過去の会話復元完了:', window.predictionConversationHistory.length, '件');
 }

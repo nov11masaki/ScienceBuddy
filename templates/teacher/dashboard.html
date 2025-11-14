@@ -88,28 +88,21 @@ function showToast(message, type = 'success') {
 
 function exportData(format = 'csv') {
     const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
-    
-    // ブラウザのダウンロード機能を使用
-    const link = document.createElement('a');
-    
-    if (format === 'json') {
-        link.href = `/teacher/export_json?date=${today}`;
-        link.download = `dialogue_logs_${today}.zip`;
-        showToast('📥 JSON形式のログをダウンロード中...', 'info');
-    } else {
-        link.href = `/teacher/export?date=${today}`;
-        link.download = `learning_logs_${today}.csv`;
-        showToast('📥 CSV形式のログをダウンロード中...', 'info');
+    const exportUrl = format === 'json'
+        ? `/teacher/export_json?date=${today}`
+        : `/teacher/export?date=${today}`;
+    const message = format === 'json'
+        ? '📥 JSON形式のログをダウンロード中...'
+        : '📥 CSV形式のログをダウンロード中...';
+    showToast(message, 'info');
+    const downloadWindow = window.open(exportUrl, '_blank');
+    if (!downloadWindow) {
+        showToast('⚠️ ブラウザのポップアップブロックを解除してください', 'warning');
+        return;
     }
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    // ユーザーへの通知
     setTimeout(() => {
         showToast(format === 'json' ? '✅ JSONのダウンロード完了' : '✅ CSVのダウンロード完了', 'success');
-    }, 1000);
+    }, 1500);
 }
 </script>
 

@@ -238,19 +238,15 @@ function clearFilters() {
 
 function exportCurrentData() {
     const date = document.getElementById('dateFilter').value;
-    
-    // ブラウザのダウンロード機能を使用
-    const link = document.createElement('a');
-    link.href = `/teacher/export?date=${date}`;
-    link.download = `learning_logs_${date}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    // ユーザーへの通知
-    setTimeout(() => {
-        alert(`📥 ${date} のログをダウンロードしました。`);
-    }, 500);
+    const exportUrl = `/teacher/export?date=${date}`;
+    const downloadWindow = window.open(exportUrl, '_blank');
+    if (!downloadWindow) {
+        alert('ブラウザのポップアップブロックを解除して再度お試しください。');
+    } else {
+        setTimeout(() => {
+            alert(`📥 ${date} のログをダウンロードしています。`);
+        }, 500);
+    }
 }
 
 function deleteLog(classNum, seatNum, unit, date, deleteType) {

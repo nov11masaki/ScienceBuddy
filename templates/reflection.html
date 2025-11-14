@@ -167,8 +167,10 @@ if (sessionDataElement) {
     window.reflectionSummary = sessionData.reflectionSummary;
 }
 
-let conversationCount = 0;
-let reflectionCount = 0;
+const resumptionInfoElement = document.getElementById('resumption-info');
+const reflectionResumptionInfo = resumptionInfoElement ? JSON.parse(resumptionInfoElement.textContent) : {is_resumption: false};
+
+let reflectionExchangeCount = reflectionResumptionInfo.last_conversation_count || 0;
 let recognition = null;
 
 const currentUnit = "{{ unit }}";
@@ -203,7 +205,7 @@ const dakutenMap = {
 // ページ読み込み時の初期化
 document.addEventListener('DOMContentLoaded', function() {
     // 復帰情報を取得
-    const resumptionInfo = {{ resumption_info | tojson | safe }};
+    const resumptionInfo = reflectionResumptionInfo;
     
     if (resumptionInfo && resumptionInfo.is_resumption) {
         console.log('復帰モード: 過去の会話を復元します', resumptionInfo);
@@ -216,6 +218,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // まとめが完了している場合はまとめを復元
         if (resumptionInfo.reflection_summary_created && window.reflectionSummary) {
             showReflectionSummary(window.reflectionSummary);
+        } else if ((resumptionInfo.last_conversation_count || 0) >= 2) {
+            showFinalSummaryButton('復帰時に規定回数達成');
         }
     }
     
@@ -332,6 +336,16 @@ document.addEventListener('DOMContentLoaded', function() {
     // まとめボタン
     document.getElementById('finalSummaryButton').addEventListener('click', getFinalSummary);
 });
+
+function showFinalSummaryButton(reason) {
+    if (reflectionResumptionInfo && reflectionResumptionInfo.reflection_summary_created) return;
+    const button = document.getElementById('finalSummaryButton');
+    if (!button) return;
+    button.style.display = 'block';
+    if (reason) {
+        console.log('【DEBUG】最終要約ボタン表示:', reason);
+    }
+}
 
 // 入力補助の初期化
 function initializeInputAssist() {
@@ -457,12 +471,10 @@ function sendReflection() {
             addReflectionMessage('エラーが発生しました: ' + data.error, 'ai', false);
         } else {
             addReflectionMessage(data.response, 'ai', true); // タイピングエフェクト有効
-            reflectionCount++;
+            reflectionExchangeCount++;
             
-            // 会話回数が5回以上、またはAIが「まとめ」を促したら最終要約ボタンを表示
-            if (reflectionConversationCount >= 5 || data.response.includes('まとめ') || data.response.includes('要約')) {
-                console.log('【DEBUG】最終要約ボタンを表示します (会話回数:', reflectionConversationCount, ')');
-                document.getElementById('finalSummaryButton').style.display = 'block';
+            if (data.suggest_final_summary || reflectionExchangeCount >= 2 || data.response.includes('まとめ') || data.response.includes('要約')) {
+                showFinalSummaryButton(`会話回数:${reflectionExchangeCount} / suggest:${data.suggest_final_summary}`);
             }
         }
     })
@@ -738,7 +750,22 @@ function restoreReflectionConversation(conversationHistory) {
     
     // スクロール位置を下に移動
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    conversationCount = conversationHistory.length;
+    let userHistoryCount = 0;
+    let aiHistoryCount = 0;
+    conversationHistory.forEach(msg => {
+        if (msg.role === 'assistant') {
+            aiHistoryCount++;
+        } else if (msg.role === 'user') {
+            userHistoryCount++;
+        }
+    });
+    const exchanges = Math.min(userHistoryCount, aiHistoryCount);
+    if (!reflectionResumptionInfo || typeof reflectionResumptionInfo.last_conversation_count !== 'number') {
+        reflectionExchangeCount = exchanges;
+    }
+    if (!reflectionResumptionInfo.reflection_summary_created && exchanges >= 2) {
+        showFinalSummaryButton('履歴から規定回数達成');
+    }
 }
 
 // 復帰時に考察のまとめを復元する関数
