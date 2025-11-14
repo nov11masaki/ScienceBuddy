@@ -68,5 +68,47 @@
       },
       "conversation_history": []
     }
+  },
+  "1_1": {
+    "金属のあたたまり方": {
+      "current_stage": "prediction",
+      "last_access": "2025-11-14T09:33:20.728764",
+      "stage_progress": {
+        "prediction": {
+          "started": false,
+          "conversation_count": 2,
+          "summary_created": false,
+          "last_message": ""
+        },
+        "experiment": {
+          "started": false,
+          "completed": false
+        },
+        "reflection": {
+          "started": false,
+          "conversation_count": 0,
+          "summary_created": false
+        }
+      },
+      "conversation_history": [
+        {
+          "role": "assistant",
+          "content": "金属のあたたまり方について、どう思いますか？"
+        },
+        {
+          "role": "user",
+          "content": "金属は熱を伝えると思います"
+        },
+        {
+          "role": "assistant",
+          "content": "そうですね。詳しく教えてもらえますか？"
+        },
+        {
+          "role": "user",
+          "content": "熱いところから冷たいところへ伝わります"
+        }
+      ],
+      "reflection_conversation_history": []
+    }
   }
 }

@@ -703,6 +703,96 @@ def get_available_log_dates():
     
     return dates
 
+# エラーログ管理機能
+def save_error_log(student_number, class_number, error_message, error_type, stage, unit, additional_info=None):
+    """児童のエラーをログに記録
+    
+    Args:
+        student_number: 出席番号
+        class_number: クラス番号
+        error_message: エラーメッセージ
+        error_type: エラータイプ ('api_error', 'network_error', 'validation_error', etc)
+        stage: 学習段階 ('prediction', 'reflection', etc)
+        unit: 単元名
+        additional_info: 追加情報 (dict)
+    """
+    try:
+        class_num = int(class_number) if class_number else None
+        seat_num = int(student_number) if student_number else None
+        class_display = f'{class_num}組{seat_num}番' if class_num and seat_num else str(student_number)
+    except (ValueError, TypeError):
+        class_display = str(student_number)
+    
+    error_entry = {
+        'timestamp': datetime.now().isoformat(),
+        'student_number': student_number,
+        'class_number': class_number,
+        'class_display': class_display,
+        'error_message': error_message,
+        'error_type': error_type,
+        'stage': stage,
+        'unit': unit,
+        'additional_info': additional_info or {}
+    }
+    
+    if USE_FIRESTORE:
+        try:
+            doc_id = f"error_{datetime.now().isoformat()}"
+            db.collection('error_logs').document(doc_id).set(error_entry)
+            print(f"[ERROR_LOG] Firestore saved: {class_display}, {error_type}")
+        except Exception as e:
+            print(f"[ERROR_LOG] Firestore Error: {e}")
+            # フォールバック: ローカル保存
+            _save_error_log_local(error_entry)
+    else:
+        _save_error_log_local(error_entry)
+
+def _save_error_log_local(error_entry):
+    """エラーログをローカルファイルに保存"""
+    os.makedirs('logs', exist_ok=True)
+    error_log_file = f"logs/error_log_{datetime.now().strftime('%Y%m%d')}.json"
+    
+    logs = []
+    if os.path.exists(error_log_file):
+        try:
+            with open(error_log_file, 'r', encoding='utf-8') as f:
+                logs = json.load(f)
+        except (json.JSONDecodeError, FileNotFoundError):
+            logs = []
+    
+    logs.append(error_entry)
+    
+    with open(error_log_file, 'w', encoding='utf-8') as f:
+        json.dump(logs, f, ensure_ascii=False, indent=2)
+    
+    print(f"[ERROR_LOG] Local saved: {error_entry['class_display']}")
+
+def load_error_logs(date=None):
+    """エラーログを読み込み"""
+    if date is None:
+        date = datetime.now().strftime('%Y%m%d')
+    
+    if USE_FIRESTORE:
+        try:
+            query = db.collection('error_logs').where('timestamp', '>=', f"{date}T00:00:00").where('timestamp', '<', f"{date}T23:59:59").stream()
+            logs = []
+            for doc in query:
+                logs.append(doc.to_dict())
+            return logs
+        except Exception as e:
+            print(f"[ERROR_LOAD] Firestore Error: {e}")
+            return []
+    else:
+        error_log_file = f"logs/error_log_{date}.json"
+        if not os.path.exists(error_log_file):
+            return []
+        
+        try:
+            with open(error_log_file, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except (json.JSONDecodeError, FileNotFoundError):
+            return []
+
 def perform_clustering_analysis(unit_logs, unit_name, class_num):
     """学生の対話をエンベディング＆クラスタリング分析
     
@@ -1068,6 +1158,39 @@ def chat():
         import traceback
         traceback.print_exc()
         return jsonify({'error': f'AI接続エラーが発生しました。しばらく待ってから再度お試しください。'}), 500
+
+@app.route('/report_error', methods=['POST'])
+def report_error():
+    """児童からのエラー報告を受け取る"""
+    try:
+        data = request.json
+        student_number = session.get('student_number')
+        class_number = session.get('class_number')
+        
+        error_message = data.get('error_message', '不明なエラー')
+        error_type = data.get('error_type', 'unknown')
+        stage = data.get('stage', session.get('current_stage', 'unknown'))
+        unit = data.get('unit', session.get('unit', ''))
+        additional_info = data.get('additional_info', {})
+        
+        print(f"[ERROR_REPORT] {class_number}_{student_number}: {error_type} - {error_message}")
+        
+        # エラーログを保存
+        save_error_log(
+            student_number=student_number,
+            class_number=class_number,
+            error_message=error_message,
+            error_type=error_type,
+            stage=stage,
+            unit=unit,
+            additional_info=additional_info
+        )
+        
+        return jsonify({'status': 'success', 'message': 'エラー報告を受け取りました'}), 200
+    
+    except Exception as e:
+        print(f"[ERROR_REPORT] Error: {str(e)}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/summary', methods=['POST'])
 def summary():
@@ -2560,6 +2683,67 @@ def api_download_note_photos():
     except Exception as e:
         print(f"Error creating ZIP: {e}")
         return jsonify({'success': False, 'message': f'エラー: {e}'}), 500
+
+
+# ===== 教員用エラーモニタリング =====
+
+@app.route('/teacher/errors')
+@require_teacher_auth
+def teacher_errors():
+    """教員用エラーモニタリングページ"""
+    date = request.args.get('date', datetime.now().strftime('%Y%m%d'))
+    class_filter = request.args.get('class', '')
+    
+    # 利用可能な日付を取得
+    try:
+        available_dates_raw = get_available_log_dates()
+        default_date = available_dates_raw[0] if available_dates_raw else datetime.now().strftime('%Y%m%d')
+        available_dates = [
+            {'raw': d, 'formatted': f"{d[:4]}/{d[4:6]}/{d[6:8]}"}
+            for d in available_dates_raw
+        ]
+    except Exception as e:
+        print(f"[ERRORS] Error getting available dates: {e}")
+        default_date = datetime.now().strftime('%Y%m%d')
+        available_dates = []
+    
+    # エラーログを読み込み
+    error_logs = load_error_logs(date)
+    
+    # フィルタリング
+    if class_filter:
+        try:
+            class_num = int(class_filter)
+            error_logs = [log for log in error_logs if log.get('class_number') == str(class_num)]
+        except ValueError:
+            pass
+    
+    # エラーを集計
+    error_summary = {}
+    for log in error_logs:
+        key = f"{log.get('class_display', '不明')} - {log.get('student_number', '不明')}"
+        if key not in error_summary:
+            error_summary[key] = {
+                'count': 0,
+                'errors': [],
+                'class_num': log.get('class_number'),
+                'student_num': log.get('student_number')
+            }
+        error_summary[key]['count'] += 1
+        error_summary[key]['errors'].append({
+            'timestamp': log.get('timestamp', ''),
+            'error_type': log.get('error_type', ''),
+            'message': log.get('error_message', ''),
+            'stage': log.get('stage', ''),
+            'unit': log.get('unit', '')
+        })
+    
+    return render_template('teacher/errors.html',
+                         error_logs=error_logs,
+                         error_summary=error_summary,
+                         date=date,
+                         class_filter=class_filter,
+                         available_dates=available_dates)
 
 
 if __name__ == '__main__':

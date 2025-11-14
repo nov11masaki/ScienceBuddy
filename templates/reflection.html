@@ -778,5 +778,56 @@ function showReflectionSummary(summary) {
         finalSummarySection.style.display = 'block';
     }
 }
+
+// エラー報告関数
+function reportError(errorMessage, errorType = 'client_error', additionalInfo = {}) {
+    const stage = '{{ session.get("current_stage", "reflection") }}';
+    const unit = '{{ session.get("unit", "") }}';
+    
+    console.error(`[ERROR REPORT] ${errorType}: ${errorMessage}`);
+    
+    fetch('/report_error', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            error_message: errorMessage,
+            error_type: errorType,
+            stage: stage,
+            unit: unit,
+            additional_info: additionalInfo
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('[ERROR REPORT] Success:', data);
+    })
+    .catch(error => {
+        console.error('[ERROR REPORT] Failed:', error);
+    });
+}
+
+// グローバルエラーハンドラ
+window.addEventListener('error', (event) => {
+    const errorMessage = event.message || 'Unknown error';
+    const errorSource = event.filename || 'unknown';
+    const errorLine = event.lineno || 'unknown';
+    
+    reportError(`${errorMessage} (${errorSource}:${errorLine})`, 'javascript_error', {
+        filename: errorSource,
+        lineno: errorLine,
+        colno: event.colno
+    });
+});
+
+// Promise エラーハンドラ
+window.addEventListener('unhandledrejection', (event) => {
+    const errorMessage = event.reason ? String(event.reason) : 'Unknown promise rejection';
+    reportError(errorMessage, 'promise_error', {
+        reason: event.reason
+    });
+});
 </script>
 {% endblock %}
+
