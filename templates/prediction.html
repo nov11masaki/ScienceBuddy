@@ -69,14 +69,6 @@
             
             <!-- 不要な action-buttons 削除 -->
             
-            <!-- チャット内で表示される実験開始ボタン -->
-            <div class="text-center mt-3" id="experimentButtonSection" style="display: none;">
-                <a href="/experiment" class="btn btn-primary btn-lg">
-                    <i class="fas fa-flask me-2"></i>
-                    では、実験を始めましょう！
-                </a>
-            </div>
-            
             <div class="summary-section" id="summarySection" style="display: none;">
                 <div class="summary-card">
                     <h5 class="summary-title">
@@ -84,10 +76,11 @@
                         あなたの予想
                     </h5>
                     <div class="summary-content" id="summaryContent"></div>
+                    <!-- 実験ボタン：予想まとめの下に配置 -->
                     <div class="text-center mt-3">
-                        <a href="/experiment" class="btn btn-primary">
+                        <a href="/experiment" class="btn btn-primary btn-lg" id="experimentStartButton" style="display: none;">
                             <i class="fas fa-flask me-2"></i>
-                            実験を始める
+                            では、実験を始めましょう！
                         </a>
                     </div>
                 </div>
@@ -848,6 +841,28 @@ function showExperimentButton() {
     }
 }
 
+// 要約が実質的な意味を持つかチェック
+function isMeaningfulSummary(summary) {
+    if (!summary || summary.trim().length < 15) return false;
+    
+    // 無意味な連続文字（記号や同じ文字の繰り返し）をチェック
+    const meaninglessPatterns = /([ヴァslmv]{2,}|[ぁぃぅぇぉ]{3,}|~~~|~~~|\.\.\.|【【|】】)/g;
+    const meaninglessMatches = (summary.match(meaninglessPatterns) || []).length;
+    
+    // 無意味な文字列の割合が高い場合はNG
+    if (meaninglessMatches > 0) {
+        const totalWords = summary.split(/[\s、。]/g).length;
+        if (meaninglessMatches / totalWords > 0.3) {
+            return false;
+        }
+    }
+    
+    // 実際の実験キーワードや児童の思考を含んでいるか
+    const hasValidContent = /(?:児童|考え|思う|予想|気づ|わかっ|試す|観察|温度|あたたまり|変わ)/i.test(summary);
+    
+    return hasValidContent;
+}
+
 function getSummary() {
     console.log('【DEBUG】getSummary 呼び出し');
     
@@ -868,6 +883,13 @@ function getSummary() {
             document.getElementById('summaryButton').disabled = false;
         } else {
             console.log('【DEBUG】要約を表示します:', data.summary);
+            
+            // 要約が有効な内容か確認
+            if (!isMeaningfulSummary(data.summary)) {
+                alert('入力された内容では予想をまとめることができません。\n明確な考えや観察を入力してください。');
+                document.getElementById('summaryButton').disabled = false;
+                return;
+            }
             
             // チャットにAIメッセージとして要約を追加
             const messagesContainer = document.getElementById('chatMessages');
@@ -894,7 +916,14 @@ function getSummary() {
             // 要約後の状態を保存
             session['prediction_summary'] = data.summary;
             
-            // ボタンは常時利用可能（回数制限なし）
+            // 実験ボタンを表示（要約成功時のみ）
+            const experimentButton = document.getElementById('experimentStartButton');
+            if (experimentButton) {
+                experimentButton.style.display = 'inline-block';
+                setTimeout(() => {
+                    experimentButton.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }, 500);
+            }
         }
     })
     .catch(error => {

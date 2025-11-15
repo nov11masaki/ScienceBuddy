@@ -60,14 +60,6 @@
             
             <!-- 不要な action-buttons 削除 -->
             
-            <!-- チャット内で表示される学習完了ボタン -->
-            <div class="text-center mt-3" id="completionSection" style="display: none;">
-                <a href="/" class="btn btn-success btn-lg">
-                    <i class="fas fa-home me-2"></i>
-                    ホームに戻る
-                </a>
-            </div>
-            
             <div class="summary-section" id="finalSummarySection" style="display: none;">
                 <div class="summary-card">
                     <h5 class="summary-title">
@@ -75,9 +67,15 @@
                         最終考察
                     </h5>
                     <div class="summary-content" id="finalSummaryContent"></div>
+                    <!-- 学習完了ボタン：考察まとめの下に配置 -->
                     <div class="text-center mt-3">
-                        <a href="/" class="btn btn-primary">
+                        <a href="/" class="btn btn-success btn-lg" id="completionButton" style="display: none;">
                             <i class="fas fa-home me-2"></i>
+                            ホームに戻る
+                        </a>
+                    </div>
+                </div>
+            </div>
                             ホームに戻る
                         </a>
                     </div>
@@ -583,6 +581,28 @@ function showCompletionMessage() {
     }
 }
 
+// 最終要約が実質的な意味を持つかチェック（予想まとめと同じ）
+function isMeaningfulFinalSummary(summary) {
+    if (!summary || summary.trim().length < 15) return false;
+    
+    // 無意味な連続文字（記号や同じ文字の繰り返し）をチェック
+    const meaninglessPatterns = /([ヴァslmv]{2,}|[ぁぃぅぇぉ]{3,}|~~~|~~~|\.\.\.|【【|】】)/g;
+    const meaninglessMatches = (summary.match(meaninglessPatterns) || []).length;
+    
+    // 無意味な文字列の割合が高い場合はNG
+    if (meaninglessMatches > 0) {
+        const totalWords = summary.split(/[\s、。]/g).length;
+        if (meaninglessMatches / totalWords > 0.3) {
+            return false;
+        }
+    }
+    
+    // 実験結果や児童の気付きを含んでいるか
+    const hasValidContent = /(?:児童|考え|思う|気づ|わかっ|観察|結果|わかった|発見|理由|原因|関係)/i.test(summary);
+    
+    return hasValidContent;
+}
+
 function getFinalSummary() {
     console.log('【DEBUG】getFinalSummary 呼び出し');
     
@@ -604,8 +624,15 @@ function getFinalSummary() {
         } else {
             console.log('【DEBUG】最終要約を表示します:', data.summary);
             
+            // 最終要約が有効な内容か確認
+            if (!isMeaningfulFinalSummary(data.summary)) {
+                alert('入力された内容では考察をまとめることができません。\n実験結果に基づいた気づきや考えを入力してください。');
+                document.getElementById('finalSummaryButton').disabled = false;
+                return;
+            }
+            
             // チャットにAIメッセージとして最終要約を追加
-            const messagesContainer = document.getElementById('chatMessages');
+            const messagesContainer = document.getElementById('reflectionMessages');
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message ai-message';
             messageDiv.innerHTML = `
@@ -629,7 +656,14 @@ function getFinalSummary() {
             // 最終要約後の状態を保存
             session['reflection_summary'] = data.summary;
             
-            // ボタンは常時利用可能（回数制限なし）
+            // 学習完了ボタンを表示（考察成功時のみ）
+            const completionButton = document.getElementById('completionButton');
+            if (completionButton) {
+                completionButton.style.display = 'inline-block';
+                setTimeout(() => {
+                    completionButton.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }, 500);
+            }
         }
     })
     .catch(error => {
