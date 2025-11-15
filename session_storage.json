@@ -1,0 +1,34 @@
+{
+  "5_29_金属のあたたまり方_prediction": {
+    "timestamp": "2025-11-15T11:00:31.237856",
+    "student_id": "5_29",
+    "unit": "金属のあたたまり方",
+    "stage": "prediction",
+    "conversation": [
+      {
+        "content": "slkknks",
+        "role": "user"
+      },
+      {
+        "content": "それはどうしたのかな？何か考えていることがあるのかな？",
+        "role": "assistant"
+      },
+      {
+        "content": "flsmflm",
+        "role": "user"
+      },
+      {
+        "content": "うーん、それはどういう意味なんだろう？もし考えていることがあれば教えてくれる？",
+        "role": "assistant"
+      },
+      {
+        "role": "user",
+        "content": "sのんゔぃんs"
+      },
+      {
+        "role": "assistant",
+        "content": "ちょっとわかりにくいかもしれないね。もし話したいことがあれば、もう少し詳しく教えてくれる？"
+      }
+    ]
+  }
+}

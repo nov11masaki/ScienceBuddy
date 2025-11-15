@@ -45,30 +45,6 @@
       "conversation_history": []
     }
   },
-  "lab_29": {
-    "空気の温度と体積": {
-      "current_stage": "prediction",
-      "last_access": "2025-11-11T10:36:25.417915",
-      "stage_progress": {
-        "prediction": {
-          "started": true,
-          "conversation_count": 1,
-          "summary_created": false,
-          "last_message": "pm；lml"
-        },
-        "experiment": {
-          "started": false,
-          "completed": false
-        },
-        "reflection": {
-          "started": false,
-          "conversation_count": 0,
-          "summary_created": false
-        }
-      },
-      "conversation_history": []
-    }
-  },
   "1_1": {
     "金属のあたたまり方": {
       "current_stage": "prediction",
@@ -108,6 +84,101 @@
           "content": "熱いところから冷たいところへ伝わります"
         }
       ],
+      "reflection_conversation_history": []
+    }
+  },
+  "5_29": {
+    "空気の温度と体積": {
+      "current_stage": "prediction",
+      "last_access": "2025-11-11T10:36:25.417915",
+      "stage_progress": {
+        "prediction": {
+          "started": true,
+          "conversation_count": 1,
+          "summary_created": false,
+          "last_message": "pm；lml"
+        },
+        "experiment": {
+          "started": false,
+          "completed": false
+        },
+        "reflection": {
+          "started": false,
+          "conversation_count": 0,
+          "summary_created": false
+        }
+      },
+      "conversation_history": []
+    },
+    "金属のあたたまり方": {
+      "current_stage": "experiment",
+      "last_access": "2025-11-15T11:00:31.239500",
+      "stage_progress": {
+        "prediction": {
+          "started": true,
+          "conversation_count": 2,
+          "summary_created": true,
+          "last_message": "flsmflm"
+        },
+        "experiment": {
+          "started": true,
+          "completed": false
+        },
+        "reflection": {
+          "started": false,
+          "conversation_count": 0,
+          "summary_created": false
+        }
+      },
+      "conversation_history": [
+        {
+          "content": "slkknks",
+          "role": "user"
+        },
+        {
+          "content": "それはどうしたのかな？何か考えていることがあるのかな？",
+          "role": "assistant"
+        },
+        {
+          "content": "flsmflm",
+          "role": "user"
+        },
+        {
+          "content": "うーん、それはどういう意味なんだろう？もし考えていることがあれば教えてくれる？",
+          "role": "assistant"
+        },
+        {
+          "role": "user",
+          "content": "sのんゔぃんs"
+        },
+        {
+          "role": "assistant",
+          "content": "ちょっとわかりにくいかもしれないね。もし話したいことがあれば、もう少し詳しく教えてくれる？"
+        }
+      ],
+      "reflection_conversation_history": []
+    },
+    "null": {
+      "current_stage": "prediction",
+      "last_access": "2025-11-15T11:00:16.159173",
+      "stage_progress": {
+        "prediction": {
+          "started": true,
+          "conversation_count": 0,
+          "summary_created": false,
+          "last_message": ""
+        },
+        "experiment": {
+          "started": false,
+          "completed": false
+        },
+        "reflection": {
+          "started": false,
+          "conversation_count": 0,
+          "summary_created": false
+        }
+      },
+      "conversation_history": [],
       "reflection_conversation_history": []
     }
   }
