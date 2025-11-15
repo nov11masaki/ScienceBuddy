@@ -931,16 +931,26 @@ function restorePastConversations() {
     
     console.log('【DEBUG】会話数:', window.predictionConversationHistory.length);
     
-    // 初期メッセージと入力エリアを保存
-    const messages = messagesContainer.querySelectorAll('.message');
+    // 入力エリアを確実に保存
     const userInputArea = messagesContainer.querySelector('.user-input-area');
+    console.log('【DEBUG】入力エリア保存:', !!userInputArea);
     
-    console.log('【DEBUG】削除前メッセージ数=', messages.length, '入力エリア=', !!userInputArea);
-    
-    // 初期メッセージと入力エリア以外を削除
-    for (let i = messages.length - 1; i > 0; i--) {
-        messages[i].remove();
+    if (!userInputArea) {
+        console.error('入力エリアが見つかりません - 復元を中止します');
+        return;
     }
+    
+    // 最初のAIメッセージ（初期メッセージ）を特定
+    const allMessages = Array.from(messagesContainer.querySelectorAll('.message'));
+    const initialAIMessage = allMessages.find(msg => msg.classList.contains('ai-message'));
+    
+    // 復元済みの会話メッセージを削除（初期AIメッセージと入力エリアは保持）
+    const messagesToDelete = allMessages.filter(msg => 
+        msg !== initialAIMessage && 
+        msg !== userInputArea &&
+        !msg.classList.contains('user-input-area')
+    );
+    messagesToDelete.forEach(msg => msg.remove());
     
     // 過去の会話を復元（入力エリアの直前に挿入）
     window.predictionConversationHistory.forEach((msg, index) => {
@@ -968,19 +978,11 @@ function restorePastConversations() {
         }
         
         // 入力エリアの直前に挿入
-        if (userInputArea) {
-            userInputArea.parentNode.insertBefore(messageDiv, userInputArea);
-        } else {
-            messagesContainer.appendChild(messageDiv);
-        }
+        userInputArea.parentNode.insertBefore(messageDiv, userInputArea);
     });
     
     // スクロール位置を入力フィールド近くに
-    if (userInputArea) {
-        userInputArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    } else {
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }
+    userInputArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     
     let userHistoryCount = 0;
     let aiHistoryCount = 0;
