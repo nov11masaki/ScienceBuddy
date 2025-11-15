@@ -176,6 +176,11 @@ let recognition = null;
 
 const currentUnit = "{{ unit }}";
 
+// セッションオブジェクトの初期化（クライアント側のセッションデータ）
+let session = {
+    'reflection_summary': ''
+};
+
 // 入力補助用の設定（シンプルなひらがなのみ）
 const inputAssistConfig = {
     hiragana: [
@@ -614,6 +619,9 @@ function getFinalSummary() {
     })
     .then(response => {
         console.log('【DEBUG】/final_summary レスポンス受信:', response.status);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
         return response.json();
     })
     .then(data => {
@@ -621,54 +629,57 @@ function getFinalSummary() {
         if (data.error) {
             alert('エラーが発生しました: ' + data.error);
             document.getElementById('finalSummaryButton').disabled = false;
+            return;
+        }
+        
+        console.log('【DEBUG】最終要約を表示します:', data.summary);
+        
+        // 最終要約が有効な内容か確認
+        if (!isMeaningfulFinalSummary(data.summary)) {
+            alert('入力された内容では考察をまとめることができません。\n実験結果に基づいた気づきや考えを入力してください。');
+            document.getElementById('finalSummaryButton').disabled = false;
+            return;
+        }
+        
+        // チャットにAIメッセージとして最終要約を追加
+        const messagesContainer = document.getElementById('reflectionMessages');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message ai-message';
+        messageDiv.innerHTML = `
+            <div class="message-avatar"></div>
+            <div class="message-content">${data.summary}</div>
+        `;
+        
+        // ユーザー入力エリアの直前に挿入
+        const userInputArea = messagesContainer.querySelector('.user-input-area');
+        if (userInputArea) {
+            userInputArea.parentNode.insertBefore(messageDiv, userInputArea);
         } else {
-            console.log('【DEBUG】最終要約を表示します:', data.summary);
-            
-            // 最終要約が有効な内容か確認
-            if (!isMeaningfulFinalSummary(data.summary)) {
-                alert('入力された内容では考察をまとめることができません。\n実験結果に基づいた気づきや考えを入力してください。');
-                document.getElementById('finalSummaryButton').disabled = false;
-                return;
-            }
-            
-            // チャットにAIメッセージとして最終要約を追加
-            const messagesContainer = document.getElementById('reflectionMessages');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'message ai-message';
-            messageDiv.innerHTML = `
-                <div class="message-avatar"></div>
-                <div class="message-content">${data.summary}</div>
-            `;
-            
-            // ユーザー入力エリアの直前に挿入
-            const userInputArea = messagesContainer.querySelector('.user-input-area');
-            if (userInputArea) {
-                userInputArea.parentNode.insertBefore(messageDiv, userInputArea);
-            } else {
-                messagesContainer.appendChild(messageDiv);
-            }
-            
-            // スクロール
+            messagesContainer.appendChild(messageDiv);
+        }
+        
+        // スクロール
+        setTimeout(() => {
+            messageDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 300);
+        
+        // 最終要約後の状態を保存
+        session['reflection_summary'] = data.summary;
+        
+        // 学習完了ボタンを表示（考察成功時のみ）
+        const completionButton = document.getElementById('completionButton');
+        console.log('【DEBUG】completionButton:', completionButton);
+        if (completionButton) {
+            completionButton.style.display = 'inline-block';
+            console.log('【DEBUG】学習完了ボタンを表示しました');
             setTimeout(() => {
-                messageDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }, 300);
-            
-            // 最終要約後の状態を保存
-            session['reflection_summary'] = data.summary;
-            
-            // 学習完了ボタンを表示（考察成功時のみ）
-            const completionButton = document.getElementById('completionButton');
-            if (completionButton) {
-                completionButton.style.display = 'inline-block';
-                setTimeout(() => {
-                    completionButton.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                }, 500);
-            }
+                completionButton.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 500);
         }
     })
     .catch(error => {
-        console.error('【DEBUG】Error:', error);
-        alert('通信エラーが発生しました。');
+        console.error('【DEBUG】Final Summary Error:', error);
+        document.getElementById('finalSummaryButton').disabled = false;
     });
 }
 

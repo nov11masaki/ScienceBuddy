@@ -30,5 +30,29 @@
         "content": "ちょっとわかりにくいかもしれないね。もし話したいことがあれば、もう少し詳しく教えてくれる？"
       }
     ]
+  },
+  "5_29_None_prediction": {
+    "timestamp": "2025-11-15T11:03:00.333559",
+    "student_id": "5_29",
+    "unit": null,
+    "stage": "prediction",
+    "conversation": [
+      {
+        "content": "ヴァsっk",
+        "role": "user"
+      },
+      {
+        "content": "その言葉は何か特別な意味がありますか？どんなことを考えているのか、教えてくれますか？",
+        "role": "assistant"
+      },
+      {
+        "role": "user",
+        "content": "slmvlm"
+      },
+      {
+        "role": "assistant",
+        "content": "その言葉は何かの略語や特別な意味があるのかな？もう少し詳しく教えてもらえますか？あなたの考えを聞きたいです！"
+      }
+    ]
   }
 }
