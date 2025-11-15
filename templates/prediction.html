@@ -179,10 +179,12 @@ if (resumptionInfo && typeof resumptionInfo.last_conversation_count === 'number'
 }
 
 function showPredictionSummaryButton(reason) {
+    // まとめが完了している場合のみ非表示
     if (resumptionInfo && resumptionInfo.prediction_summary_created) return;
     const summaryButton = document.getElementById('summaryButton');
     if (!summaryButton) return;
     summaryButton.style.display = 'block';
+    summaryButton.disabled = false;  // ボタンを有効化
     if (reason) {
         console.log('【DEBUG】まとめボタン表示:', reason);
     }
@@ -217,6 +219,11 @@ let recognition = null;
 // ページ読み込み時にAPI接続をテスト
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOMContentLoaded イベント発火');
+    
+    // まとめが完了していない場合は、常にボタンを表示
+    if (!(resumptionInfo && resumptionInfo.prediction_summary_created)) {
+        showPredictionSummaryButton('初期化時に常時表示');
+    }
     
     // 復帰処理: 過去の会話履歴を復元
     if (resumptionInfo.is_resumption && resumptionInfo.last_conversation_count > 0) {

@@ -214,6 +214,11 @@ document.addEventListener('DOMContentLoaded', function() {
         last_conversation_count: resumptionInfo?.last_conversation_count
     });
     
+    // まとめが完了していない場合は、常にボタンを表示
+    if (!(resumptionInfo && resumptionInfo.reflection_summary_created)) {
+        showFinalSummaryButton('初期化時に常時表示');
+    }
+    
     if (resumptionInfo && resumptionInfo.is_resumption) {
         console.log('復帰モード: 過去の会話を復元します', resumptionInfo);
         console.log('会話履歴:', window.reflectionConversationHistory);
