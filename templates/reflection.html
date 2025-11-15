@@ -15,6 +15,13 @@
                 <div class="unit-display">
                     <span class="badge bg-primary fs-6">{{ unit }}</span>
                 </div>
+                <!-- ボタンを右上に配置 -->
+                <div style="position: absolute; top: 10px; right: 10px;">
+                    <button class="btn btn-success btn-sm" id="finalSummaryButton" style="display: none;">
+                        <i class="fas fa-check me-2"></i>
+                        考察をまとめる
+                    </button>
+                </div>
             </div>
             
             <div class="prediction-review mb-2">
@@ -51,12 +58,7 @@
                 </div>
             </div>
             
-            <div class="action-buttons text-center mt-2">
-                <button class="btn btn-success" id="finalSummaryButton">
-                    <i class="fas fa-check me-2"></i>
-                    考察をまとめる
-                </button>
-            </div>
+            <!-- 不要な action-buttons 削除 -->
             
             <!-- チャット内で表示される学習完了ボタン -->
             <div class="text-center mt-3" id="completionSection" style="display: none;">
