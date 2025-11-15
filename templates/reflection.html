@@ -16,7 +16,11 @@
                     <span class="badge bg-primary fs-6">{{ unit }}</span>
                 </div>
                 <!-- ボタンを右上に配置 -->
-                <div style="position: absolute; top: 10px; right: 10px;">
+                <div style="position: absolute; top: 10px; right: 10px; display: flex; gap: 8px;">
+                    <button class="btn btn-outline-secondary btn-sm" onclick="window.location.href='/select_unit?class={{ class_number }}&number={{ student_number }}'">
+                        <i class="fas fa-redo me-1"></i>
+                        やり直す
+                    </button>
                     <button class="btn btn-success btn-sm" id="finalSummaryButton" style="display: none;">
                         <i class="fas fa-check me-2"></i>
                         考察をまとめる
