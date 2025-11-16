@@ -23,5 +23,30 @@
       "conversation_history": [],
       "reflection_conversation_history": []
     }
+  },
+  "1_1": {
+    "水のあたたまり方": {
+      "current_stage": "prediction",
+      "last_access": "2025-11-16T23:55:28.725240",
+      "stage_progress": {
+        "prediction": {
+          "started": false,
+          "conversation_count": 0,
+          "summary_created": false,
+          "last_message": ""
+        },
+        "experiment": {
+          "started": false,
+          "completed": false
+        },
+        "reflection": {
+          "started": false,
+          "conversation_count": 0,
+          "summary_created": false
+        }
+      },
+      "conversation_history": [],
+      "reflection_conversation_history": []
+    }
   }
 }
