@@ -752,13 +752,20 @@ function startVoiceInput() {
         };
         
         recognition.onresult = function(event) {
+            console.log('🎤 onresult イベント:', {resultIndex: event.resultIndex, resultsLength: event.results.length});
+            
             let interimTranscript = '';
             let finalTranscript = '';
             
             for (let i = event.resultIndex; i < event.results.length; i++) {
                 const transcript = event.results[i][0].transcript;
-                if (event.results[i].isFinal) {
-                    finalTranscript += transcript;
+                const isFinal = event.results[i].isFinal;
+                const confidence = event.results[i][0].confidence;
+                
+                console.log(`結果[${i}]:`, {transcript, isFinal, confidence});
+                
+                if (isFinal) {
+                    finalTranscript += transcript + ' ';
                 } else {
                     interimTranscript += transcript;
                 }
@@ -768,10 +775,11 @@ function startVoiceInput() {
             const placeholderText = document.getElementById('inputPlaceholderText');
             
             // 確定結果のみを入力欄に追加
-            if (finalTranscript) {
+            if (finalTranscript.trim()) {
+                console.log('✅ 確定結果を追加:', finalTranscript);
                 input.value += finalTranscript;
+                console.log('入力欄の内容:', input.value);
                 statusText.textContent = '✅ 認識完了: ' + finalTranscript;
-                console.log('確定結果:', finalTranscript);
             }
             
             // 途中結果の表示（ステータスのみ）

@@ -517,24 +517,32 @@ function startVoiceInput() {
         };
         
         recognition.onresult = function(event) {
+            console.log('🎤 onresult イベント:', {resultIndex: event.resultIndex, resultsLength: event.results.length});
+            
             let interimTranscript = '';
             let finalTranscript = '';
             
             // 前回の確定結果からの新しい結果のみを処理
             for (let i = event.resultIndex; i < event.results.length; i++) {
                 const transcript = event.results[i][0].transcript;
-                if (event.results[i].isFinal) {
-                    finalTranscript += transcript;
-                    console.log('確定結果:', transcript);
+                const isFinal = event.results[i].isFinal;
+                const confidence = event.results[i][0].confidence;
+                
+                console.log(`結果[${i}]:`, {transcript, isFinal, confidence});
+                
+                if (isFinal) {
+                    finalTranscript += transcript + ' ';
                 } else {
                     interimTranscript += transcript;
                 }
             }
             
             // 入力欄を更新（確定結果のみを追加）
-            if (finalTranscript) {
+            if (finalTranscript.trim()) {
+                console.log('✅ 確定結果を追加:', finalTranscript);
                 // 確定した結果のみを追加
                 input.value += finalTranscript;
+                console.log('入力欄の内容:', input.value);
                 startPosition = input.value.length;  // 新しい開始位置を更新
                 statusText.textContent = '✅ 認識完了: ' + finalTranscript;
             }
