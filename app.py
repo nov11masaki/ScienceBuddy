@@ -842,10 +842,10 @@ def load_error_logs(date=None):
         return []
     
     try:
-            with open(error_log_file, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except (json.JSONDecodeError, FileNotFoundError):
-            return []
+        with open(error_log_file, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (json.JSONDecodeError, FileNotFoundError):
+        return []
 
 def perform_clustering_analysis(unit_logs, unit_name, class_num):
     """学生の対話をエンベディング＆クラスタリング分析
