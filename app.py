@@ -1195,26 +1195,19 @@ def prediction():
     session_conversation = session.get('conversation')
     student_id = f"{class_number}_{student_number}"
     
-    # resume パラメータが明示的に指定されている場合のみ復元
+    # 新規開始 - セッションを常に完全にリセット（本番環境でも同じ振る舞い）
+    session.clear()
+    session['class_number'] = class_number
+    session['student_number'] = student_number
+    session['unit'] = unit
+    session['task_content'] = task_content
+    session['current_stage'] = 'prediction'
+    session['conversation'] = []
+    session['prediction_summary'] = ''
+    session['prediction_summary_created'] = False
+    
+    # resume パラメータが明示的に指定されている場合のみ復帰情報を提供
     if resume:
-        # 復元: ローカル環境のみ（本番環境では新規セッション開始）
-        if not USE_FIRESTORE:
-            # ローカル開発環境: セッション → DB保存 → ローカルログ
-            if not session_conversation:
-                db_conversation = load_session_from_db(student_id, unit, 'prediction')
-                if db_conversation:
-                    session['conversation'] = db_conversation
-                    session_conversation = db_conversation
-                    print(f"[PREDICTION] Local DB から会話を復元: {len(db_conversation)} メッセージ")
-            
-            if not session_conversation and conversation_count > 0:
-                session['conversation'] = progress.get('conversation_history', [])
-                session_conversation = session['conversation']
-        else:
-            # 本番環境: 会話履歴は復帰しない（新規セッション開始）
-            print(f"[PREDICTION] 本番環境のため会話履歴復帰をスキップ")
-            session['conversation'] = []
-        
         resumption_info = {
             'is_resumption': True,
             'last_conversation_count': conversation_count,
@@ -1231,17 +1224,9 @@ def prediction():
                     log.get('log_type') == 'prediction_summary'):
                     session['prediction_summary'] = log.get('data', {}).get('summary', '')
                     break
+        
+        print(f"[PREDICTION] 復帰モード: conversation_count={conversation_count}, summary_created={prediction_summary_created}")
     else:
-        # 新規開始 - セッションを完全にリセット
-        session.clear()
-        session['class_number'] = class_number
-        session['student_number'] = student_number
-        session['unit'] = unit
-        session['task_content'] = task_content
-        session['current_stage'] = 'prediction'
-        session['conversation'] = []
-        session['prediction_summary'] = ''
-        session['prediction_summary_created'] = False
         resumption_info = {
             'is_resumption': False,
             'prediction_summary_created': False,
@@ -1249,8 +1234,10 @@ def prediction():
             'last_access': progress.get('last_access', '')
         }
         
-        # 予想段階開始を記録
-        update_student_progress(class_number, student_number, unit)
+        print(f"[PREDICTION] 新規開始モード")
+    
+    # 予想段階開始を記録
+    update_student_progress(class_number, student_number, unit)
     
     # 単元に応じた最初のAIメッセージを取得
     initial_ai_message = get_initial_ai_message(unit, stage='prediction')
@@ -1523,23 +1510,17 @@ def reflection():
     
     # resume パラメータが明示的に指定されている場合のみ復元
     if resume:
-        # 復元: ローカル環境のみ（本番環境では新規セッション開始）
-        if not USE_FIRESTORE:
-            # ローカル開発環境: セッション → DB保存 → ローカルログ
-            if not session_reflection_conversation:
-                db_reflection_conversation = load_session_from_db(student_id, unit, 'reflection')
-                if db_reflection_conversation:
-                    session['reflection_conversation'] = db_reflection_conversation
-                    session_reflection_conversation = db_reflection_conversation
-                    print(f"[REFLECTION] Local DB から会話を復元: {len(db_reflection_conversation)} メッセージ")
-            
-            if not session_reflection_conversation and reflection_conversation_count > 0:
-                session['reflection_conversation'] = progress.get('reflection_conversation_history', [])
-                session_reflection_conversation = session['reflection_conversation']
-        else:
-            # 本番環境: 会話履歴は復帰しない（新規セッション開始）
-            print(f"[REFLECTION] 本番環境のため会話履歴復帰をスキップ")
-            session['reflection_conversation'] = []
+        # 復元: セッション → DB保存 → ローカルログ
+        if not session_reflection_conversation:
+            db_reflection_conversation = load_session_from_db(student_id, unit, 'reflection')
+            if db_reflection_conversation:
+                session['reflection_conversation'] = db_reflection_conversation
+                session_reflection_conversation = db_reflection_conversation
+                print(f"[REFLECTION] DB から会話を復元: {len(db_reflection_conversation)} メッセージ")
+        
+        if not session_reflection_conversation and reflection_conversation_count > 0:
+            session['reflection_conversation'] = progress.get('reflection_conversation_history', [])
+            session_reflection_conversation = session['reflection_conversation']
         
         print(f"[REFLECTION] 復帰情報: 会話数={len(session.get('reflection_conversation', []))}, 復帰=True")
         if session.get('reflection_conversation'):
@@ -1566,8 +1547,33 @@ def reflection():
         # 新規開始 - セッションをクリア
         session.pop('reflection_conversation', None)
         session.pop('reflection_summary', None)
-        session.pop('reflection_summary_created', None)
-        session['reflection_conversation'] = []
+    # 新規開始 - セッション完全リセット（本番環境でも同じ振る舞い）
+    session.pop('reflection_conversation', None)
+    session.pop('reflection_summary', None)
+    session.pop('reflection_summary_created', None)
+    session['reflection_conversation'] = []
+    
+    # resume パラメータが明示的に指定されている場合のみ復帰情報を提供
+    if resume:
+        resumption_info = {
+            'is_resumption': True,
+            'last_conversation_count': reflection_conversation_count,
+            'last_access': progress.get('last_access', ''),
+            'reflection_summary_created': reflection_summary_created
+        }
+        
+        # まとめが完了している場合は保存されたまとめを復元
+        if reflection_summary_created and not session.get('reflection_summary'):
+            logs = load_learning_logs(datetime.now().strftime('%Y%m%d'))
+            for log in logs:
+                if (log.get('student_number') == student_number and 
+                    log.get('unit') == unit and 
+                    log.get('log_type') == 'final_summary'):
+                    session['reflection_summary'] = log.get('data', {}).get('summary', '')
+                    break
+        
+        print(f"[REFLECTION] 復帰モード: conversation_count={reflection_conversation_count}, summary_created={reflection_summary_created}")
+    else:
         resumption_info = {
             'is_resumption': False,
             'reflection_summary_created': False,
@@ -1575,13 +1581,15 @@ def reflection():
             'last_access': progress.get('last_access', '')
         }
         
-        if unit and student_number:
-            # 考察段階開始を記録（フラグは修正しない）
-            update_student_progress(
-                class_number,
-                student_number,
-                unit
-            )
+        print(f"[REFLECTION] 新規開始モード")
+    
+    if unit and student_number:
+        # 考察段階開始を記録（フラグは修正しない）
+        update_student_progress(
+            class_number,
+            student_number,
+            unit
+        )
     
     # 単元に応じた最初のAIメッセージを取得
     initial_ai_message = get_initial_ai_message(unit, stage='reflection')
