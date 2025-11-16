@@ -705,6 +705,27 @@ function getFinalSummary() {
         // 最終要約後の状態を保存
         session['reflection_summary'] = data.summary;
         
+        // ファイナルサマリーセクション全体を表示
+        const finalSummarySection = document.getElementById('finalSummarySection');
+        if (finalSummarySection) {
+            finalSummarySection.style.display = 'block';
+            console.log('【DEBUG】finalSummarySection を表示しました');
+        }
+        
+        // チャットセクションを非表示
+        const chatSection = document.querySelector('.chat-section');
+        if (chatSection) {
+            chatSection.style.display = 'none';
+            console.log('【DEBUG】chat-section を非表示にしました');
+        }
+        
+        // ファイナルサマリーコンテンツに要約を設定
+        const finalSummaryContent = document.getElementById('finalSummaryContent');
+        if (finalSummaryContent) {
+            finalSummaryContent.innerHTML = data.summary.replace(/\n/g, '<br>');
+            console.log('【DEBUG】finalSummaryContent に要約を設定しました');
+        }
+        
         // 学習完了ボタンを表示（考察成功時のみ）
         const completionButton = document.getElementById('completionButton');
         console.log('【DEBUG】completionButton:', completionButton);
