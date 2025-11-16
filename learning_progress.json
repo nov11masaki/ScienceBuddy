@@ -7,7 +7,7 @@
         "prediction": {
           "started": false,
           "conversation_count": 0,
-          "summary_created": false,
+          "summary_created": true,
           "last_message": ""
         },
         "experiment": {
