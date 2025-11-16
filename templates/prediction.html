@@ -17,7 +17,11 @@
                 </div>
                 <!-- ボタンを右上に配置 -->
                 <div style="position: absolute; top: 10px; right: 10px; display: flex; gap: 8px;">
-                    <button class="btn btn-success btn-sm" id="summaryButton" style="display: none;" onclick="getSummary()">
+                    <button class="btn btn-secondary btn-sm" id="backToUnitHeaderButton" onclick="goBackToUnitSelection()">
+                        <i class="fas fa-arrow-left me-2"></i>
+                        単元選択に戻る
+                    </button>
+                    <button class="btn btn-success btn-sm" id="summaryButton" onclick="getSummary()">
                         <i class="fas fa-check me-2"></i>
                         予想をまとめる
                     </button>
@@ -78,7 +82,7 @@
                     <div class="summary-content" id="summaryContent"></div>
                     <!-- 単元選択に戻るボタン：予想まとめの下に配置 -->
                     <div class="text-center mt-3">
-                        <button onclick="goBackToUnitSelection()" class="btn btn-primary btn-lg" id="backToUnitButton" style="display: none;">
+                        <button onclick="goBackToUnitSelection()" class="btn btn-primary btn-lg" id="backToUnitButton">
                             <i class="fas fa-arrow-left me-2"></i>
                             単元選択に戻る
                         </button>
@@ -795,8 +799,8 @@ function sendMessageToAPI(message) {
             const totalMessages = conversationCount * 2;
             
             // 6メッセージ以上またはAIが「まとめ」を促したら要約ボタンを表示
-            if (totalMessages >= 6 || data.response.includes('まとめ') || data.response.includes('要約')) {
-                showPredictionSummaryButton(`会話数:${totalMessages}/6`);
+            if (totalMessages >= 6 || data.suggest_summary || data.response.includes('まとめ') || data.response.includes('要約')) {
+                showPredictionSummaryButton(`会話数:${totalMessages}/${6} / suggest:${data.suggest_summary}`);
             }
             
             // デジタル学習ツインのインサイトを表示（開発時のみ）
@@ -911,6 +915,7 @@ function getSummary() {
         
         // まとめボタンを非表示
         document.getElementById('summaryButton').style.display = 'none';
+        document.getElementById('backToUnitHeaderButton').style.display = 'none';
         
         // スクロール
         setTimeout(() => {

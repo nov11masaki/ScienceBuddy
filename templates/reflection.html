@@ -17,7 +17,11 @@
                 </div>
                 <!-- ボタンを右上に配置 -->
                 <div style="position: absolute; top: 10px; right: 10px; display: flex; gap: 8px;">
-                    <button class="btn btn-success btn-sm" id="finalSummaryButton" style="display: none;" onclick="getFinalSummary()">
+                    <button class="btn btn-secondary btn-sm" id="backToUnitHeaderButton" onclick="goBackToUnitSelection()">
+                        <i class="fas fa-arrow-left me-2"></i>
+                        単元選択に戻る
+                    </button>
+                    <button class="btn btn-success btn-sm" id="finalSummaryButton" onclick="getFinalSummary()">
                         <i class="fas fa-check me-2"></i>
                         考察をまとめる
                     </button>
@@ -69,7 +73,7 @@
                     <div class="summary-content" id="finalSummaryContent"></div>
                     <!-- 単元選択に戻るボタン：考察まとめの下に配置 -->
                     <div class="text-center mt-3">
-                        <button onclick="goBackToUnitSelectionFromReflection()" class="btn btn-success btn-lg" id="completionButton" style="display: none;">
+                        <button onclick="goBackToUnitSelectionFromReflection()" class="btn btn-success btn-lg" id="completionButton">
                             <i class="fas fa-arrow-left me-2"></i>
                             単元選択に戻る
                         </button>
@@ -645,6 +649,7 @@ function getFinalSummary() {
         
         // まとめボタンを非表示
         document.getElementById('finalSummaryButton').style.display = 'none';
+        document.getElementById('backToUnitHeaderButton').style.display = 'none';
         
         // スクロール
         setTimeout(() => {
