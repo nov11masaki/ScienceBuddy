@@ -351,6 +351,9 @@ const inputAssistConfig = {
 };
 
 const currentUnit = "{{ unit }}";
+
+// 入力補助の初期化
+function initializeInputAssist() {
     // ひらがなキーボードを設定（10列グリッドレイアウト、右から左）
     const hiraganaContainer = document.getElementById('hiraganaKeys');
     hiraganaContainer.innerHTML = '';
@@ -792,8 +795,8 @@ function sendMessageToAPI(message) {
             const totalMessages = conversationCount * 2;
             
             // 6メッセージ以上またはAIが「まとめ」を促したら要約ボタンを表示
-            if (totalMessages >= 6 || data.suggest_summary || data.response.includes('まとめ') || data.response.includes('要約')) {
-                showPredictionSummaryButton(`会話数:${totalMessages}/${6} / suggest:${data.suggest_summary}`);
+            if (totalMessages >= 6 || data.response.includes('まとめ') || data.response.includes('要約')) {
+                showPredictionSummaryButton(`会話数:${totalMessages}/6`);
             }
             
             // デジタル学習ツインのインサイトを表示（開発時のみ）
