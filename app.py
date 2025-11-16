@@ -1582,7 +1582,8 @@ def reflection():
                          prediction_summary=prediction_summary,
                          reflection_summary_created=reflection_summary_created,
                          initial_ai_message=initial_ai_message,
-                         reflection_conversation_history=reflection_conversation_history)
+                         reflection_conversation_history=reflection_conversation_history,
+                         reflection_resumption_info=resumption_info)
 
 @app.route('/reflect_chat', methods=['POST'])
 def reflect_chat():

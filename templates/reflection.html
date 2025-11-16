@@ -156,7 +156,10 @@
 }
 </script>
 
+<!-- 復帰情報をJavaScriptグローバル変数として埋め込み -->
 <script>
+const reflectionResumptionInfo = {{ reflection_resumption_info | tojson | safe }};
+
 // グローバル変数: 音声認識インスタンス
 let recognition = null;
 
