@@ -1197,17 +1197,23 @@ def prediction():
     
     # resume パラメータが明示的に指定されている場合のみ復元
     if resume:
-        # 復元: セッション → DB保存 → ローカルログ
-        if not session_conversation:
-            db_conversation = load_session_from_db(student_id, unit, 'prediction')
-            if db_conversation:
-                session['conversation'] = db_conversation
-                session_conversation = db_conversation
-                print(f"[PREDICTION] DB から会話を復元: {len(db_conversation)} メッセージ")
-        
-        if not session_conversation and conversation_count > 0:
-            session['conversation'] = progress.get('conversation_history', [])
-            session_conversation = session['conversation']
+        # 復元: ローカル環境のみ（本番環境では新規セッション開始）
+        if not USE_FIRESTORE:
+            # ローカル開発環境: セッション → DB保存 → ローカルログ
+            if not session_conversation:
+                db_conversation = load_session_from_db(student_id, unit, 'prediction')
+                if db_conversation:
+                    session['conversation'] = db_conversation
+                    session_conversation = db_conversation
+                    print(f"[PREDICTION] Local DB から会話を復元: {len(db_conversation)} メッセージ")
+            
+            if not session_conversation and conversation_count > 0:
+                session['conversation'] = progress.get('conversation_history', [])
+                session_conversation = session['conversation']
+        else:
+            # 本番環境: 会話履歴は復帰しない（新規セッション開始）
+            print(f"[PREDICTION] 本番環境のため会話履歴復帰をスキップ")
+            session['conversation'] = []
         
         resumption_info = {
             'is_resumption': True,
@@ -1517,17 +1523,23 @@ def reflection():
     
     # resume パラメータが明示的に指定されている場合のみ復元
     if resume:
-        # 復元: セッション → DB保存 → ローカルログ
-        if not session_reflection_conversation:
-            db_reflection_conversation = load_session_from_db(student_id, unit, 'reflection')
-            if db_reflection_conversation:
-                session['reflection_conversation'] = db_reflection_conversation
-                session_reflection_conversation = db_reflection_conversation
-                print(f"[REFLECTION] DB から会話を復元: {len(db_reflection_conversation)} メッセージ")
-        
-        if not session_reflection_conversation and reflection_conversation_count > 0:
-            session['reflection_conversation'] = progress.get('reflection_conversation_history', [])
-            session_reflection_conversation = session['reflection_conversation']
+        # 復元: ローカル環境のみ（本番環境では新規セッション開始）
+        if not USE_FIRESTORE:
+            # ローカル開発環境: セッション → DB保存 → ローカルログ
+            if not session_reflection_conversation:
+                db_reflection_conversation = load_session_from_db(student_id, unit, 'reflection')
+                if db_reflection_conversation:
+                    session['reflection_conversation'] = db_reflection_conversation
+                    session_reflection_conversation = db_reflection_conversation
+                    print(f"[REFLECTION] Local DB から会話を復元: {len(db_reflection_conversation)} メッセージ")
+            
+            if not session_reflection_conversation and reflection_conversation_count > 0:
+                session['reflection_conversation'] = progress.get('reflection_conversation_history', [])
+                session_reflection_conversation = session['reflection_conversation']
+        else:
+            # 本番環境: 会話履歴は復帰しない（新規セッション開始）
+            print(f"[REFLECTION] 本番環境のため会話履歴復帰をスキップ")
+            session['reflection_conversation'] = []
         
         print(f"[REFLECTION] 復帰情報: 会話数={len(session.get('reflection_conversation', []))}, 復帰=True")
         if session.get('reflection_conversation'):
