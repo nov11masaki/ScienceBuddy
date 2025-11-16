@@ -108,10 +108,11 @@ document.getElementById('selectedNumber').textContent = studentNumber;
 const unitProgressElement = document.getElementById('unit-progress-data');
 const unitProgress = unitProgressElement ? JSON.parse(unitProgressElement.textContent) : {};
 
+// 5組かどうかをグローバルに判定
+const isClass5 = classNumber === '5';
+
 // 進行状況に基づいてボタンを有効/無効化
 function updateButtons() {
-    // 5組以外のクラスはボタン制限あり、5組はすべて有効
-    const isClass5 = classNumber === '5';
     
     // 予想ボタンの有効/無効
     document.querySelectorAll('.unit-prediction-btn').forEach((btn) => {

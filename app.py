@@ -400,8 +400,8 @@ def get_student_progress(class_number, student_number, unit):
     
     return progress_data[student_id][unit]
 
-def update_student_progress(class_number, student_number, unit, stage=None, **kwargs):
-    """学習者の進行状況を更新"""
+def update_student_progress(class_number, student_number, unit, prediction_summary_created=False, reflection_summary_created=False):
+    """学習者の進行状況を更新（フラグのみ保存）"""
     normalized_class = normalize_class_value(class_number)
     class_number = normalized_class if normalized_class is not None else class_number
     progress_data = load_learning_progress()
@@ -410,31 +410,11 @@ def update_student_progress(class_number, student_number, unit, stage=None, **kw
     # 現在の進行状況を取得
     current_progress = get_student_progress(class_number, student_number, unit)
     
-    # 最終アクセス時刻を更新
-    current_progress["last_access"] = datetime.now().isoformat()
-    
-    # 現在の段階を更新（指定された場合）
-    if stage:
-        current_progress["current_stage"] = stage
-    
-    # 段階別の進行状況を更新
-    current_stage = current_progress["current_stage"]
-    if current_stage in current_progress["stage_progress"]:
-        stage_data = current_progress["stage_progress"][current_stage]
-        
-        # 引数で渡された情報で更新
-        for key, value in kwargs.items():
-            if key in stage_data:
-                stage_data[key] = value
-
-    # 段階に紐づかない情報（会話履歴など）を更新
-    root_level_keys = [
-        "conversation_history",
-        "reflection_conversation_history"
-    ]
-    for key in root_level_keys:
-        if key in kwargs:
-            current_progress[key] = kwargs[key]
+    # 予想・考察の完了フラグのみ更新
+    if prediction_summary_created:
+        current_progress["stage_progress"]["prediction"]["summary_created"] = True
+    if reflection_summary_created:
+        current_progress["stage_progress"]["reflection"]["summary_created"] = True
     
     # 進行状況を保存
     if student_id not in progress_data:
@@ -444,56 +424,25 @@ def update_student_progress(class_number, student_number, unit, stage=None, **kw
     save_learning_progress(progress_data)
     return current_progress
 
-def reset_all_student_data():
-    """全ユーザーの全段階とログをリセット"""
-    progress_data = {}
-    save_learning_progress(progress_data)
-    return True
 
 def check_resumption_needed(class_number, student_number, unit):
-    """復帰が必要かチェック"""
-    normalized_class = normalize_class_value(class_number)
-    class_number = normalized_class if normalized_class is not None else class_number
-    progress = get_student_progress(class_number, student_number, unit)
-    
-    # 予想段階で対話がある場合
-    if progress["stage_progress"]["prediction"]["conversation_count"] > 0:
-        return True
-    
-    # 実験段階が開始されている場合
-    if progress["stage_progress"]["experiment"]["started"]:
-        return True
-    
-    # 考察段階で対話がある場合  
-    if progress["stage_progress"]["reflection"]["conversation_count"] > 0:
-        return True
-    
+    """復帰が必要かチェック（現在は常にFalse。セッションリセット方針のため）"""
+    # ページリロード時はセッションがリセットされるため、復帰は不要
     return False
 
 def get_progress_summary(progress):
     """進行状況の要約を生成"""
     stage_progress = progress.get('stage_progress', {})
-    current_stage = progress.get('current_stage', 'prediction')
     
-    if current_stage == 'prediction':
-        conv_count = stage_progress.get('prediction', {}).get('conversation_count', 0)
-        if conv_count > 0:
-            return f"予想段階（対話{conv_count}回）"
-        else:
-            return "未開始"
-    elif current_stage == 'experiment':
-        if stage_progress.get('experiment', {}).get('started', False):
-            return "実験段階"
-        else:
-            return "予想完了"
-    elif current_stage == 'reflection':
-        conv_count = stage_progress.get('reflection', {}).get('conversation_count', 0)
-        if conv_count > 0:
-            return f"考察段階（対話{conv_count}回）"
-        else:
-            return "実験完了"
-    else:
-        return "学習完了"
+    # 考察完了が最優先
+    if stage_progress.get('reflection', {}).get('summary_created', False):
+        return "考察完了"
+    
+    # 予想完了
+    if stage_progress.get('prediction', {}).get('summary_created', False):
+        return "予想完了"
+    
+    return "未開始"
 
 def extract_message_from_json_response(response):
     """JSON形式のレスポンスから純粋なメッセージを抽出する"""
@@ -1298,8 +1247,12 @@ def prediction():
     # 単元に応じた最初のAIメッセージを取得
     initial_ai_message = get_initial_ai_message(unit, stage='prediction')
     
-    # セッションデータをテンプレートに明示的に渡す
+    # 初期メッセージが会話履歴に含まれていない場合は追加
     conversation_history = session.get('conversation', [])
+    if not conversation_history:
+        # 新規セッション時のみ、初期メッセージを会話履歴に追加
+        conversation_history = [{'role': 'assistant', 'content': initial_ai_message}]
+        session['conversation'] = conversation_history
     
     return render_template('prediction.html', unit=unit, task_content=task_content, 
                          prediction_summary_created=prediction_summary_created, 
@@ -1364,17 +1317,6 @@ def chat():
                 'suggestion_index': None
             },
             class_number=session.get('class_number')
-        )
-        
-        # 進行状況を更新
-        conversation_count = len(conversation) // 2
-        update_student_progress(
-            session.get('class_number', '1'),
-            session.get('student_number'),
-            unit,
-            conversation_count=conversation_count,
-            last_message=user_message,
-            conversation_history=conversation
         )
         
         # 対話が2回以上あれば、予想のまとめを作成可能
@@ -1461,6 +1403,14 @@ def summary():
         summary_text = extract_message_from_json_response(summary_response)
         
         session['prediction_summary'] = summary_text
+        
+        # 予想完了フラグを設定
+        update_student_progress(
+            class_number=session.get('class_number'),
+            student_number=session.get('student_number'),
+            unit=unit,
+            prediction_summary_created=True
+        )
         
         # 予想まとめのログを保存
         save_learning_log(
@@ -1677,16 +1627,6 @@ def reflect_chat():
             class_number=session.get('class_number')
         )
         
-        # 進行状況に考察の対話履歴を保存
-        update_student_progress(
-            session.get('class_number'),
-            session.get('student_number'),
-            unit,
-            stage='reflection',
-            conversation_count=len(reflection_conversation) // 2,
-            reflection_conversation_history=reflection_conversation
-        )
-        
         # 対話が2往復以上あれば、考察のまとめを作成可能
         # ユーザーメッセージが2回以上必要
         user_messages_count = sum(1 for msg in reflection_conversation if msg['role'] == 'user')
@@ -1738,6 +1678,14 @@ def final_summary():
         
         # 要約段階ではマークダウン除去をスキップ（MDファイルのプロンプトに従う）
         # final_summary_text = remove_markdown_formatting(final_summary_text)
+        
+        # 考察完了フラグを設定
+        update_student_progress(
+            class_number=session.get('class_number'),
+            student_number=session.get('student_number'),
+            unit=session.get('unit'),
+            reflection_summary_created=True
+        )
         
         # 最終考察のログを保存
         save_learning_log(
@@ -2193,19 +2141,6 @@ def api_students_by_class():
 # ===== ノート写真ファイル配信 =====
 
 # ===== リセット機能 =====
-
-@app.route('/teacher/reset_all', methods=['POST'])
-@require_teacher_auth
-def teacher_reset_all():
-    """全学習者のデータをリセット（教員用）"""
-    try:
-        reset_all_student_data()
-        flash('全学習者の段階とログがリセットされました。', 'success')
-        return redirect('/teacher/dashboard')
-    except Exception as e:
-        print(f"[ERROR] Reset all failed: {e}")
-        flash(f'リセット失敗: {e}', 'danger')
-        return redirect('/teacher/dashboard')
 
 @app.route('/logs/note_photos/<path:path>')
 def serve_note_photos(path):
