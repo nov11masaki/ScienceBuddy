@@ -185,18 +185,8 @@ def save_session_to_db(student_id, unit, stage, conversation_data):
         'conversation': conversation_data
     }
     
-    if USE_FIRESTORE and db:
-        try:
-            doc_id = f"session_{student_id}_{unit}_{stage}"
-            db.collection('session_storage').document(doc_id).set(session_entry)
-            print(f"[SESSION_SAVE] Firestore - {doc_id}")
-        except Exception as e:
-            print(f"[SESSION_SAVE] Firestore Error: {e}")
-            # フォールバック: ローカル保存
-            _save_session_local(session_entry)
-    else:
-        # ローカルに保存
-        _save_session_local(session_entry)
+    # ローカルに保存
+    _save_session_local(session_entry)
 
 def _save_session_local(session_entry):
     """セッションをローカルファイルに保存"""
@@ -220,21 +210,8 @@ def _save_session_local(session_entry):
 
 def load_session_from_db(student_id, unit, stage):
     """セッションデータをデータベースから復元"""
-    if USE_FIRESTORE and db:
-        try:
-            doc_id = f"session_{student_id}_{unit}_{stage}"
-            doc = db.collection('session_storage').document(doc_id).get()
-            if doc.exists:
-                data = doc.to_dict()
-                print(f"[SESSION_LOAD] Firestore - {doc_id}")
-                return data.get('conversation', [])
-        except Exception as e:
-            print(f"[SESSION_LOAD] Firestore Error: {e}")
-            # フォールバック: ローカル読み込み
-            return _load_session_local(student_id, unit, stage)
-    else:
-        # ローカルから読み込み
-        return _load_session_local(student_id, unit, stage)
+    # ローカルから読み込み
+    return _load_session_local(student_id, unit, stage)
 
 def _load_session_local(student_id, unit, stage):
     """セッションをローカルファイルから復元"""
@@ -785,40 +762,18 @@ def get_available_log_dates():
     import glob
     import os
     
+    # ローカルファイル
     dates = []
+    log_files = glob.glob("logs/learning_log_*.json")
+    for file in log_files:
+        filename = os.path.basename(file)
+        if filename.startswith('learning_log_') and filename.endswith('.json'):
+            date_str = filename[13:-5]
+            if len(date_str) == 8 and date_str.isdigit():
+                dates.append(date_str)
     
-    if USE_FIRESTORE:
-        try:
-            print(f"[DATES] Firestore: listing log dates")
-            # Firestoreのすべてのドキュメントを取得
-            docs = db.collection('learning_logs').stream()
-            unique_dates = set()
-            
-            for doc in docs:
-                data = doc.to_dict()
-                timestamp = data.get('timestamp', '')
-                if timestamp:
-                    # ISO形式から日付部分を抽出 (YYYYMMDD)
-                    date_part = timestamp.replace('-', '')[:8]
-                    if len(date_part) == 8 and date_part.isdigit():
-                        unique_dates.add(date_part)
-            
-            dates = sorted(list(unique_dates), reverse=True)
-            print(f"[DATES] Found {len(dates)} log dates from Firestore: {dates[:5]}")
-        except Exception as e:
-            print(f"[DATES] Firestore Error: {str(e)}")
-    else:
-        # ローカルファイル
-        log_files = glob.glob("logs/learning_log_*.json")
-        for file in log_files:
-            filename = os.path.basename(file)
-            if filename.startswith('learning_log_') and filename.endswith('.json'):
-                date_str = filename[13:-5]
-                if len(date_str) == 8 and date_str.isdigit():
-                    dates.append(date_str)
-        
-        dates.sort(reverse=True)  # 新しい順
-        print(f"[DATES] Found {len(dates)} log dates: {dates[:5]}")
+    dates.sort(reverse=True)  # 新しい順
+    print(f"[DATES] Found {len(dates)} log dates: {dates[:5]}")
     
     return dates
 
@@ -855,17 +810,7 @@ def save_error_log(student_number, class_number, error_message, error_type, stag
         'additional_info': additional_info or {}
     }
     
-    if USE_FIRESTORE:
-        try:
-            doc_id = f"error_{datetime.now().isoformat()}"
-            db.collection('error_logs').document(doc_id).set(error_entry)
-            print(f"[ERROR_LOG] Firestore saved: {class_display}, {error_type}")
-        except Exception as e:
-            print(f"[ERROR_LOG] Firestore Error: {e}")
-            # フォールバック: ローカル保存
-            _save_error_log_local(error_entry)
-    else:
-        _save_error_log_local(error_entry)
+    _save_error_log_local(error_entry)
 
 def _save_error_log_local(error_entry):
     """エラーログをローカルファイルに保存"""
@@ -892,22 +837,11 @@ def load_error_logs(date=None):
     if date is None:
         date = datetime.now().strftime('%Y%m%d')
     
-    if USE_FIRESTORE:
-        try:
-            query = db.collection('error_logs').where('timestamp', '>=', f"{date}T00:00:00").where('timestamp', '<', f"{date}T23:59:59").stream()
-            logs = []
-            for doc in query:
-                logs.append(doc.to_dict())
-            return logs
-        except Exception as e:
-            print(f"[ERROR_LOAD] Firestore Error: {e}")
-            return []
-    else:
-        error_log_file = f"logs/error_log_{date}.json"
-        if not os.path.exists(error_log_file):
-            return []
-        
-        try:
+    error_log_file = f"logs/error_log_{date}.json"
+    if not os.path.exists(error_log_file):
+        return []
+    
+    try:
             with open(error_log_file, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except (json.JSONDecodeError, FileNotFoundError):
