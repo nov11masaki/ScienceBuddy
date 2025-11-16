@@ -134,33 +134,6 @@
                                class="btn btn-sm btn-outline-primary">
                                 <i class="fas fa-eye"></i> 詳細
                             </a>
-                            <div class="btn-group" role="group">
-                                <button id="btnGroupDrop{{ loop.index }}" type="button" class="btn btn-sm btn-outline-danger dropdown-toggle" 
-                                        data-bs-toggle="dropdown" aria-expanded="false">
-                                    <i class="fas fa-trash"></i> 削除
-                                </button>
-                                <ul class="dropdown-menu" aria-labelledby="btnGroupDrop{{ loop.index }}">
-                                    <li>
-                                        <a class="dropdown-item" href="#" 
-                                           onclick="deleteLog('', '', '{{ unit_name }}', '{{ current_date }}', 'unit'); return false;">
-                                            <i class="fas fa-book me-2"></i>このユニットを削除
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a class="dropdown-item" href="#" 
-                                           onclick="deleteLog('', '', '', '{{ current_date }}', 'student'); return false;">
-                                            <i class="fas fa-user me-2"></i>この学生の全ログを削除
-                                        </a>
-                                    </li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li>
-                                        <a class="dropdown-item text-danger" href="#" 
-                                           onclick="deleteLog(null, null, '', '{{ current_date }}', 'all'); return false;">
-                                            <i class="fas fa-exclamation-triangle me-2"></i>この日付の全ログを削除
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
                         </div>
                         
                         <!-- 予想まとめがある場合は表示 -->
@@ -250,88 +223,6 @@ function exportCurrentData() {
     }
 }
 
-function deleteLog(classNum, seatNum, unit, date, deleteType) {
-    // deleteType: 'unit' (単元削除), 'student' (学生全削除), 'all' (日付全削除)
-    deleteType = deleteType || 'unit';
-    
-    // パスワード入力
-    const password = prompt('ログを削除するにはパスワードを入力してください:');
-    if (password === null) return; // キャンセル
-    if (password !== 'RIKA') {
-        alert('❌ パスワードが間違っています');
-        return;
-    }
-    
-    let confirmMsg = '';
-    let warningMsg = '';
-    
-    if (deleteType === 'all') {
-        warningMsg = `⚠️ 警告: ${date} のすべてのログ（全学生・全単元）を削除します。\n\nこの操作は取り消せません！`;
-        confirmMsg = '本当に削除しますか？確認のため「全削除」と入力してください:';
-        if (!confirm(warningMsg)) return;
-        if (prompt(confirmMsg) !== '全削除') {
-            alert('キャンセルしました。');
-            return;
-        }
-    } else if (deleteType === 'student') {
-        warningMsg = `${classNum}組${seatNum}番 の全ログ（全単元）を削除します。\n\nこの操作は取り消せません。`;
-        confirmMsg = '本当に削除しますか？確認のため「削除」と入力してください:';
-        if (!confirm(warningMsg)) return;
-        if (prompt(confirmMsg) !== '削除') {
-            alert('キャンセルしました。');
-            return;
-        }
-    } else {
-        // unit（単元削除）
-        warningMsg = `${classNum}組${seatNum}番 の「${unit}」のログを削除します。`;
-        confirmMsg = '本当に削除しますか？確認のため「削除」と入力してください:';
-        if (!confirm(warningMsg)) return;
-        if (prompt(confirmMsg) !== '削除') {
-            alert('キャンセルしました。');
-            return;
-        }
-    }
-    
-    const data = {
-        class_num: classNum ? parseInt(classNum) : null,
-        seat_num: seatNum ? parseInt(seatNum) : null,
-        unit: unit || '',
-        date: date
-    };
-    
-    fetch('/teacher/delete_log', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data)
-    })
-    .then(response => {
-        // ステータスコードに関わらず、まずレスポンスを JSON として読む
-        return response.json().then(json => {
-            return {
-                ok: response.ok,
-                status: response.status,
-                data: json
-            };
-        });
-    })
-    .then(result => {
-        if (result.ok) {
-            alert(result.data.message || 'ログを削除しました。');
-            // ページをリロード
-            window.location.reload();
-        } else {
-            // エラーレスポンスの内容を表示
-            const errorMsg = result.data.error || `エラー（ステータス: ${result.status}）`;
-            console.error('Delete error:', result.data);
-            alert(`ログ削除中にエラーが発生しました:\n${errorMsg}`);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('ログ削除中にエラーが発生しました。\nネットワークエラーまたはサーバーエラーが発生している可能性があります。');
-    });
-}
+
 </script>
 {% endblock %}

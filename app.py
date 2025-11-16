@@ -444,52 +444,6 @@ def update_student_progress(class_number, student_number, unit, stage=None, **kw
     save_learning_progress(progress_data)
     return current_progress
 
-def reset_unit_stage(class_number, student_number, unit):
-    """ユニット段階をリセット（会話履歴全て削除、ログは保持）"""
-    normalized_class = normalize_class_value(class_number)
-    class_number = normalized_class if normalized_class is not None else class_number
-    progress_data = load_learning_progress()
-    student_id = f"{class_number}_{student_number}"
-    
-    if student_id in progress_data and unit in progress_data[student_id]:
-        current_progress = progress_data[student_id][unit]
-        
-        # 各段階をリセット
-        current_progress["current_stage"] = "prediction"
-        current_progress["stage_progress"] = {
-            "prediction": {
-                "started": False,
-                "conversation_count": 0,
-                "summary_created": False,
-                "messages": []
-            },
-            "experiment": {
-                "started": False
-            },
-            "reflection": {
-                "started": False,
-                "conversation_count": 0,
-                "summary_created": False,
-                "messages": []
-            }
-        }
-        # 会話履歴・予想サマリー・反省会話履歴を全て削除
-        current_progress["conversation_history"] = []
-        current_progress["reflection_conversation_history"] = []
-        current_progress["prediction_summary"] = ""
-        current_progress["reflection_summary"] = ""
-        
-        # セッションからも削除（DBに保存されている場合）
-        # ログはそのまま保持（learning_log_*.jsonに記録されている履歴は保持）
-        
-        # 進行状況を保存
-        progress_data[student_id][unit] = current_progress
-        save_learning_progress(progress_data)
-        
-        print(f"[RESET] Unit '{unit}' リセット: class={class_number}, student={student_number}, 会話履歴削除済み")
-        return True
-    return False
-
 def reset_all_student_data():
     """全ユーザーの全段階とログをリセット"""
     progress_data = {}
@@ -708,14 +662,20 @@ def load_task_content(unit_name):
     except FileNotFoundError:
         return f"{unit_name}について実験を行います。どのような結果になると予想しますか？"
 
+# 単元ごとの初期メッセージ（予想段階）
+INITIAL_PREDICTION_MESSAGES = {
+    "空気の温度と体積": "まずは空気を温めると体積はどうなるかな？",
+    "金属のあたたまり方": "金属を温めると、どうなると思う？",
+    "水のあたたまり方": "水を温めると、どうなると思う？",
+    "水を冷やし続けた時の温度と様子": "水を冷やし続けると、どうなると思う？",
+}
+
 def get_initial_ai_message(unit_name, stage='prediction'):
-    """tasksファイルから最初のAIメッセージを取得する"""
+    """初期メッセージを取得する"""
     try:
         if stage == 'prediction':
-            # tasksファイルから課題文を読み込む
-            task_content = load_task_content(unit_name)
-            # 課題文の最初の文をそのまま質問として使用
-            return task_content.split('\n')[0].strip()
+            # 単元ごとの初期メッセージ辞書から取得、なければ汎用メッセージ
+            return INITIAL_PREDICTION_MESSAGES.get(unit_name, f"{unit_name}について、どう思う？")
         
         elif stage == 'reflection':
             # 考察段階では実験結果について問う
@@ -1342,7 +1302,8 @@ def prediction():
     conversation_history = session.get('conversation', [])
     
     return render_template('prediction.html', unit=unit, task_content=task_content, 
-                         resumption_info=resumption_info, initial_ai_message=initial_ai_message,
+                         prediction_summary_created=prediction_summary_created, 
+                         initial_ai_message=initial_ai_message,
                          conversation_history=conversation_history)
 
 @app.route('/chat', methods=['POST'])
@@ -1513,14 +1474,6 @@ def summary():
             class_number=session.get('class_number')
         )
         
-        # 進行状況を更新（予想段階のまとめが完了したことを記録）
-        update_student_progress(
-            session.get('class_number', '1'),
-            session.get('student_number'),
-            unit,
-            summary_created=True
-        )
-        
         return jsonify({'summary': summary_text})
     except Exception as e:
         return jsonify({'error': f'まとめ生成中にエラーが発生しました。'}), 500
@@ -1640,8 +1593,8 @@ def reflection():
     return render_template('reflection.html', 
                          unit=unit,
                          prediction_summary=prediction_summary,
+                         reflection_summary_created=reflection_summary_created,
                          initial_ai_message=initial_ai_message,
-                         resumption_info=resumption_info,
                          reflection_conversation_history=reflection_conversation_history)
 
 @app.route('/reflect_chat', methods=['POST'])
@@ -1797,14 +1750,6 @@ def final_summary():
                 'reflection_conversation': reflection_conversation
             },
             class_number=session.get('class_number')
-        )
-        
-        # 進行状況を更新（考察段階のまとめが完了したことを記録）
-        update_student_progress(
-            session.get('class_number', '1'),
-            session.get('student_number'),
-            session.get('unit'),
-            summary_created=True  # 考察段階のまとめ完了
         )
         
         return jsonify({'summary': final_summary_text})
@@ -2211,155 +2156,6 @@ def student_detail():
                          units_data={unit_name: {} for unit_name in all_units},
                          teacher_id=session.get('teacher_id', 'teacher'))
 
-@app.route('/teacher/delete_log', methods=['POST'])
-@require_teacher_auth
-def delete_log():
-    """学習ログを削除（柔軟な削除条件）"""
-    try:
-        print(f"[GCS_DELETE] START - teacher: {session.get('teacher_id', 'unknown')}")
-        
-        data = request.json
-        if not data:
-            print(f"[GCS_DELETE] ERROR - No JSON data received")
-            return jsonify({'error': 'リクエストボディが空です'}), 400
-            
-        # パラメータを取得（0 や空文字列は無視）
-        class_num_raw = data.get('class_num')
-        seat_num_raw = data.get('seat_num')
-        unit = data.get('unit', '').strip()
-        date = data.get('date', '').strip()
-        log_ids = data.get('log_ids', [])
-        
-        # クラス番号と出席番号を変換（None か有効な数字のみ）
-        class_num = None
-        seat_num = None
-        try:
-            if class_num_raw not in (None, 0, ''):
-                class_num = int(class_num_raw)
-            if seat_num_raw not in (None, 0, ''):
-                seat_num = int(seat_num_raw)
-        except (ValueError, TypeError):
-            pass
-        
-        print(f"[GCS_DELETE] PARAMS - class: {class_num}, seat: {seat_num}, unit: '{unit}', date: '{date}'")
-        
-        # 日付は必須
-        if not date:
-            error_msg = f'日付（date）は必須です'
-            print(f"[GCS_DELETE] VALIDATION_FAILED - {error_msg}")
-            return jsonify({'error': error_msg}), 400
-        
-        # 削除条件の確認
-        has_student_filter = class_num is not None and seat_num is not None
-        has_unit_filter = bool(unit)
-        has_any_filter = has_student_filter or has_unit_filter
-        
-        if not has_any_filter:
-            print(f"[GCS_DELETE] WARNING - no filter specified, will delete ALL logs for date {date}")
-        
-        # ログを読み込み
-        print(f"[GCS_DELETE] LOAD - loading logs from date: {date}")
-        logs = load_learning_logs(date)
-        original_count = len(logs)
-        print(f"[GCS_DELETE] LOAD_RESULT - loaded {original_count} logs")
-        
-        # 削除対象を特定
-        filtered_logs = []
-        
-        if log_ids:
-            # 特定のログをIDで削除
-            filtered_logs = [log for i, log in enumerate(logs) if i not in log_ids]
-            print(f"[GCS_DELETE] FILTER - removed by ID: {len(log_ids)} logs")
-        elif has_student_filter and has_unit_filter:
-            # 学生と単元の両方で絞り込み
-            filtered_logs = [log for log in logs if not (
-                log.get('class_num') == class_num and 
-                log.get('seat_num') == seat_num and 
-                log.get('unit') == unit
-            )]
-            print(f"[GCS_DELETE] FILTER - by student and unit: {class_num}組{seat_num}番 - {unit}")
-        elif has_student_filter:
-            # 学生のすべてのログを削除
-            filtered_logs = [log for log in logs if not (
-                log.get('class_num') == class_num and 
-                log.get('seat_num') == seat_num
-            )]
-            print(f"[GCS_DELETE] FILTER - by student: {class_num}組{seat_num}番 (all units)")
-        elif has_unit_filter:
-            # 単元のすべてのログを削除
-            filtered_logs = [log for log in logs if log.get('unit') != unit]
-            print(f"[GCS_DELETE] FILTER - by unit: {unit} (all students)")
-        else:
-            # 日付のすべてのログを削除
-            filtered_logs = []
-            print(f"[GCS_DELETE] FILTER - delete all logs for date {date}")
-        
-        deleted_count = original_count - len(filtered_logs)
-        print(f"[GCS_DELETE] FILTERED - deleted: {deleted_count}, remaining: {len(filtered_logs)}")
-        
-        if deleted_count == 0:
-            print(f"[GCS_DELETE] NO_MATCH - no logs matched the filter criteria")
-            return jsonify({'error': '削除するログが見つかりません'}), 404
-        
-        # ログを保存
-        if USE_GCS:
-            try:
-                log_filename = f"learning_log_{date}.json"
-                blob_name = f"logs/{log_filename}"
-                blob = bucket.blob(blob_name)
-                
-                print(f"[GCS_DELETE] SAVE_START - blob: {blob_name}, logs: {len(filtered_logs)}")
-                
-                if len(filtered_logs) > 0:
-                    # ログが残っている場合は更新
-                    blob.upload_from_string(
-                        json.dumps(filtered_logs, ensure_ascii=False, indent=2),
-                        content_type='application/json'
-                    )
-                    print(f"[GCS_DELETE] SAVE_SUCCESS - updated file with {len(filtered_logs)} logs remaining")
-                else:
-                    # ログが空になった場合はファイルを削除
-                    blob.delete()
-                    print(f"[GCS_DELETE] DELETE_FILE - deleted empty log file")
-            except Exception as e:
-                error_msg = f"GCS エラー: {type(e).__name__} - {str(e)}"
-                print(f"[GCS_DELETE] SAVE_ERROR - {error_msg}")
-                import traceback
-                traceback.print_exc()
-                return jsonify({'error': error_msg}), 500
-        else:
-            # ローカルファイルの場合
-            try:
-                log_filename = f"learning_log_{date}.json"
-                log_file = f"logs/{log_filename}"
-                
-                if len(logs) > 0:
-                    # ログが残っている場合は更新
-                    with open(log_file, 'w', encoding='utf-8') as f:
-                        json.dump(logs, f, ensure_ascii=False, indent=2)
-                else:
-                    # ログが空になった場合はファイルを削除
-                    if os.path.exists(log_file):
-                        os.remove(log_file)
-                print(f"[DEBUG] Updated local log file")
-            except Exception as e:
-                print(f"[ERROR] Error updating log file: {e}")
-                return jsonify({'error': 'ログ削除中にエラーが発生しました'}), 500
-        
-        print(f"[GCS_DELETE] SUCCESS - deleted {deleted_count} logs")
-        return jsonify({
-            'success': True,
-            'message': f'{deleted_count}件のログを削除しました',
-            'deleted_count': deleted_count
-        })
-    
-    except Exception as e:
-        error_msg = f"{type(e).__name__}: {str(e)}"
-        print(f"[GCS_DELETE] FATAL_ERROR - {error_msg}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'error': f'ログ削除中にエラーが発生しました: {error_msg}'}), 500
-
 
 # ===== 教師用ノート写真管理エンドポイント =====
 
@@ -2397,24 +2193,6 @@ def api_students_by_class():
 # ===== ノート写真ファイル配信 =====
 
 # ===== リセット機能 =====
-
-@app.route('/api/reset_unit_stage', methods=['POST'])
-def api_reset_unit_stage():
-    """単一ユニットの段階をリセット"""
-    data = request.get_json()
-    class_number = data.get('class_number')
-    student_number = data.get('student_number')
-    unit = data.get('unit')
-    
-    try:
-        success = reset_unit_stage(class_number, student_number, unit)
-        if success:
-            return jsonify({'success': True, 'message': f'{unit}の段階をリセットしました。ログは保持されます。'}), 200
-        else:
-            return jsonify({'success': False, 'message': 'リセット対象が見つかりません'}), 404
-    except Exception as e:
-        print(f"[ERROR] Reset failed: {e}")
-        return jsonify({'success': False, 'message': f'エラー: {e}'}), 500
 
 @app.route('/teacher/reset_all', methods=['POST'])
 @require_teacher_auth

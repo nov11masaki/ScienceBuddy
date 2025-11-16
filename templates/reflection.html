@@ -17,10 +17,6 @@
                 </div>
                 <!-- ボタンを右上に配置 -->
                 <div style="position: absolute; top: 10px; right: 10px; display: flex; gap: 8px;">
-                    <button class="btn btn-outline-secondary btn-sm" onclick="resetUnit()">
-                        <i class="fas fa-redo me-1"></i>
-                        やり直す
-                    </button>
                     <button class="btn btn-success btn-sm" id="finalSummaryButton" style="display: none;" onclick="getFinalSummary()">
                         <i class="fas fa-check me-2"></i>
                         考察をまとめる
@@ -148,71 +144,23 @@
 {% endblock %}
 
 {% block scripts %}
-<!-- 復帰情報をJSONとして埋め込み -->
-<script type="application/json" id="resumption-info">{{ resumption_info | tojson | safe }}</script>
-
-<!-- セッションデータ（復帰用） -->
-<script type="application/json" id="reflection-session-data">
+<!-- 考察完了情報をJSONとして埋め込み -->
+<script type="application/json" id="reflection-status">
 {
-    "conversationHistory": {{ reflection_conversation_history | tojson | safe }},
+    "reflection_summary_created": {{ reflection_summary_created | tojson | safe }},
     "reflectionSummary": "{{ session.get('reflection_summary', '') | safe }}"
 }
 </script>
 
 <script>
-// セッションデータをJavaScript変数に格納
-const sessionDataElement = document.getElementById('reflection-session-data');
-if (sessionDataElement) {
-    const sessionData = JSON.parse(sessionDataElement.textContent);
-    window.reflectionConversationHistory = sessionData.conversationHistory;
-    window.reflectionSummary = sessionData.reflectionSummary;
-    console.log('【DEBUG】セッションから会話履歴を取得:', window.reflectionConversationHistory);
-}
-
-const resumptionInfoElement = document.getElementById('resumption-info');
-const reflectionResumptionInfo = resumptionInfoElement ? JSON.parse(resumptionInfoElement.textContent) : {is_resumption: false};
-
-let reflectionExchangeCount = reflectionResumptionInfo.last_conversation_count || 0;
+// 考察完了状態を取得
+const reflectionStatusElement = document.getElementById('reflection-status');
+const reflectionStatus = reflectionStatusElement ? JSON.parse(reflectionStatusElement.textContent) : {reflection_summary_created: false};
 let recognition = null;
 
 const currentUnit = "{{ unit }}";
 const classNumber = "{{ class_number }}";
 const studentNumber = "{{ student_number }}";
-
-// やり直す処理
-function resetUnit() {
-    if (!confirm('この単元をやり直しますか？\n会話履歴は全て削除されます。')) {
-        return;
-    }
-    
-    console.log('[RESET] Resetting unit:', {class: classNumber, student: studentNumber, unit: currentUnit});
-    
-    fetch('/api/reset_unit_stage', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            class_number: classNumber,
-            student_number: studentNumber,
-            unit: currentUnit
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert('このユニットをリセットしました。\n会話履歴は全て削除され、学習ログには記録されます。');
-            // select_unitに戻る
-            window.location.href = `/select_unit?class=${classNumber}&number=${studentNumber}`;
-        } else {
-            alert('リセット失敗: ' + (data.message || 'エラーが発生しました'));
-        }
-    })
-    .catch(error => {
-        console.error('[RESET] Error:', error);
-        alert('リセット中にエラーが発生しました: ' + error.message);
-    });
-}
 
 // 単元選択に戻る
 function goBackToUnitSelectionFromReflection() {
@@ -256,33 +204,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // 復帰情報を取得
     const resumptionInfo = reflectionResumptionInfo;
     
-    console.log('【DEBUG】DOMContentLoaded:', {
-        is_resumption: resumptionInfo?.is_resumption,
-        conversation_history_length: window.reflectionConversationHistory?.length,
-        last_conversation_count: resumptionInfo?.last_conversation_count
-    });
-    
-    if (resumptionInfo && resumptionInfo.is_resumption) {
-        console.log('復帰モード: 過去の会話を復元します', resumptionInfo);
-        console.log('会話履歴:', window.reflectionConversationHistory);
-        
-        // 過去の会話を復元
-        if (window.reflectionConversationHistory && window.reflectionConversationHistory.length > 0) {
-            console.log('会話履歴から復元開始, 件数:', window.reflectionConversationHistory.length);
-            restoreReflectionConversation(window.reflectionConversationHistory);
-        } else {
-            console.warn('会話履歴がありません');
-        }
-        
-        // まとめが完了している場合はまとめを復元
-        if (resumptionInfo.reflection_summary_created && window.reflectionSummary) {
-            showReflectionSummary(window.reflectionSummary);
-        } else if ((resumptionInfo.last_conversation_count || 0) >= 2) {
-            showFinalSummaryButton('復帰時に規定回数達成');
-        }
-    } else {
-        // 新規開始時はボタンを非表示（会話が進むまで表示しない）
-        console.log('新規開始モード: ボタンは会話進行時に表示');
+    // 考察のまとめが完了していれば復元
+    if (reflectionStatus.reflection_summary_created) {
+        console.log('考察のまとめが完了しています');
+        // サーバーから考察のまとめを取得
+        restoreReflectionSummary();
     }
     
     // 初期メッセージはHTMLに直接書かれているので、ここでは追加しない
@@ -408,6 +334,17 @@ function showFinalSummaryButton(reason) {
         console.log('【DEBUG】最終要約ボタン表示:', reason);
     }
 }
+
+// ページロード時に考察まとめボタンを表示（ユーザーが任意のタイミングで押せるように）
+document.addEventListener('DOMContentLoaded', function() {
+    // まだまとめが完了していないなら、ボタンを表示
+    if (!reflectionResumptionInfo || !reflectionResumptionInfo.reflection_summary_created) {
+        const finalSummaryButton = document.getElementById('finalSummaryButton');
+        if (finalSummaryButton) {
+            finalSummaryButton.style.display = 'block';
+        }
+    }
+});
 
 // 入力補助の初期化
 function initializeInputAssist() {
@@ -652,6 +589,9 @@ function isMeaningfulFinalSummary(summary) {
 function getFinalSummary() {
     console.log('【DEBUG】getFinalSummary 呼び出し');
     
+    // ボタンを無効化
+    document.getElementById('finalSummaryButton').disabled = true;
+    
     fetch('/final_summary', {
         method: 'POST',
         headers: {
@@ -698,6 +638,14 @@ function getFinalSummary() {
         } else {
             messagesContainer.appendChild(messageDiv);
         }
+        
+        // 入力エリアを非表示
+        if (userInputArea) {
+            userInputArea.style.display = 'none';
+        }
+        
+        // まとめボタンを非表示
+        document.getElementById('finalSummaryButton').style.display = 'none';
         
         // スクロール
         setTimeout(() => {
@@ -843,116 +791,13 @@ function stopVoiceInput() {
 }
 
 // 復帰時に過去の会話を復元する関数
-function restoreReflectionConversation(conversationHistory) {
-    const messagesContainer = document.getElementById('reflectionMessages');
-    console.log('【DEBUG】restoreReflectionConversation: メッセージコンテナ=', !!messagesContainer, '会話数=', conversationHistory?.length);
-    
-    if (!messagesContainer || !conversationHistory || conversationHistory.length === 0) {
-        console.warn('【DEBUG】復元スキップ: container=', !!messagesContainer, 'history=', conversationHistory);
-        return;
-    }
-    
-    // 入力エリアを確実に保存
-    const userInputArea = messagesContainer.querySelector('.user-input-area');
-    console.log('【DEBUG】入力エリア保存:', !!userInputArea);
-    
-    if (!userInputArea) {
-        console.error('入力エリアが見つかりません - 復元を中止します');
-        return;
-    }
-    
-    // 最初のAIメッセージ（初期メッセージ）を特定
-    const allMessages = Array.from(messagesContainer.querySelectorAll('.message'));
-    const initialAIMessage = allMessages.find(msg => msg.classList.contains('ai-message'));
-    
-    console.log('【DEBUG】削除前状態:', {
-        メッセージ数: allMessages.length, 
-        入力エリア存在: !!userInputArea,
-        初期AIメッセージ存在: !!initialAIMessage
-    });
-    
-    // 復元済みの会話メッセージを削除（初期AIメッセージと入力エリアは保持）
-    const messagesToDelete = allMessages.filter(msg => 
-        msg !== initialAIMessage && 
-        msg !== userInputArea &&
-        !msg.classList.contains('user-input-area')
-    );
-    messagesToDelete.forEach(msg => msg.remove());
-    
-    // 過去の会話を復元（初期メッセージと入力エリアの間に挿入）
-    conversationHistory.forEach((msg, index) => {
-        const isAI = msg.role === 'assistant';
-        console.log(`【DEBUG】メッセージ${index+1}:`, {role: msg.role, preview: msg.content.substring(0, 30)});
-        
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${isAI ? 'ai-message' : 'user-message'}`;
-        
-        if (isAI) {
-            // AIメッセージ: avatar + message-content 構造
-            messageDiv.innerHTML = `
-                <div class="message-avatar"></div>
-                <div class="message-content">${msg.content}</div>
-            `;
-        } else {
-            // ユーザーメッセージ: avatar + message-content 構造（sendReflection()と同じ）
-            const avatarDiv = document.createElement('div');
-            avatarDiv.className = 'message-avatar';
-            
-            const contentDiv = document.createElement('div');
-            contentDiv.className = 'message-content';
-            contentDiv.innerHTML = msg.content;
-            
-            messageDiv.appendChild(avatarDiv);
-            messageDiv.appendChild(contentDiv);
-        }
-        
-        console.log('【DEBUG】メッセージ作成:', messageDiv.className);
-        
-        // 入力エリアの直前に挿入
-        userInputArea.parentNode.insertBefore(messageDiv, userInputArea);
-    });
-    
-    console.log('【DEBUG】会話復元完了: 追加メッセージ数=', conversationHistory.length);
-    console.log('【DEBUG】復元後の入力エリア:', {
-        存在: !!userInputArea,
-        表示状態: userInputArea?.style.display,
-        親要素: userInputArea?.parentElement?.className
-    });
-    
-    // スクロール位置を入力フィールド近くに
-    userInputArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    
-    // 会話回数をカウント
-    let userHistoryCount = 0;
-    let aiHistoryCount = 0;
-    conversationHistory.forEach(msg => {
-        if (msg.role === 'assistant') {
-            aiHistoryCount++;
-        } else if (msg.role === 'user') {
-            userHistoryCount++;
-        }
-    });
-    const exchanges = Math.min(userHistoryCount, aiHistoryCount);
-    reflectionExchangeCount = exchanges;
-    
-    // ユーザーメッセージ数をカウント（ユーザー数 + AI数 = 総メッセージ数）
-    const totalMessages = userHistoryCount + aiHistoryCount;
-    
-    console.log('【DEBUG】会話統計: ユーザー=', userHistoryCount, 'AI=', aiHistoryCount, '往復=', exchanges, 'メッセージ総数=', totalMessages);
-    
-    // 要約ボタン表示判定（メッセージが6件以上）
-    if (reflectionResumptionInfo && !reflectionResumptionInfo.reflection_summary_created && totalMessages >= 6) {
-        showFinalSummaryButton(`履歴から規定回数達成（${totalMessages}メッセージ）`);
-    }
-}
-
 // 復帰時に考察のまとめを復元する関数
-function showReflectionSummary(summary) {
+function restoreReflectionSummary() {
     const finalSummarySection = document.getElementById('finalSummarySection');
     const finalSummaryContent = document.getElementById('finalSummaryContent');
     
     if (finalSummarySection && finalSummaryContent) {
-        finalSummaryContent.textContent = summary;
+        finalSummaryContent.textContent = reflectionStatus.reflectionSummary;
         finalSummarySection.style.display = 'block';
     }
 }

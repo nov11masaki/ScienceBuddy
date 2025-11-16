@@ -17,10 +17,6 @@
                 </div>
                 <!-- ボタンを右上に配置 -->
                 <div style="position: absolute; top: 10px; right: 10px; display: flex; gap: 8px;">
-                    <button class="btn btn-outline-secondary btn-sm" onclick="resetUnit()">
-                        <i class="fas fa-redo me-1"></i>
-                        やり直す
-                    </button>
                     <button class="btn btn-success btn-sm" id="summaryButton" style="display: none;" onclick="getSummary()">
                         <i class="fas fa-check me-2"></i>
                         予想をまとめる
@@ -155,13 +151,10 @@
 {% endblock %}
 
 {% block scripts %}
-<!-- 復帰情報をJSONとして埋め込み -->
-<script type="application/json" id="resumption-data">{{ resumption_info | tojson | safe }}</script>
-
-<!-- セッションデータ（復帰用） -->
-<script type="application/json" id="prediction-session-data">
+<!-- 予想完了情報をJSONとして埋め込み -->
+<script type="application/json" id="prediction-status">
 {
-    "conversationHistory": {{ conversation_history | tojson | safe }},
+    "prediction_summary_created": {{ prediction_summary_created | tojson | safe }},
     "predictionSummary": "{{ session.get('prediction_summary', '') | safe }}"
 }
 </script>
@@ -170,12 +163,9 @@
 let conversationCount = 0;
 let lastMessage = '';
 
-// 復帰情報を取得
-const resuptionDataElement = document.getElementById('resumption-data');
-const resumptionInfo = resuptionDataElement ? JSON.parse(resuptionDataElement.textContent) : {is_resumption: false};
-if (resumptionInfo && typeof resumptionInfo.last_conversation_count === 'number') {
-    conversationCount = resumptionInfo.last_conversation_count;
-}
+// 予想完了状態を取得
+const predictionStatusElement = document.getElementById('prediction-status');
+const predictionStatus = predictionStatusElement ? JSON.parse(predictionStatusElement.textContent) : {prediction_summary_created: false};
 
 // URLからパラメータを取得
 const urlParams = new URLSearchParams(window.location.search);
@@ -183,44 +173,9 @@ const classNumber = urlParams.get('class') || '1';
 const studentNumber = urlParams.get('number') || '1';
 const unit = urlParams.get('unit') || '';
 
-// やり直す処理
-function resetUnit() {
-    if (!confirm('この単元をやり直しますか？\n会話履歴は全て削除されます。')) {
-        return;
-    }
-    
-    console.log('[RESET] Resetting unit:', {class: classNumber, student: studentNumber, unit: unit});
-    
-    fetch('/api/reset_unit_stage', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            class_number: classNumber,
-            student_number: studentNumber,
-            unit: unit
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert('このユニットをリセットしました。\n会話履歴は全て削除され、学習ログには記録されます。');
-            // select_unitに戻る
-            window.location.href = `/select_unit?class=${classNumber}&number=${studentNumber}`;
-        } else {
-            alert('リセット失敗: ' + (data.message || 'エラーが発生しました'));
-        }
-    })
-    .catch(error => {
-        console.error('[RESET] Error:', error);
-        alert('リセット中にエラーが発生しました: ' + error.message);
-    });
-}
-
 function showPredictionSummaryButton(reason) {
     // まとめが完了している場合のみ非表示
-    if (resumptionInfo && resumptionInfo.prediction_summary_created) return;
+    if (predictionStatus && predictionStatus.prediction_summary_created) return;
     const summaryButton = document.getElementById('summaryButton');
     if (!summaryButton) return;
     summaryButton.style.display = 'block';
@@ -230,15 +185,23 @@ function showPredictionSummaryButton(reason) {
     }
 }
 
-// セッションデータを取得
-const sessionDataElement = document.getElementById('prediction-session-data');
-if (sessionDataElement) {
-    const sessionData = JSON.parse(sessionDataElement.textContent);
-    window.predictionConversationHistory = sessionData.conversationHistory;
-    window.predictionSummary = sessionData.predictionSummary;
-}
+// ページロード時にまとめボタンを表示（ユーザーが任意のタイミングで押せるように）
+document.addEventListener('DOMContentLoaded', function() {
+    // まだまとめが完了していないなら、ボタンを表示
+    if (!predictionStatus || !predictionStatus.prediction_summary_created) {
+        const summaryButton = document.getElementById('summaryButton');
+        if (summaryButton) {
+            summaryButton.style.display = 'block';
+            summaryButton.disabled = false;
+        }
+    }
+});
 
-// デジタル学習ツイン用の入力行動追跡
+// セッションオブジェクトの初期化（クライアント側のセッションデータ）
+let session = {
+    'prediction_summary': ''
+};
+
 // 入力補助用の設定（シンプルなひらがなのみ）
 const inputAssistConfig = {
     hiragana: [
@@ -256,34 +219,15 @@ const inputAssistConfig = {
 const currentUnit = "{{ unit }}";
 let recognition = null;
 
-// セッションオブジェクトの初期化（クライアント側のセッションデータ）
-let session = {
-    'prediction_summary': ''
-};
-
 // ページ読み込み時にAPI接続をテスト
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOMContentLoaded イベント発火');
-    console.log('resumptionInfo:', resumptionInfo);
     
-    // 復帰処理: 過去の会話履歴を復元
-    if (resumptionInfo.is_resumption && resumptionInfo.last_conversation_count > 0) {
-        console.log('復帰モード: 過去の会話を復元します', resumptionInfo);
-        
-        // サーバーから過去のログを取得して復元
-        restorePastConversations();
-        
-        // 予想のまとめが完了していれば表示
-        if (resumptionInfo.prediction_summary_created) {
-            console.log('予想のまとめが完了しています');
-            // サーバーから予想のまとめを取得
-            restorePredictionSummary();
-        } else if ((resumptionInfo.last_conversation_count || 0) >= 2) {
-            showPredictionSummaryButton('復帰時に規定回数達成');
-        }
-    } else {
-        // 新規開始時はボタンを非表示（会話が進むまで表示しない）
-        console.log('新規開始モード: ボタンは会話進行時に表示');
+    // 予想のまとめが完了していれば復元
+    if (predictionStatus.prediction_summary_created) {
+        console.log('予想のまとめが完了しています');
+        // サーバーから予想のまとめを取得
+        restorePredictionSummary();
     }
     
     testApiConnection();
@@ -878,18 +822,6 @@ function sendMessageToAPI(message) {
     });
 }
 
-function showExperimentButton() {
-    console.log('【DEBUG】showExperimentButton 呼び出し');
-    const experimentButtonSection = document.getElementById('experimentButtonSection');
-    if (experimentButtonSection) {
-        experimentButtonSection.style.display = 'block';
-        // スクロールして見やすく
-        setTimeout(() => {
-            experimentButtonSection.scrollIntoView({ behavior: 'smooth' });
-        }, 300);
-    }
-}
-
 // 要約が実質的な意味を持つかチェック
 function isMeaningfulSummary(summary) {
     if (!summary || summary.trim().length < 15) return false;
@@ -914,6 +846,9 @@ function isMeaningfulSummary(summary) {
 
 function getSummary() {
     console.log('【DEBUG】getSummary 呼び出し');
+    
+    // ボタンを無効化
+    document.getElementById('summaryButton').disabled = true;
     
     fetch('/summary', {
         method: 'POST',
@@ -961,6 +896,14 @@ function getSummary() {
         } else {
             messagesContainer.appendChild(messageDiv);
         }
+        
+        // 入力エリアを非表示
+        if (userInputArea) {
+            userInputArea.style.display = 'none';
+        }
+        
+        // まとめボタンを非表示
+        document.getElementById('summaryButton').style.display = 'none';
         
         // スクロール
         setTimeout(() => {
@@ -1013,97 +956,6 @@ function switchInputMode() {
 }
 
 // 復帰時に過去の会話を復元する関数
-function restorePastConversations() {
-    console.log('【DEBUG】restorePastConversations: 過去の会話を復元中...');
-    
-    const messagesContainer = document.getElementById('chatMessages');
-    if (!messagesContainer) {
-        console.error('chatMessagesコンテナが見つかりません');
-        return;
-    }
-    
-    if (!window.predictionConversationHistory || window.predictionConversationHistory.length === 0) {
-        console.log('復元する会話履歴がありません');
-        return;
-    }
-    
-    console.log('【DEBUG】会話数:', window.predictionConversationHistory.length);
-    
-    // 入力エリアを確実に保存
-    const userInputArea = messagesContainer.querySelector('.user-input-area');
-    console.log('【DEBUG】入力エリア保存:', !!userInputArea);
-    
-    if (!userInputArea) {
-        console.error('入力エリアが見つかりません - 復元を中止します');
-        return;
-    }
-    
-    // 最初のAIメッセージ（初期メッセージ）を特定
-    const allMessages = Array.from(messagesContainer.querySelectorAll('.message'));
-    const initialAIMessage = allMessages.find(msg => msg.classList.contains('ai-message'));
-    
-    // 復元済みの会話メッセージを削除（初期AIメッセージと入力エリアは保持）
-    const messagesToDelete = allMessages.filter(msg => 
-        msg !== initialAIMessage && 
-        msg !== userInputArea &&
-        !msg.classList.contains('user-input-area')
-    );
-    messagesToDelete.forEach(msg => msg.remove());
-    
-    // 過去の会話を復元（入力エリアの直前に挿入）
-    window.predictionConversationHistory.forEach((msg, index) => {
-        const isAI = msg.role === 'assistant';
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${isAI ? 'ai-message' : 'user-message'}`;
-        
-        if (isAI) {
-            // AIメッセージ: avatar + message-content 構造
-            messageDiv.innerHTML = `
-                <div class="message-avatar"></div>
-                <div class="message-content">${msg.content}</div>
-            `;
-        } else {
-            // ユーザーメッセージ: avatar + message-content 構造（sendMessage()と同じ）
-            const avatarDiv = document.createElement('div');
-            avatarDiv.className = 'message-avatar';
-            
-            const contentDiv = document.createElement('div');
-            contentDiv.className = 'message-content';
-            contentDiv.innerHTML = msg.content;
-            
-            messageDiv.appendChild(avatarDiv);
-            messageDiv.appendChild(contentDiv);
-        }
-        
-        // 入力エリアの直前に挿入
-        userInputArea.parentNode.insertBefore(messageDiv, userInputArea);
-    });
-    
-    // スクロール位置を入力フィールド近くに
-    userInputArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    
-    let userHistoryCount = 0;
-    let aiHistoryCount = 0;
-    window.predictionConversationHistory.forEach(msg => {
-        if (msg.role === 'assistant') {
-            aiHistoryCount++;
-        } else if (msg.role === 'user') {
-            userHistoryCount++;
-        }
-    });
-    const exchanges = Math.min(userHistoryCount, aiHistoryCount);
-    conversationCount = exchanges;
-    
-    // ユーザーメッセージ数をカウント（ユーザー数 + AI数 = 総メッセージ数）
-    const totalMessages = userHistoryCount + aiHistoryCount;
-    
-    if (!resumptionInfo.prediction_summary_created && totalMessages >= 6) {
-        showPredictionSummaryButton(`履歴から規定回数達成（${totalMessages}メッセージ）`);
-    }
-    
-    console.log('過去の会話復元完了:', window.predictionConversationHistory.length, '件');
-}
-
 // 復帰時に予想のまとめを復元する関数
 function restorePredictionSummary() {
     console.log('restorePredictionSummary: 予想のまとめを復元中...');
@@ -1120,10 +972,6 @@ function restorePredictionSummary() {
             document.getElementById('summaryContent').textContent = data.summary;
             document.getElementById('summarySection').style.display = 'block';
             document.getElementById('summaryButton').style.display = 'none';
-            
-            // 会話回数が5以上の場合は要約ボタンを非表示（既にまとめられている）
-            // 実験開始ボタンを表示
-            document.getElementById('experimentButtonSection').style.display = 'block';
         }
     })
     .catch(error => console.error('予想のまとめ取得エラー:', error));

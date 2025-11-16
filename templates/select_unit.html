@@ -59,12 +59,14 @@
                             
                             <!-- 予想・考察ボタン -->
                             <div class="btn-group w-100 mt-2" role="group">
-                                <button class="btn btn-primary btn-sm flex-fill" 
+                                <button class="btn btn-primary btn-sm flex-fill unit-prediction-btn" 
+                                        data-unit="{{ unit }}"
                                         onclick="goToPrediction('{{ unit }}')">
                                     <i class="fas fa-lightbulb"></i> 予想
                                 </button>
                                 <button class="btn btn-info btn-sm flex-fill" 
                                         id="reflection-btn-{{ loop.index }}"
+                                        data-unit="{{ unit }}"
                                         onclick="goToReflection('{{ unit }}')">
                                     <i class="fas fa-comments"></i> 考察
                                 </button>
@@ -106,31 +108,74 @@ document.getElementById('selectedNumber').textContent = studentNumber;
 const unitProgressElement = document.getElementById('unit-progress-data');
 const unitProgress = unitProgressElement ? JSON.parse(unitProgressElement.textContent) : {};
 
-// 進行状況に基づいて考察ボタンを有効/無効化
-function updateReflectionButtons() {
-    document.querySelectorAll('[id^="reflection-btn-"]').forEach((btn, index) => {
-        const unitIndex = index + 1;
-        const units = Object.keys(unitProgress);
-        if (units.length > index) {
-            const unit = units[index];
-            const progress = unitProgress[unit];
-            const predictionSummaryCreated = progress && progress.prediction_summary_created;
-            
-            // 予想が完了していない場合は考察ボタンを無効
+// 進行状況に基づいてボタンを有効/無効化
+function updateButtons() {
+    // 5組以外のクラスはボタン制限あり、5組はすべて有効
+    const isClass5 = classNumber === '5';
+    
+    // 予想ボタンの有効/無効
+    document.querySelectorAll('.unit-prediction-btn').forEach((btn) => {
+        const unit = btn.getAttribute('data-unit');
+        
+        if (isClass5) {
+            // 5組は全員すべてのユニットを利用可能
+            btn.disabled = false;
+            btn.title = '';
+        } else {
+            // 5組以外は「空気の温度と体積」のみ有効
+            if (unit === '空気の温度と体積') {
+                btn.disabled = false;
+                btn.title = '';
+            } else {
+                btn.disabled = true;
+                btn.title = '現在このユニットは利用できません';
+            }
+        }
+    });
+    
+    // 考察ボタンの有効/無効
+    document.querySelectorAll('[id^="reflection-btn-"]').forEach((btn) => {
+        const unit = btn.getAttribute('data-unit');
+        const progress = unitProgress[unit];
+        const predictionSummaryCreated = progress && progress.prediction_summary_created;
+        
+        if (isClass5) {
+            // 5組は予想完了で考察可能
             if (!predictionSummaryCreated) {
                 btn.disabled = true;
                 btn.title = '予想を完了してから考察に進んでください';
             } else {
                 btn.disabled = false;
+                btn.title = '';
+            }
+        } else {
+            // 5組以外は「空気の温度と体積」のみ
+            if (unit === '空気の温度と体積') {
+                if (!predictionSummaryCreated) {
+                    btn.disabled = true;
+                    btn.title = '予想を完了してから考察に進んでください';
+                } else {
+                    btn.disabled = false;
+                    btn.title = '';
+                }
+            } else {
+                btn.disabled = true;
+                btn.title = '現在このユニットは利用できません';
             }
         }
     });
 }
 
 // ページロード時に初期化
-document.addEventListener('DOMContentLoaded', updateReflectionButtons);
+document.addEventListener('DOMContentLoaded', updateButtons);
 
 function goToPrediction(unit) {
+    // ボタンが無効な場合は処理しない
+    if (!isClass5 && unit !== '空気の温度と体積') {
+        alert('現在このユニットは利用できません');
+        return;
+    }
+    
     const progress = unitProgress[unit];
     const needsResumption = progress && progress.needs_resumption;
     
@@ -150,6 +195,12 @@ function goToPrediction(unit) {
 }
 
 function goToReflection(unit) {
+    // ボタンが無効な場合は処理しない
+    if (!isClass5 && unit !== '空気の温度と体積') {
+        alert('現在このユニットは利用できません');
+        return;
+    }
+    
     const progress = unitProgress[unit];
     const predictionSummaryCreated = progress && progress.prediction_summary_created;
     
