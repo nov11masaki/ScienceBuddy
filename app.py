@@ -1380,6 +1380,37 @@ def summary():
         print(f"[SUMMARY] Already created: {session.get('prediction_summary')[:50]}...")
         return jsonify({'summary': session.get('prediction_summary')})
     
+    # ユーザーの発言をチェック（初期メッセージを除く）
+    user_messages = [msg for msg in conversation if msg['role'] == 'user']
+    
+    # ユーザー発言が不足している場合
+    if len(user_messages) == 0:
+        return jsonify({
+            'error': 'まだ何も話していないようです。あなたの予想や考えを教えてください。',
+            'is_insufficient': True
+        }), 400
+    
+    # ユーザー発言の内容をチェック
+    user_content = ' '.join([msg['content'] for msg in user_messages])
+    
+    # 非常に短い発言のみ（有意な情報がない）
+    if len(user_content) < 10:
+        return jsonify({
+            'error': 'もっと詳しく教えてください。どう思ったのか、何かあったのか、話してみてね。',
+            'is_insufficient': True
+        }), 400
+    
+    # ユーザーの有意な発言があるかチェック（経験や理由を含むか）
+    # キーワード：経験を示す言葉
+    experience_keywords = ['あった', 'あります', '見た', '見ました', '思う', '思います', 'なった', 'になった', '〜だから', 'ため', 'ことがあ']
+    has_meaningful_content = any(keyword in user_content for keyword in experience_keywords)
+    
+    if not has_meaningful_content:
+        return jsonify({
+            'error': 'あなたの考えが伝わりきっていないようです。どういうわけでそう思ったの？何か見たことや経験があれば教えてね。',
+            'is_insufficient': True
+        }), 400
+    
     # 単元のプロンプトを読み込み（要約の指示は既にプロンプトファイルに含まれている）
     unit_prompt = load_unit_prompt(unit)
     
@@ -1647,6 +1678,37 @@ def final_summary():
     reflection_conversation = session.get('reflection_conversation', [])
     prediction_summary = session.get('prediction_summary', '')
     unit = session.get('unit')
+    
+    # ユーザーの発言をチェック（初期メッセージを除く）
+    user_messages = [msg for msg in reflection_conversation if msg['role'] == 'user']
+    
+    # ユーザー発言が不足している場合
+    if len(user_messages) == 0:
+        return jsonify({
+            'error': 'まだ何も話していないようです。実験の結果や気づきを教えてください。',
+            'is_insufficient': True
+        }), 400
+    
+    # ユーザー発言の内容をチェック
+    user_content = ' '.join([msg['content'] for msg in user_messages])
+    
+    # 非常に短い発言のみ（有意な情報がない）
+    if len(user_content) < 10:
+        return jsonify({
+            'error': 'もっと詳しく教えてください。実験ではどんなことが起きた？どう思った？',
+            'is_insufficient': True
+        }), 400
+    
+    # ユーザーの有意な発言があるかチェック（観察や気づきを含むか）
+    # キーワード：観察や変化を示す言葉
+    experience_keywords = ['なった', 'になった', '見た', '見ました', '変わ', 'できた', '思う', '思います', 'だから', 'ため', 'ことがあ']
+    has_meaningful_content = any(keyword in user_content for keyword in experience_keywords)
+    
+    if not has_meaningful_content:
+        return jsonify({
+            'error': 'あなたの考えが伝わりきっていないようです。どんな結果になった？予想と同じだった？ちがった？',
+            'is_insufficient': True
+        }), 400
     
     # 単元のプロンプトを読み込み（考察の指示は既にプロンプトファイルに含まれている）
     unit_prompt = load_unit_prompt(unit)

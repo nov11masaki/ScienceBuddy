@@ -611,15 +611,21 @@ function getFinalSummary() {
     })
     .then(response => {
         console.log('【DEBUG】/final_summary レスポンス受信:', response.status);
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
-        return response.json();
+        return response.json().then(data => {
+            if (!response.ok) {
+                // エラーレスポンス（400など）
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                throw new Error(`HTTP ${response.status}`);
+            }
+            return data;
+        });
     })
     .then(data => {
         console.log('【DEBUG】最終要約データ:', data);
         if (data.error) {
-            alert('エラーが発生しました: ' + data.error);
+            alert('まとめられません：' + data.error);
             document.getElementById('finalSummaryButton').disabled = false;
             return;
         }
