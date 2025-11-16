@@ -860,22 +860,18 @@ function getSummary() {
     
     // 既に要約が表示されている場合は確認を取る
     if (summaryButton.style.display === 'none') {
-        const confirmed = confirm('予想をまとめ直しますか？\n\nこれまでの予想は消されます。\n本当によろしいですか？');
+        const confirmed = confirm('予想をやり直しますか？\n\n前回の予想は記録として保存されます。\n新たに予想を立て直します。\n\nよろしいですか？');
         if (!confirmed) {
             return;
         }
-        // 確認後、入力エリアと要約を再度表示
-        const messagesContainer = document.getElementById('chatMessages');
-        const userInputArea = messagesContainer.querySelector('.user-input-area');
-        if (userInputArea) {
-            userInputArea.style.display = 'block';
-        }
-        // 要約メッセージを削除（最後のAIメッセージを削除）
-        const aiMessages = Array.from(messagesContainer.querySelectorAll('.ai-message'));
-        if (aiMessages.length > 0) {
-            aiMessages[aiMessages.length - 1].remove();
-        }
-        summaryButton.style.display = 'inline-block';
+        // 確認後、新しい会話セッションを開始するためにページをリロード
+        // resume=false で新規セッションを開始
+        const urlParams = new URLSearchParams(window.location.search);
+        const classNum = urlParams.get('class');
+        const studentNum = urlParams.get('number');
+        const unit = urlParams.get('unit');
+        window.location.href = `/prediction?class=${classNum}&number=${studentNum}&unit=${unit}&resume=false`;
+        return;
     }
     
     // ボタンを無効化
