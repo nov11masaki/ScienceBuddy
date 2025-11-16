@@ -1405,7 +1405,10 @@ def summary():
     experience_keywords = ['あった', 'あります', '見た', '見ました', '思う', '思います', 'なった', 'になった', '〜だから', 'ため', 'ことがあ']
     has_meaningful_content = any(keyword in user_content for keyword in experience_keywords)
     
-    if not has_meaningful_content:
+    # 2回以上のラリーがあれば、意味がなくても頑張ってまとめる
+    exchange_count = len(user_messages)
+    
+    if not has_meaningful_content and exchange_count < 2:
         return jsonify({
             'error': 'あなたの考えが伝わりきっていないようです。どういうわけでそう思ったの？何か見たことや経験があれば教えてね。',
             'is_insufficient': True
@@ -1704,7 +1707,10 @@ def final_summary():
     experience_keywords = ['なった', 'になった', '見た', '見ました', '変わ', 'できた', '思う', '思います', 'だから', 'ため', 'ことがあ']
     has_meaningful_content = any(keyword in user_content for keyword in experience_keywords)
     
-    if not has_meaningful_content:
+    # 2回以上のラリーがあれば、意味がなくても頑張ってまとめる
+    exchange_count = len(user_messages)
+    
+    if not has_meaningful_content and exchange_count < 2:
         return jsonify({
             'error': 'あなたの考えが伝わりきっていないようです。どんな結果になった？予想と同じだった？ちがった？',
             'is_insufficient': True
