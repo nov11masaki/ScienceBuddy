@@ -16,6 +16,7 @@ import uuid
 import zipfile
 import tempfile
 from pathlib import Path
+from functools import lru_cache
 from werkzeug.utils import secure_filename
 from google.cloud import firestore
 from google.api_core import exceptions as firestore_exceptions
@@ -611,37 +612,41 @@ def load_task_content(unit_name):
     except FileNotFoundError:
         return f"{unit_name}について実験を行います。どのような結果になると予想しますか？"
 
-# 単元ごとの初期メッセージ（予想段階）
-INITIAL_PREDICTION_MESSAGES = {
-    "空気の温度と体積": "まずは空気を温めると体積はどうなるかな？",
-    "金属のあたたまり方": "金属を温めると、どうなると思う？",
-    "水のあたたまり方": "水を温めると、どうなると思う？",
-    "水を冷やし続けた時の温度と様子": "水を冷やし続けると、どうなると思う？",
-}
+INITIAL_MESSAGES_FILE = PROMPTS_DIR / 'initial_messages.json'
+
+@lru_cache(maxsize=1)
+def _load_initial_messages():
+    try:
+        with open(INITIAL_MESSAGES_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print(f"[INIT_MSG] Warning: {INITIAL_MESSAGES_FILE} not found.")
+        return {}
+    except json.JSONDecodeError as e:
+        print(f"[INIT_MSG] JSON decode error: {e}")
+        return {}
+
 
 def get_initial_ai_message(unit_name, stage='prediction'):
     """初期メッセージを取得する"""
-    try:
+    messages = _load_initial_messages()
+    stage_messages = messages.get(stage, {})
+    message = stage_messages.get(unit_name)
+    
+    if not message:
+        default_template = stage_messages.get('_default')
+        if default_template:
+            message = default_template.replace('{{unit}}', unit_name)
+    
+    if not message:
         if stage == 'prediction':
-            # 単元ごとの初期メッセージ辞書から取得、なければ汎用メッセージ
-            return INITIAL_PREDICTION_MESSAGES.get(unit_name, f"{unit_name}について、どう思う？")
-        
+            message = f"{unit_name}について、どう思う？"
         elif stage == 'reflection':
-            # 考察段階では実験結果について問う
-            return "実験でどんな結果になった？"
-        
+            message = "実験でどんな結果になった？"
         else:
-            return "あなたの考えを聞かせてください。"
-            
-    except Exception as e:
-        # エラーの場合のフォールバック
-        print(f"初期メッセージ取得エラー: {e}")
-        if stage == 'prediction':
-            return f"{unit_name}について、どう思いますか？"
-        elif stage == 'reflection':
-            return "実験でどのような結果になりましたか？"
-        else:
-            return "あなたの考えを聞かせてください。"
+            message = "あなたの考えを聞かせてください。"
+    
+    return message
 
 # 単元ごとのプロンプトを読み込む関数
 def load_unit_prompt(unit_name):
@@ -1186,36 +1191,26 @@ def prediction():
     prediction_summary_created = prediction_stage.get('summary_created', False)
     conversation_count = prediction_stage.get('conversation_count', 0)
     
-    # セッションに会話履歴があるか、または保存された履歴があるかをチェック
+    # セッションに会話履歴があるか確認
     session_conversation = session.get('conversation')
     student_id = f"{class_number}_{student_number}"
     
-    # 復元順序: セッション → DB保存 → ローカルログ
-    if not session_conversation:
-        # DB から復元を試みる
-        db_conversation = load_session_from_db(student_id, unit, 'prediction')
-        if db_conversation:
-            session['conversation'] = db_conversation
-            session_conversation = db_conversation
-            print(f"[PREDICTION] DB から会話を復元: {len(db_conversation)} メッセージ")
-    
-    has_existing_conversation = (
-        conversation_count > 0 or 
-        session_conversation or 
-        len(progress.get('conversation_history', [])) > 0
-    )
-    
-    if (resume or has_existing_conversation):
-        # 対話履歴を復元（セッションに無ければ進行状況から取得）
-        if not session_conversation and has_existing_conversation:
-            # DB復元に失敗した場合、ローカルログから取得
+    # resume パラメータが明示的に指定されている場合のみ復元
+    if resume:
+        # 復元: セッション → DB保存 → ローカルログ
+        if not session_conversation:
+            db_conversation = load_session_from_db(student_id, unit, 'prediction')
+            if db_conversation:
+                session['conversation'] = db_conversation
+                session_conversation = db_conversation
+                print(f"[PREDICTION] DB から会話を復元: {len(db_conversation)} メッセージ")
+        
+        if not session_conversation and conversation_count > 0:
             session['conversation'] = progress.get('conversation_history', [])
             session_conversation = session['conversation']
-        elif not session_conversation:
-            session['conversation'] = []
         
         resumption_info = {
-            'is_resumption': has_existing_conversation,
+            'is_resumption': True,
             'last_conversation_count': conversation_count,
             'last_access': progress.get('last_access', ''),
             'prediction_summary_created': prediction_summary_created
@@ -1231,8 +1226,16 @@ def prediction():
                     session['prediction_summary'] = log.get('data', {}).get('summary', '')
                     break
     else:
-        # 新規開始
+        # 新規開始 - セッションを完全にリセット
+        session.clear()
+        session['class_number'] = class_number
+        session['student_number'] = student_number
+        session['unit'] = unit
+        session['task_content'] = task_content
+        session['current_stage'] = 'prediction'
         session['conversation'] = []
+        session['prediction_summary'] = ''
+        session['prediction_summary_created'] = False
         resumption_info = {
             'is_resumption': False,
             'prediction_summary_created': False,
@@ -1241,14 +1244,17 @@ def prediction():
         }
         
         # 予想段階開始を記録
-        update_student_progress(class_number, student_number, unit, 
-                              stage='prediction', started=True)
+        update_student_progress(class_number, student_number, unit)
     
     # 単元に応じた最初のAIメッセージを取得
     initial_ai_message = get_initial_ai_message(unit, stage='prediction')
     
-    # 初期メッセージはUIに表示するだけで、会話履歴には含めない
+    # 初期メッセージを会話履歴に追加
     conversation_history = session.get('conversation', [])
+    if not conversation_history:
+        # 新規セッション時のみ、初期メッセージを会話履歴に追加
+        conversation_history = [{'role': 'assistant', 'content': initial_ai_message}]
+        session['conversation'] = conversation_history
     
     return render_template('prediction.html', unit=unit, task_content=task_content, 
                          prediction_summary_created=prediction_summary_created, 
@@ -1277,13 +1283,8 @@ def chat():
         {"role": "system", "content": unit_prompt}
     ]
     
-    # 初回メッセージの場合、初期メッセージを会話に含める
-    if len(conversation) == 1:  # ユーザーメッセージだけ
-        initial_ai_message = get_initial_ai_message(unit, stage='prediction')
-        # 初期メッセージを最初に追加
-        messages.append({"role": "assistant", "content": initial_ai_message})
-    
     # 対話履歴をメッセージフォーマットで追加
+    # 初期メッセージは既に conversation に含まれているので、そのまま追加
     for msg in conversation:
         messages.append({
             "role": msg['role'],
@@ -1476,40 +1477,31 @@ def reflection():
     reflection_summary_created = reflection_stage.get('summary_created', False)
     reflection_conversation_count = reflection_stage.get('conversation_count', 0)
     
-    # セッションに会話履歴があるか、または保存された履歴があるかをチェック
+    # セッションに会話履歴があるか確認
     session_reflection_conversation = session.get('reflection_conversation')
     student_id = f"{class_number}_{student_number}"
     
-    # 復元順序: セッション → DB保存 → ローカルログ
-    if not session_reflection_conversation:
-        # DB から復元を試みる
-        db_reflection_conversation = load_session_from_db(student_id, unit, 'reflection')
-        if db_reflection_conversation:
-            session['reflection_conversation'] = db_reflection_conversation
-            session_reflection_conversation = db_reflection_conversation
-            print(f"[REFLECTION] DB から会話を復元: {len(db_reflection_conversation)} メッセージ")
-    
-    has_reflection_progress = (
-        reflection_conversation_count > 0 or 
-        session_reflection_conversation or 
-        len(progress.get('reflection_conversation_history', [])) > 0
-    )
-    
-    if (resume or has_reflection_progress):
-        # セッションに会話履歴がなければ、保存されたものから復元
-        if not session_reflection_conversation and has_reflection_progress:
-            # DB復元に失敗した場合、ローカルログから取得
+    # resume パラメータが明示的に指定されている場合のみ復元
+    if resume:
+        # 復元: セッション → DB保存 → ローカルログ
+        if not session_reflection_conversation:
+            db_reflection_conversation = load_session_from_db(student_id, unit, 'reflection')
+            if db_reflection_conversation:
+                session['reflection_conversation'] = db_reflection_conversation
+                session_reflection_conversation = db_reflection_conversation
+                print(f"[REFLECTION] DB から会話を復元: {len(db_reflection_conversation)} メッセージ")
+        
+        if not session_reflection_conversation and reflection_conversation_count > 0:
             session['reflection_conversation'] = progress.get('reflection_conversation_history', [])
             session_reflection_conversation = session['reflection_conversation']
-        elif not session_reflection_conversation:
-            session['reflection_conversation'] = []
-        print(f"[REFLECTION] 復帰情報: 会話数={len(session.get('reflection_conversation', []))}, 復帰={has_reflection_progress}")
+        
+        print(f"[REFLECTION] 復帰情報: 会話数={len(session.get('reflection_conversation', []))}, 復帰=True")
         if session.get('reflection_conversation'):
             first_msg = session['reflection_conversation'][0] if session['reflection_conversation'] else None
             print(f"[REFLECTION] 最初のメッセージ: {first_msg['role'] if first_msg else 'N/A'}")
         
         resumption_info = {
-            'is_resumption': has_reflection_progress,
+            'is_resumption': True,
             'last_conversation_count': reflection_conversation_count,
             'last_access': progress.get('last_access', ''),
             'reflection_summary_created': reflection_summary_created
@@ -1525,6 +1517,10 @@ def reflection():
                     session['reflection_summary'] = log.get('data', {}).get('summary', '')
                     break
     else:
+        # 新規開始 - セッションをクリア
+        session.pop('reflection_conversation', None)
+        session.pop('reflection_summary', None)
+        session.pop('reflection_summary_created', None)
         session['reflection_conversation'] = []
         resumption_info = {
             'is_resumption': False,
@@ -1534,12 +1530,11 @@ def reflection():
         }
         
         if unit and student_number:
+            # 考察段階開始を記録（フラグは修正しない）
             update_student_progress(
                 class_number,
                 student_number,
-                unit,
-                stage='reflection',
-                started=True
+                unit
             )
     
     # 単元に応じた最初のAIメッセージを取得
