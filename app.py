@@ -298,36 +298,25 @@ def remove_markdown_formatting(text):
 
 # 学習進行状況管理機能
 def load_learning_progress():
-    """学習進行状況を読み込み"""
-    if USE_FIRESTORE:
-        # Firestoreから読み込み
+    """学習進行状況を読み込み（ローカル JSON のみ）"""
+    # ローカルファイルから読み込み
+    if os.path.exists(LEARNING_PROGRESS_FILE):
         try:
-            doc = db.collection('learning_progress').document('progress_data').get()
-            if doc.exists:
-                return doc.to_dict()
+            with open(LEARNING_PROGRESS_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except (json.JSONDecodeError, Exception):
             return {}
-        except Exception as e:
-            print(f"[PROGRESS_LOAD] Firestore Error: {e}")
-            return {}
-    else:
-        # ローカルファイルから読み込み
-        if os.path.exists(LEARNING_PROGRESS_FILE):
-            try:
-                with open(LEARNING_PROGRESS_FILE, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-            except (json.JSONDecodeError, Exception):
-                return {}
-        return {}
+    return {}
 
 def save_learning_progress(progress_data):
-    """学習進行状況を保存"""
-    if USE_FIRESTORE:
-        # Firestoreに保存
-        try:
-            db.collection('learning_progress').document('progress_data').set(progress_data)
-            print(f"[PROGRESS_SAVE] Firestore saved successfully")
-        except Exception as e:
-            print(f"[PROGRESS_SAVE] Firestore Error: {e}")
+    """学習進行状況を保存（ローカル JSON のみ）"""
+    # ローカルファイルに保存
+    try:
+        with open(LEARNING_PROGRESS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(progress_data, f, ensure_ascii=False, indent=2)
+        print(f"[PROGRESS_SAVE] Local file saved successfully")
+    except Exception as e:
+        print(f"[PROGRESS_SAVE] Error: {e}")
     else:
         # ローカルファイルに保存
         try:
