@@ -717,105 +717,110 @@ function startVoiceInput() {
         return;
     }
     
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    
-    if (recognition && recognition.isListening) {
-        stopVoiceInput();
-        return;
-    }
-    
-    recognition = new SpeechRecognition();
-    recognition.lang = 'ja-JP';
-    recognition.continuous = false;
-    recognition.interimResults = true;
-    
-    const statusDiv = document.getElementById('voiceInputStatus');
-    const statusText = document.getElementById('voiceStatusText');
-    const voiceBtn = document.getElementById('voiceInputBtn');
-    
-    recognition.onstart = function() {
-        recognition.isListening = true;
-        statusDiv.style.display = 'block';
-        statusText.textContent = '音声を認識中...';
-        voiceBtn.classList.add('btn-danger');
-        voiceBtn.classList.remove('btn-outline-primary');
+    try {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         
-        // 音声入力中はプレースホルダーテキストを非表示
-        const placeholderText = document.getElementById('inputPlaceholderText');
-        if (placeholderText) {
-            placeholderText.style.display = 'none';
+        if (recognition && recognition.isListening) {
+            stopVoiceInput();
+            return;
         }
-    };
-    
-    recognition.onresult = function(event) {
-        let interimTranscript = '';
-        let finalTranscript = '';
         
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-            const transcript = event.results[i][0].transcript;
-            if (event.results[i].isFinal) {
-                finalTranscript += transcript;
-            } else {
-                interimTranscript += transcript;
+        recognition = new SpeechRecognition();
+        recognition.lang = 'ja-JP';
+        recognition.continuous = false;
+        recognition.interimResults = true;
+        
+        const statusDiv = document.getElementById('voiceInputStatus');
+        const statusText = document.getElementById('voiceStatusText');
+        const voiceBtn = document.getElementById('voiceInputBtn');
+        
+        recognition.onstart = function() {
+            recognition.isListening = true;
+            statusDiv.style.display = 'block';
+            statusText.textContent = '音声を認識中...';
+            voiceBtn.classList.add('btn-danger');
+            voiceBtn.classList.remove('btn-outline-primary');
+            
+            // 音声入力中はプレースホルダーテキストを非表示
+            const placeholderText = document.getElementById('inputPlaceholderText');
+            if (placeholderText) {
+                placeholderText.style.display = 'none';
             }
-        }
+        };
         
-        const input = document.getElementById('reflectionInput');
-        const placeholderText = document.getElementById('inputPlaceholderText');
+        recognition.onresult = function(event) {
+            let interimTranscript = '';
+            let finalTranscript = '';
+            
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const transcript = event.results[i][0].transcript;
+                if (event.results[i].isFinal) {
+                    finalTranscript += transcript;
+                } else {
+                    interimTranscript += transcript;
+                }
+            }
+            
+            const input = document.getElementById('reflectionInput');
+            const placeholderText = document.getElementById('inputPlaceholderText');
+            
+            // 確定結果のみを入力欄に追加
+            if (finalTranscript) {
+                input.value += finalTranscript;
+                statusText.textContent = '✅ 認識完了: ' + finalTranscript;
+                console.log('確定結果:', finalTranscript);
+            }
+            
+            // 途中結果の表示（ステータスのみ）
+            if (interimTranscript) {
+                statusText.textContent = '🎤 認識中: ' + interimTranscript;
+                console.log('途中結果:', interimTranscript);
+            }
+            
+            // 入力欄をフォーカスしてスクロール
+            input.focus();
+            input.scrollTop = input.scrollHeight;
+            
+            // プレースホルダーテキストにもリアルタイム表示
+            if (placeholderText) {
+                placeholderText.textContent = input.value;
+            }
+        };
         
-        // 確定結果のみを入力欄に追加
-        if (finalTranscript) {
-            input.value += finalTranscript;
-            statusText.textContent = '✅ 認識完了: ' + finalTranscript;
-            console.log('確定結果:', finalTranscript);
-        }
-        
-        // 途中結果の表示（ステータスのみ）
-        if (interimTranscript) {
-            statusText.textContent = '🎤 認識中: ' + interimTranscript;
-            console.log('途中結果:', interimTranscript);
-        }
-        
-        // 入力欄をフォーカスしてスクロール
-        input.focus();
-        input.scrollTop = input.scrollHeight;
-        
-        // プレースホルダーテキストにもリアルタイム表示
-        if (placeholderText) {
-            placeholderText.textContent = input.value;
-        }
-    };
-    
-    recognition.onerror = function(event) {
-        console.error('音声認識エラー:', event.error);
-        statusDiv.style.display = 'none';
-        voiceBtn.classList.remove('btn-danger');
-        voiceBtn.classList.add('btn-outline-primary');
-        recognition.isListening = false;
-        
-        if (event.error === 'no-speech') {
-            alert('音声が検出されませんでした。もう一度お試しください。');
-        } else if (event.error === 'not-allowed') {
-            alert('マイクの使用が許可されていません。ブラウザの設定を確認してください。');
-        }
-    };
-    
-    recognition.onend = function() {
-        setTimeout(() => {
+        recognition.onerror = function(event) {
+            console.error('音声認識エラー:', event.error);
             statusDiv.style.display = 'none';
             voiceBtn.classList.remove('btn-danger');
             voiceBtn.classList.add('btn-outline-primary');
             recognition.isListening = false;
             
-            // プレースホルダーテキストを表示
-            const placeholderText = document.getElementById('inputPlaceholderText');
-            if (placeholderText) {
-                placeholderText.style.display = 'block';
+            if (event.error === 'no-speech') {
+                alert('音声が検出されませんでした。もう一度お試しください。');
+            } else if (event.error === 'not-allowed') {
+                alert('マイクの使用が許可されていません。ブラウザの設定を確認してください。');
             }
-        }, 1000);
-    };
-    
-    recognition.start();
+        };
+        
+        recognition.onend = function() {
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+                voiceBtn.classList.remove('btn-danger');
+                voiceBtn.classList.add('btn-outline-primary');
+                recognition.isListening = false;
+                
+                // プレースホルダーテキストを表示
+                const placeholderText = document.getElementById('inputPlaceholderText');
+                if (placeholderText) {
+                    placeholderText.style.display = 'block';
+                }
+            }, 1000);
+        };
+        
+        recognition.start();
+    } catch (error) {
+        console.error('音声認識エラー:', error);
+        alert('音声認識の初期化に失敗しました: ' + error.message);
+    }
 }
 
 function stopVoiceInput() {
