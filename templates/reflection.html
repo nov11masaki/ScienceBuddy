@@ -685,6 +685,8 @@ function getFinalSummary() {
     })
     .catch(error => {
         console.error('【DEBUG】Final Summary Error:', error);
+        // ユーザーに警告を表示
+        alert('⚠️ 考察をまとめられませんでした\n\n' + error.message);
         document.getElementById('finalSummaryButton').disabled = false;
     });
 }

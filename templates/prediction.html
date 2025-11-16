@@ -943,6 +943,8 @@ function getSummary() {
     })
     .catch(error => {
         console.error('【DEBUG】Summary Error:', error);
+        // ユーザーに警告を表示
+        alert('⚠️ 予想をまとめられませんでした\n\n' + error.message);
         document.getElementById('summaryButton').disabled = false;
     });
 }
