@@ -179,6 +179,17 @@ function goToPrediction(unit) {
     
     const progress = unitProgress[unit];
     const needsResumption = progress && progress.needs_resumption;
+    const predictionSummaryCreated = progress && progress.prediction_summary_created;
+    
+    // 予想が完了している場合は警告ダイアログ
+    if (predictionSummaryCreated) {
+        const confirmRedo = confirm('予想をやり直しますか？\n\n前回の予想は記録として保存されます。\n新たに予想を立て直します。\n\nよろしいですか？');
+        
+        if (confirmRedo) {
+            window.location.href = `/prediction?class=${classNumber}&number=${studentNumber}&unit=${encodeURIComponent(unit)}&resume=false`;
+        }
+        return;
+    }
     
     if (needsResumption) {
         const confirmResume = confirm(`この単元は前回の続きがあります。\n前回の続きから始めますか？\n\n進行状況: ${progress.progress_summary}\n\nOK: 続きから開始\nキャンセル: 最初から開始`);
@@ -212,6 +223,17 @@ function goToReflection(unit) {
     }
     
     const reflectionNeedsResumption = progress && progress.reflection_needs_resumption;
+    const reflectionSummaryCreated = progress && progress.reflection_summary_created;
+    
+    // 考察が完了している場合は警告ダイアログ
+    if (reflectionSummaryCreated) {
+        const confirmRedo = confirm('考察をやり直しますか？\n\n前回の考察は記録として保存されます。\n新たに考察を立て直します。\n\nよろしいですか？');
+        
+        if (confirmRedo) {
+            window.location.href = `/reflection?class=${classNumber}&number=${studentNumber}&unit=${encodeURIComponent(unit)}&resume=false`;
+        }
+        return;
+    }
     
     if (reflectionNeedsResumption) {
         const confirmResume = confirm(`この単元の考察に前回の続きがあります。\n前回の続きから始めますか？\n\n進行状況: ${progress.progress_summary}\n\nOK: 続きから開始\nキャンセル: 最初から開始`);
