@@ -18,8 +18,6 @@ import tempfile
 from pathlib import Path
 from functools import lru_cache
 from werkzeug.utils import secure_filename
-from google.cloud import firestore
-from google.api_core import exceptions as firestore_exceptions
 import numpy as np
 from sklearn.cluster import KMeans
 
@@ -31,25 +29,7 @@ load_dotenv()
 LEARNING_PROGRESS_FILE = 'learning_progress.json'
 PROMPTS_DIR = Path('prompts')
 
-# Firestore設定
-USE_FIRESTORE = os.getenv('FLASK_ENV') == 'production'
-
-# Firestoreクライアント初期化（本番環境のみ）
-if USE_FIRESTORE:
-    try:
-        db = firestore.Client()
-        # Firestoreへの接続確認
-        db.collection('_test').document('_test').set({'test': True})
-        db.collection('_test').document('_test').delete()
-        print("[INIT] Firestore initialized successfully")
-    except Exception as e:
-        print(f"[INIT] Warning: Firestore initialization failed: {e}")
-        USE_FIRESTORE = False
-        db = None
-else:
-    db = None
-
-# GCS設定（本番環境用）
+# ストレージ設定：GCS（本番環境）またはローカルJSON（開発環境）
 USE_GCS = os.getenv('FLASK_ENV') == 'production' and os.getenv('GCP_PROJECT_ID')
 
 if USE_GCS:
@@ -678,7 +658,7 @@ def render_prompt_template(template: str, **placeholders):
 
 # 学習ログを保存する関数
 def save_learning_log(student_number, unit, log_type, data, class_number=None):
-    """学習ログをFirestoreに保存
+    """学習ログをGCSまたはローカルJSONに保存
     
     Args:
         student_number: 生徒番号 (例: "4103"=1組3番, "5015"=研究室15番) または出席番号
@@ -721,19 +701,34 @@ def save_learning_log(student_number, unit, log_type, data, class_number=None):
         'data': data
     }
     
-    if USE_FIRESTORE:
-        # Firestoreに保存
+    if USE_GCS:
+        # GCS に保存
         try:
             log_date = datetime.now().strftime('%Y%m%d')
-            doc_id = f"{log_date}_{datetime.now().isoformat()}"
+            log_filename = f"logs/learning_log_{log_date}.json"
             
-            log_msg = f"[FIRESTORE_SAVE] START - doc: {doc_id}, class: {class_display}, unit: {unit}, type: {log_type}"
-            print(log_msg)
+            print(f"[GCS_SAVE] START - path: {log_filename}, class: {class_display}, unit: {unit}, type: {log_type}")
             
-            db.collection('learning_logs').document(doc_id).set(log_entry)
-            print(f"[FIRESTORE_SAVE] SUCCESS - saved to Firestore")
+            # GCS からファイルを読み込み
+            blob = bucket.blob(log_filename)
+            logs = []
+            try:
+                content = blob.download_as_string()
+                logs = json.loads(content.decode('utf-8'))
+            except Exception:
+                logs = []
+            
+            # ログエントリを追加
+            logs.append(log_entry)
+            
+            # GCS に保存
+            blob.upload_from_string(
+                json.dumps(logs, ensure_ascii=False, indent=2).encode('utf-8'),
+                content_type='application/json'
+            )
+            print(f"[GCS_SAVE] SUCCESS - saved to GCS")
         except Exception as e:
-            print(f"[FIRESTORE_SAVE] ERROR - {type(e).__name__}: {str(e)}")
+            print(f"[GCS_SAVE] ERROR - {type(e).__name__}: {str(e)}")
             import traceback
             traceback.print_exc()
     else:
@@ -757,27 +752,28 @@ def save_learning_log(student_number, unit, log_type, data, class_number=None):
 
 # 学習ログを読み込む関数
 def load_learning_logs(date=None):
-    """指定日の学習ログを読み込み"""
+    """指定日の学習ログを読み込み（GCSまたはローカル）"""
     if date is None:
         date = datetime.now().strftime('%Y%m%d')
     
-    if USE_FIRESTORE:
-        # Firestoreから読み込み
+    if USE_GCS:
+        # GCS から読み込み
         try:
-            print(f"[FIRESTORE_LOAD] START - loading logs from date: {date}")
+            log_filename = f"logs/learning_log_{date}.json"
+            print(f"[GCS_LOAD] START - loading logs from: {log_filename}")
             
-            # 指定日のドキュメントを取得
-            query = db.collection('learning_logs').where('timestamp', '>=', f"{date}T00:00:00").where('timestamp', '<', f"{date}T23:59:59").stream()
-            
-            logs = []
-            for doc in query:
-                logs.append(doc.to_dict())
-            
-            log_count = len(logs)
-            print(f"[FIRESTORE_LOAD] SUCCESS - loaded {log_count} logs from {date}")
-            return logs
+            blob = bucket.blob(log_filename)
+            try:
+                content = blob.download_as_string()
+                logs = json.loads(content.decode('utf-8'))
+                log_count = len(logs)
+                print(f"[GCS_LOAD] SUCCESS - loaded {log_count} logs from {date}")
+                return logs
+            except Exception as e:
+                print(f"[GCS_LOAD] File not found: {log_filename}")
+                return []
         except Exception as e:
-            print(f"[FIRESTORE_LOAD] ERROR - {type(e).__name__}: {str(e)}")
+            print(f"[GCS_LOAD] ERROR - {type(e).__name__}: {str(e)}")
             import traceback
             traceback.print_exc()
             return []
