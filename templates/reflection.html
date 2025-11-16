@@ -777,9 +777,11 @@ function startVoiceInput() {
             // 確定結果のみを入力欄に追加
             if (finalTranscript.trim()) {
                 console.log('✅ 確定結果を追加:', finalTranscript);
-                input.value += finalTranscript;
+                // 余分なスペースを削除してから追加
+                const cleanedFinalTranscript = finalTranscript.trim();
+                input.value += cleanedFinalTranscript + ' ';
                 console.log('入力欄の内容:', input.value);
-                statusText.textContent = '✅ 認識完了: ' + finalTranscript;
+                statusText.textContent = '✅ 認識完了: ' + cleanedFinalTranscript;
             }
             
             // 途中結果の表示（ステータスのみ）

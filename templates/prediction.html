@@ -540,11 +540,12 @@ function startVoiceInput() {
             // 入力欄を更新（確定結果のみを追加）
             if (finalTranscript.trim()) {
                 console.log('✅ 確定結果を追加:', finalTranscript);
-                // 確定した結果のみを追加
-                input.value += finalTranscript;
+                // 確定した結果のみを追加（余分なスペースを削除）
+                const cleanedFinalTranscript = finalTranscript.trim();
+                input.value += cleanedFinalTranscript + ' ';
                 console.log('入力欄の内容:', input.value);
                 startPosition = input.value.length;  // 新しい開始位置を更新
-                statusText.textContent = '✅ 認識完了: ' + finalTranscript;
+                statusText.textContent = '✅ 認識完了: ' + cleanedFinalTranscript;
             }
             
             // 途中結果の表示（ステータスのみ）
