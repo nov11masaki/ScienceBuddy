@@ -157,10 +157,13 @@
 </script>
 
 <script>
+// グローバル変数: 音声認識インスタンス
+let recognition = null;
+
 // 考察完了状態を取得
 const reflectionStatusElement = document.getElementById('reflection-status');
 const reflectionStatus = reflectionStatusElement ? JSON.parse(reflectionStatusElement.textContent) : {reflection_summary_created: false};
-let recognition = null;
+let reflectionExchangeCount = 0;
 
 const currentUnit = "{{ unit }}";
 const classNumber = "{{ class_number }}";
