@@ -30,20 +30,6 @@
             </div>
 
             <div class="feature-card">
-                <div class="card-icon"><i class="fas fa-brain"></i></div>
-                <h2>思考傾向分析</h2>
-                <p>クラス・単元ごとの学生の思考傾向を分析</p>
-                <a href="/teacher/analysis" class="card-button"><i class="fas fa-chart-bar"></i> 分析を見る</a>
-            </div>
-
-            <div class="feature-card">
-                <div class="card-icon"><i class="fas fa-images"></i></div>
-                <h2>ノート確認</h2>
-                <p>生徒が撮影したノート写真を確認</p>
-                <a href="/teacher/note_photos" class="card-button"><i class="fas fa-photo-video"></i> 写真を見る</a>
-            </div>
-
-            <div class="feature-card">
                 <div class="card-icon"><i class="fas fa-download"></i></div>
                 <h2>データエクスポート</h2>
                 <p>学習データをCSVで出力</p>
@@ -51,11 +37,11 @@
                 <button onclick="exportData('json')" class="card-button" style="margin-top: 10px;"><i class="fas fa-file-code"></i> JSON出力</button>
             </div>
 
-            <div class="feature-card">
-                <div class="card-icon"><i class="fas fa-database"></i></div>
-                <h2>ログ管理</h2>
-                <p>ログの削除・バックアップを管理</p>
-                <a href="/teacher/manage_logs" class="card-button"><i class="fas fa-cog"></i> ログ管理</a>
+            <div class="feature-card" style="background-color: #fff3cd; border-color: #ffc107;">
+                <div class="card-icon" style="color: #ff6b6b;"><i class="fas fa-redo-alt"></i></div>
+                <h2>全リセット</h2>
+                <p>全学習者の段階とログをリセット</p>
+                <button onclick="confirmResetAll()" class="card-button" style="background-color: #ff6b6b; color: white;"><i class="fas fa-exclamation-triangle"></i> 全データリセット</button>
             </div>
         </section>
 
@@ -111,6 +97,21 @@ function exportData(format = 'csv') {
         showToast(format === 'json' ? '✅ JSONのダウンロード完了' : '✅ CSVのダウンロード完了', 'success');
     }, 1500);
 }
+
+function confirmResetAll() {
+    if (confirm('⚠️ 全学習者の段階とログをリセットしますか？\n\nこの操作は取り消せません。\n本当にリセットしますか？')) {
+        if (confirm('⚠️⚠️ 本当に確定ですか？')) {
+            // フォームを作成してPOSTリクエストを送信
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/teacher/reset_all';
+            document.body.appendChild(form);
+            showToast('🔄 全データをリセット中...', 'info');
+            form.submit();
+        }
+    }
+}
+
 </script>
 
 <style>

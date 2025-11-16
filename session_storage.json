@@ -32,7 +32,7 @@
     ]
   },
   "5_29_None_prediction": {
-    "timestamp": "2025-11-15T11:03:00.333559",
+    "timestamp": "2025-11-15T11:16:46.124712",
     "student_id": "5_29",
     "unit": null,
     "stage": "prediction",
@@ -46,12 +46,212 @@
         "role": "assistant"
       },
       {
+        "content": "slmvlm",
+        "role": "user"
+      },
+      {
+        "content": "その言葉は何かの略語や特別な意味があるのかな？もう少し詳しく教えてもらえますか？あなたの考えを聞きたいです！",
+        "role": "assistant"
+      },
+      {
         "role": "user",
-        "content": "slmvlm"
+        "content": "９う９"
       },
       {
         "role": "assistant",
-        "content": "その言葉は何かの略語や特別な意味があるのかな？もう少し詳しく教えてもらえますか？あなたの考えを聞きたいです！"
+        "content": "その数字の「９」は何か特別な意味がありますか？どんなことを考えているのか、教えてもらえると嬉しいです！"
+      }
+    ]
+  },
+  "5_29_空気の温度と体積_prediction": {
+    "timestamp": "2025-11-15T11:11:23.242975",
+    "student_id": "5_29",
+    "unit": "空気の温度と体積",
+    "stage": "prediction",
+    "conversation": [
+      {
+        "content": "ヴァsっk",
+        "role": "user"
+      },
+      {
+        "content": "その言葉は何か特別な意味がありますか？どんなことを考えているのか、教えてくれますか？",
+        "role": "assistant"
+      },
+      {
+        "content": "slmvlm",
+        "role": "user"
+      },
+      {
+        "content": "その言葉は何かの略語や特別な意味があるのかな？もう少し詳しく教えてもらえますか？あなたの考えを聞きたいです！",
+        "role": "assistant"
+      },
+      {
+        "content": "svんsvん",
+        "role": "user"
+      },
+      {
+        "content": "ちょっと難しい言葉かもしれないね。何か考えていることや、話したいことがあれば教えてくれるかな？あなたの意見を聞きたいな！",
+        "role": "assistant"
+      },
+      {
+        "content": "skvんlkv",
+        "role": "user"
+      },
+      {
+        "content": "うん、ちょっと分からない言葉が続いているね。でも、何か他に話したいことや考えがあれば、ぜひ教えてね！どんなことを気にしているのかな？",
+        "role": "assistant"
+      },
+      {
+        "content": "かvぁ",
+        "role": "user"
+      },
+      {
+        "content": "何か考えていることがあるのかな？もう少し具体的に教えてくれると嬉しいな。どんなことを話したいのかな？",
+        "role": "assistant"
+      },
+      {
+        "content": "温めると体積は大きくなる",
+        "role": "user"
+      },
+      {
+        "content": "温めると体積が大きくなるんだね！それはどうしてそう思ったのかな？何か経験があった？",
+        "role": "assistant"
+      },
+      {
+        "content": "タイヤがパンパンだった",
+        "role": "user"
+      },
+      {
+        "content": "タイヤがパンパンになったんだね！それは夏の日だったのかな？そのとき、どんなようすだったか教えてくれる？",
+        "role": "assistant"
+      },
+      {
+        "content": "気温が高くて，パンパンだった",
+        "role": "user"
+      },
+      {
+        "content": "気温が高くてタイヤがパンパンになったんだね！なるほど、温かくなると大きくなるんだね。じゃあ、冷やしたら小さくなるってことかな？",
+        "role": "assistant"
+      },
+      {
+        "role": "user",
+        "content": "そういうこと"
+      },
+      {
+        "role": "assistant",
+        "content": "そうなんだね！冷やすと小さくなるって思うんだね。空気の体積は温度によって変わるんだね。すごく面白い考えだね！"
+      }
+    ]
+  },
+  "5_29_水のあたたまり方_prediction": {
+    "timestamp": "2025-11-15T11:22:01.155744",
+    "student_id": "5_29",
+    "unit": "水のあたたまり方",
+    "stage": "prediction",
+    "conversation": [
+      {
+        "content": "ヴァsっk",
+        "role": "user"
+      },
+      {
+        "content": "その言葉は何か特別な意味がありますか？どんなことを考えているのか、教えてくれますか？",
+        "role": "assistant"
+      },
+      {
+        "content": "slmvlm",
+        "role": "user"
+      },
+      {
+        "content": "その言葉は何かの略語や特別な意味があるのかな？もう少し詳しく教えてもらえますか？あなたの考えを聞きたいです！",
+        "role": "assistant"
+      },
+      {
+        "content": "９う９",
+        "role": "user"
+      },
+      {
+        "content": "その数字の「９」は何か特別な意味がありますか？どんなことを考えているのか、教えてもらえると嬉しいです！",
+        "role": "assistant"
+      },
+      {
+        "content": "wフィっjw",
+        "role": "user"
+      },
+      {
+        "content": "ちょっと難しい言葉みたいだね。何か伝えたいことがあるのかな？あなたの気持ちや考えを教えてくれると嬉しいよ！",
+        "role": "assistant"
+      },
+      {
+        "role": "user",
+        "content": "fk"
+      },
+      {
+        "role": "assistant",
+        "content": "何か特別なことを伝えたいのかな？あなたの気持ちや考えを聞かせてくれると嬉しいよ！"
+      }
+    ]
+  },
+  "1_1_金属のあたたまり方_prediction": {
+    "timestamp": "2025-11-16T19:56:06.944860",
+    "student_id": "1_1",
+    "unit": "金属のあたたまり方",
+    "stage": "prediction",
+    "conversation": [
+      {
+        "content": "slkknks",
+        "role": "user"
+      },
+      {
+        "content": "それはどうしたのかな？何か考えていることがあるのかな？",
+        "role": "assistant"
+      },
+      {
+        "content": "flsmflm",
+        "role": "user"
+      },
+      {
+        "content": "うーん、それはどういう意味なんだろう？もし考えていることがあれば教えてくれる？",
+        "role": "assistant"
+      },
+      {
+        "content": "sのんゔぃんs",
+        "role": "user"
+      },
+      {
+        "content": "ちょっとわかりにくいかもしれないね。もし話したいことがあれば、もう少し詳しく教えてくれる？",
+        "role": "assistant"
+      },
+      {
+        "content": "端っこから温まると思う",
+        "role": "user"
+      },
+      {
+        "content": "端っこからあたたまると思うんだね！それはどうしてそう思ったの？何か経験があったのかな？",
+        "role": "assistant"
+      },
+      {
+        "content": "焼肉の時，火の近くから温まる",
+        "role": "user"
+      },
+      {
+        "content": "焼肉のとき、火の近くからあたたまるんだね。どんなふうにあたたまっていったの？焼肉をしているときの様子を教えてくれる？",
+        "role": "assistant"
+      },
+      {
+        "content": "火の近くから遠くへ",
+        "role": "user"
+      },
+      {
+        "content": "火の近くから遠くへあたたまっていくんだね！そのとき、どんなようすだった？さわったらどう感じた？",
+        "role": "assistant"
+      },
+      {
+        "role": "user",
+        "content": "触ってない"
+      },
+      {
+        "role": "assistant",
+        "content": "触ってはいないんだね。でも、見ていてどんなふうにあたたまっていくのがわかったのかな？何か気づいたことがあった？"
       }
     ]
   }

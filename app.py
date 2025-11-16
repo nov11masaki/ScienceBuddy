@@ -444,6 +444,58 @@ def update_student_progress(class_number, student_number, unit, stage=None, **kw
     save_learning_progress(progress_data)
     return current_progress
 
+def reset_unit_stage(class_number, student_number, unit):
+    """ユニット段階をリセット（会話履歴全て削除、ログは保持）"""
+    normalized_class = normalize_class_value(class_number)
+    class_number = normalized_class if normalized_class is not None else class_number
+    progress_data = load_learning_progress()
+    student_id = f"{class_number}_{student_number}"
+    
+    if student_id in progress_data and unit in progress_data[student_id]:
+        current_progress = progress_data[student_id][unit]
+        
+        # 各段階をリセット
+        current_progress["current_stage"] = "prediction"
+        current_progress["stage_progress"] = {
+            "prediction": {
+                "started": False,
+                "conversation_count": 0,
+                "summary_created": False,
+                "messages": []
+            },
+            "experiment": {
+                "started": False
+            },
+            "reflection": {
+                "started": False,
+                "conversation_count": 0,
+                "summary_created": False,
+                "messages": []
+            }
+        }
+        # 会話履歴・予想サマリー・反省会話履歴を全て削除
+        current_progress["conversation_history"] = []
+        current_progress["reflection_conversation_history"] = []
+        current_progress["prediction_summary"] = ""
+        current_progress["reflection_summary"] = ""
+        
+        # セッションからも削除（DBに保存されている場合）
+        # ログはそのまま保持（learning_log_*.jsonに記録されている履歴は保持）
+        
+        # 進行状況を保存
+        progress_data[student_id][unit] = current_progress
+        save_learning_progress(progress_data)
+        
+        print(f"[RESET] Unit '{unit}' リセット: class={class_number}, student={student_number}, 会話履歴削除済み")
+        return True
+    return False
+
+def reset_all_student_data():
+    """全ユーザーの全段階とログをリセット"""
+    progress_data = {}
+    save_learning_progress(progress_data)
+    return True
+
 def check_resumption_needed(class_number, student_number, unit):
     """復帰が必要かチェック"""
     normalized_class = normalize_class_value(class_number)
@@ -1473,25 +1525,8 @@ def summary():
     except Exception as e:
         return jsonify({'error': f'まとめ生成中にエラーが発生しました。'}), 500
 
-@app.route('/experiment')
-def experiment():
-    unit = session.get('unit')
-    class_number = session.get('class_number', '1')
-    student_number = session.get('student_number')
-    
-    # 実験開始を記録
-    if unit and student_number:
-        update_student_progress(
-            class_number,
-            student_number,
-            unit,
-            stage='experiment',
-            started=True
-        )
-    
-    return render_template('experiment.html')
-
 @app.route('/reflection')
+
 def reflection():
     unit = request.args.get('unit', session.get('unit'))
     class_number = normalize_class_value(session.get('class_number', '1')) or '1'
@@ -1501,6 +1536,18 @@ def reflection():
     resume = request.args.get('resume', 'false').lower() == 'true'
     
     print(f"[REFLECTION] アクセス: unit={unit}, student={class_number}_{student_number}, resume={resume}")
+    
+    # 進行状況をチェック
+    progress = get_student_progress(class_number, student_number, unit)
+    stage_progress = progress.get('stage_progress', {})
+    prediction_stage = stage_progress.get('prediction', {})
+    prediction_summary_created = prediction_stage.get('summary_created', False)
+    
+    # 予想が完了していない場合はアクセス拒否
+    if not prediction_summary_created and not resume:
+        print(f"[REFLECTION] 予想未完了のため考察へのアクセスを拒否")
+        flash('考察に進む前に、予想を完了してください。', 'warning')
+        return redirect(url_for('select_unit', class_number=class_number, student_number=student_number))
     
     # 異なる単元に移動した場合、セッションをクリア（単元混在防止）
     current_unit = session.get('unit')
@@ -1514,8 +1561,6 @@ def reflection():
     session['unit'] = unit
     
     # 進行状況をチェック
-    progress = get_student_progress(class_number, student_number, unit)
-    stage_progress = progress.get('stage_progress', {})
     reflection_stage = stage_progress.get('reflection', {})
     reflection_summary_created = reflection_stage.get('summary_created', False)
     reflection_conversation_count = reflection_stage.get('conversation_count', 0)
@@ -1547,7 +1592,6 @@ def reflection():
             session_reflection_conversation = session['reflection_conversation']
         elif not session_reflection_conversation:
             session['reflection_conversation'] = []
-        
         print(f"[REFLECTION] 復帰情報: 会話数={len(session.get('reflection_conversation', []))}, 復帰={has_reflection_progress}")
         if session.get('reflection_conversation'):
             first_msg = session['reflection_conversation'][0] if session['reflection_conversation'] else None
@@ -2093,488 +2137,6 @@ def teacher_export_json():
         headers={"Content-Disposition": f"attachment; filename*=UTF-8''{filename}"}
     )
 
-@app.route('/teacher/analysis')
-@require_teacher_auth
-def teacher_analysis():
-    """クラス選択ページにリダイレクト"""
-    return redirect(url_for('teacher_analysis_list'))
-
-@app.route('/teacher/analysis/<class_num>')
-@require_teacher_auth
-def teacher_analysis_class(class_num):
-    """クラス別の思考傾向分析 - シンプルなテキスト分析"""
-    try:
-        import glob
-        import os
-        import re
-        import json
-        
-        # 全ログを取得
-        all_logs = []
-        dates = get_available_log_dates()
-        
-        for date_str in dates:
-            try:
-                logs = load_learning_logs(date_str)
-                all_logs.extend(logs)
-            except:
-                pass
-        
-        # このクラスのログのみフィルタリング
-        class_logs = [log for log in all_logs if log.get('class_num') == class_num]
-        
-        # 単元ごとにグループ化
-        units_data = {}
-        for log in class_logs:
-            unit = log.get('unit', '未分類')
-            if unit not in units_data:
-                units_data[unit] = []
-            units_data[unit].append(log)
-        
-        # 各単元の分析を実行
-        analysis_results = {}
-        summary_request_template = load_prompt_template('analysis_summary_request.md')
-        summary_system_prompt = load_prompt_template('analysis_summary_system.md')
-        default_summary_request = """科学の学習における児童の対話ログを分析してください。\n\n【対話内容サンプル】\n{samples}\n\n以下の観点から、児童の思考や経験との結びつき、既習事項の活用方法などをテキストで分析してください：\n\n1. 児童がどんな既習事項や経験と新しい学習を結びつけているか\n2. どのような思考プロセスで予想や考察を立てているか\n3. 児童の質問や気づきの特徴\n4. 日常生活との関連付けの傾向\n\n200〜300字でまとめてください。"""
-        default_summary_system = "You are an expert science education analyst. Analyze student dialogue and provide insights about their thinking patterns and how they connect learning to prior knowledge. Always respond in Japanese with clear, readable paragraphs."
-        
-        for unit, logs in units_data.items():
-            try:
-                # 対話ログから分析用テキストを構築
-                chat_texts = []
-                for log in logs[:30]:
-                    if log.get('log_type') in ['prediction_chat', 'reflection_chat']:
-                        user_msg = log.get('data', {}).get('user_message', '')
-                        if user_msg:
-                            chat_texts.append(user_msg)
-                
-                if chat_texts:
-                    # OpenAI で思考傾向を分析
-                    chat_samples = "\n".join(chat_texts[:10])
-                    if summary_request_template:
-                        analysis_prompt = render_prompt_template(
-                            summary_request_template,
-                            CHAT_SAMPLES=chat_samples
-                        )
-                    else:
-                        analysis_prompt = default_summary_request.format(samples=chat_samples)
-                    analysis_system_message = summary_system_prompt.strip() if summary_system_prompt else default_summary_system
-                    
-                    print(f"[ANALYSIS] Analyzing {class_num}_{unit} with OpenAI...")
-                    
-                    client = openai.OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
-                    response = client.chat.completions.create(
-                        model="gpt-4o-mini",
-                        messages=[
-                            {"role": "system", "content": analysis_system_message},
-                            {"role": "user", "content": analysis_prompt}
-                        ],
-                        temperature=0.7,
-                        max_tokens=500
-                    )
-                    
-                    analysis_text = response.choices[0].message.content
-                    
-                    # クラスタリング分析を実行
-                    clustering_data = perform_clustering_analysis(logs, unit, class_num)
-                    
-                    analysis_results[unit] = {
-                        'text': analysis_text,
-                        'student_count': len(set(log.get('student_number') for log in logs)),
-                        'chat_count': len([l for l in logs if l.get('log_type') in ['prediction_chat', 'reflection_chat']]),
-                        'clustering': clustering_data
-                    }
-                else:
-                    analysis_results[unit] = {
-                        'text': 'このユニットにはまだ十分なデータがありません。',
-                        'student_count': 0,
-                        'chat_count': 0,
-                        'clustering': {'予想段階': {'clusters': []}, '考察段階': {'clusters': []}}
-                    }
-                
-            except Exception as e:
-                print(f"[ANALYSIS] Error analyzing {unit}: {str(e)}")
-                analysis_results[unit] = {
-                    'text': f'分析エラーが発生しました: {str(e)[:100]}',
-                    'student_count': len(set(log.get('student_number') for log in logs)),
-                    'chat_count': len([l for l in logs if l.get('log_type') in ['prediction_chat', 'reflection_chat']]),
-                    'clustering': {'予想段階': {'clusters': [], 'error': str(e)}, '考察段階': {'clusters': [], 'error': str(e)}}
-                }
-        
-        print("[ANALYSIS] SUCCESS - class analysis complete")
-        
-        return render_template('teacher/analysis_class.html',
-                             class_num=class_num,
-                             analysis_results=analysis_results,
-                             teacher_id=session.get('teacher_id'))
-    
-    except Exception as e:
-        print(f"[ANALYSIS] FATAL ERROR: {type(e).__name__}: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'error': f'{type(e).__name__}: {str(e)}'}), 500
-
-@app.route('/teacher/analysis_list')
-@require_teacher_auth
-def teacher_analysis_list():
-    """分析対象クラスの一覧を表示"""
-    try:
-        # 全ログを取得してクラス一覧を取得
-        all_logs = []
-        dates = get_available_log_dates()
-        
-        for date_str in dates:
-            try:
-                logs = load_learning_logs(date_str)
-                all_logs.extend(logs)
-            except:
-                pass
-        
-        # ユニークなクラスを取得
-        classes = sorted(set(log.get('class_num') for log in all_logs if log.get('class_num')))
-        
-        return render_template('teacher/analysis_list.html',
-                             classes=classes,
-                             teacher_id=session.get('teacher_id'))
-    
-    except Exception as e:
-        print(f"[ANALYSIS LIST] ERROR: {str(e)}")
-        return render_template('teacher/analysis_list.html',
-                             classes=[],
-                             teacher_id=session.get('teacher_id'))
-        
-        for date_info in available_dates:
-            try:
-                logs = load_learning_logs(date_info['raw'])
-                all_logs.extend(logs)
-            except Exception as e:
-                print(f"[ANALYSIS] Warning loading logs from {date_info['raw']}: {str(e)}")
-        
-        print(f"[ANALYSIS] Collected {len(all_logs)} total logs")
-        
-        # クラス×単元でグループ化
-        analysis_data = {}  # {class: {unit: {analysis}}}
-        
-        for log in all_logs:
-            class_num = log.get('class_num')
-            unit = log.get('unit', '未分類')
-            
-            if class_num not in analysis_data:
-                analysis_data[class_num] = {}
-            
-            if unit not in analysis_data[class_num]:
-                analysis_data[class_num][unit] = {
-                    'total_students': set(),
-                    'prediction_count': 0,
-                    'reflection_count': 0,
-                    'raw_logs': []
-                }
-            
-            # 学生数カウント
-            student_key = f"{log.get('student_number', '')}"
-            analysis_data[class_num][unit]['total_students'].add(student_key)
-            
-            # ログタイプ別カウント
-            if log.get('log_type') == 'prediction_chat':
-                analysis_data[class_num][unit]['prediction_count'] += 1
-            elif log.get('log_type') == 'reflection_chat':
-                analysis_data[class_num][unit]['reflection_count'] += 1
-            
-            analysis_data[class_num][unit]['raw_logs'].append(log)
-        
-        # AI による思考傾向の深い分析
-        print("[ANALYSIS] Performing deep AI analysis on learning trends")
-        deep_request_template = load_prompt_template('analysis_deep_request.md')
-        deep_system_prompt = load_prompt_template('analysis_deep_system.md')
-        default_deep_request = """科学の学習における児童の対話ログを分析してください。\n\n【対話内容サンプル】\n{samples}\n\n児童の思考や経験との結びつき、既習事項の活用方法、思考プロセスなどをテキストで分析してください。\n\n200〜300字でまとめてください。"""
-        default_deep_system = "You are an expert science education analyst. Analyze student learning logs and provide insights about their thinking patterns and how they connect learning to prior knowledge. Always respond in Japanese with clear, readable paragraphs."
-        
-        for class_num in analysis_data:
-            for unit in analysis_data[class_num]:
-                unit_data = analysis_data[class_num][unit]
-                
-                # 学生数を確定
-                unit_data['total_students'] = len(unit_data['total_students'])
-                
-                # AI分析を実行
-                if len(unit_data['raw_logs']) > 0:
-                    try:
-                        # 対話ログから分析用テキストを構築
-                        chat_texts = []
-                        for log in unit_data['raw_logs'][:20]:  # 最大20件
-                            if log.get('log_type') in ['prediction_chat', 'reflection_chat']:
-                                user_msg = log.get('data', {}).get('user_message', '')
-                                ai_msg = log.get('data', {}).get('ai_response', '')
-                                if user_msg:
-                                    chat_texts.append(f"学生: {user_msg}\nAI: {ai_msg}")
-                        
-                        if chat_texts:
-                            # OpenAI APIで思考傾向を分析
-                            chat_samples = "\n".join(chat_texts[:8])
-                            if deep_request_template:
-                                analysis_prompt = render_prompt_template(
-                                    deep_request_template,
-                                    CHAT_SAMPLES=chat_samples
-                                )
-                            else:
-                                analysis_prompt = default_deep_request.format(samples=chat_samples)
-                            analysis_system_message = deep_system_prompt.strip() if deep_system_prompt else default_deep_system
-                            
-                            print(f"[ANALYSIS] Analyzing {class_num}_{unit} with OpenAI...")
-                            
-                            client = openai.OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
-                            response = client.chat.completions.create(
-                                model="gpt-4o-mini",
-                                messages=[
-                                    {"role": "system", "content": analysis_system_message},
-                                    {"role": "user", "content": analysis_prompt}
-                                ],
-                                temperature=0.7,
-                                max_tokens=500
-                            )
-                            
-                            # レスポンスを取得
-                            ai_analysis_text = response.choices[0].message.content
-                            print(f"[ANALYSIS] Raw response: {ai_analysis_text[:200]}")
-                            
-                            try:
-                                # JSON部分を抽出
-                                import re
-                                json_match = re.search(r'\{[^{}]*\}', ai_analysis_text, re.DOTALL)
-                                if json_match:
-                                    ai_analysis = json.loads(json_match.group())
-                                else:
-                                    ai_analysis = {
-                                        "thinking_patterns": ["分析処理中"],
-                                        "understanding_level": "発展段階",
-                                        "misconceptions": [],
-                                        "strengths": ai_analysis_text[:200],
-                                        "improvements": "詳細は後ほど",
-                                        "teaching_points": "指導を継続"
-                                    }
-                            except json.JSONDecodeError:
-                                ai_analysis = {
-                                    "thinking_patterns": ["テキスト分析"],
-                                    "understanding_level": "発展段階",
-                                    "misconceptions": [],
-                                    "strengths": ai_analysis_text[:200],
-                                    "improvements": "詳細分析",
-                                    "teaching_points": "指導継続"
-                                }
-                            
-                            unit_data['ai_analysis'] = ai_analysis
-                            
-                        else:
-                            unit_data['ai_analysis'] = {
-                                "thinking_patterns": ["データ不足"],
-                                "understanding_level": "未判定",
-                                "misconceptions": [],
-                                "strengths": "対話数が少ないため判定できません",
-                                "improvements": "さらなる対話を促進",
-                                "teaching_points": "継続的な指導が必要"
-                            }
-                        
-                        # サンプル対話を抽出
-                        sample_chats = []
-                        for log in unit_data['raw_logs'][:3]:
-                            if log.get('log_type') == 'prediction_chat':
-                                sample_chats.append({
-                                    'user': log.get('data', {}).get('user_message', '')[:150],
-                                    'ai': log.get('data', {}).get('ai_response', '')[:150]
-                                })
-                        unit_data['sample_chats'] = sample_chats
-                        
-                        # 学生数と対話数から活発度を計算
-                        avg_chats_per_student = (unit_data['prediction_count'] + unit_data['reflection_count']) / max(unit_data['total_students'], 1)
-                        unit_data['engagement_level'] = 'high' if avg_chats_per_student > 5 else 'medium' if avg_chats_per_student > 2 else 'low'
-                        
-                    except Exception as e:
-                        print(f"[ANALYSIS] Error analyzing unit {class_num}_{unit}: {type(e).__name__}: {str(e)}")
-                        unit_data['ai_analysis'] = {
-                            "thinking_patterns": ["エラー"],
-                            "understanding_level": "不明",
-                            "misconceptions": [],
-                            "strengths": f"分析エラー: {str(e)[:100]}",
-                            "improvements": "再分析が必要",
-                            "teaching_points": "確認が必要"
-                        }
-                        unit_data['sample_chats'] = []
-                        unit_data['engagement_level'] = 'unknown'
-        
-        print("[ANALYSIS] SUCCESS - deep analysis complete")
-        
-        return render_template('teacher/analysis.html',
-                             analysis_data=analysis_data,
-                             teacher_id=session.get('teacher_id'))
-    
-    except Exception as e:
-        print(f"[ANALYSIS] FATAL ERROR: {type(e).__name__}: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-
-    """利用可能なログファイルの日付一覧を取得"""
-    import os
-    import glob
-    
-    dates = []
-    
-    if USE_GCS:
-        # Cloud Storageからログファイル一覧を取得
-        try:
-            print(f"[GCS_LIST] START - listing log files from GCS")
-            blobs = bucket.list_blobs(prefix='logs/learning_log_')
-            blob_count = 0
-            
-            for blob in blobs:
-                blob_count += 1
-                filename = os.path.basename(blob.name)
-                if filename.startswith('learning_log_') and filename.endswith('.json'):
-                    date_str = filename[13:-5]  # learning_log_YYYYMMDD.json
-                    if len(date_str) == 8 and date_str.isdigit():
-                        formatted_date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
-                        dates.append({'raw': date_str, 'formatted': formatted_date})
-            
-            print(f"[GCS_LIST] SUCCESS - found {blob_count} blobs, {len(dates)} valid log files")
-        except Exception as e:
-            print(f"[GCS_LIST] ERROR - {type(e).__name__}: {str(e)}")
-    else:
-        # ローカルファイルシステムからログファイル一覧を取得
-        log_files = glob.glob("logs/learning_log_*.json")
-        
-        for file in log_files:
-            # ファイル名から日付を抽出
-            filename = os.path.basename(file)
-            if filename.startswith('learning_log_') and filename.endswith('.json'):
-                date_str = filename[13:-5]  # learning_log_YYYYMMDD.json
-                if len(date_str) == 8 and date_str.isdigit():
-                    formatted_date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
-                    dates.append({'raw': date_str, 'formatted': formatted_date})
-    
-    # 日付でソート（新しい順）
-    dates.sort(key=lambda x: x['raw'], reverse=True)
-    print(f"[GCS_LIST] SORTED - final list: {len(dates)} dates, newest: {dates[0]['raw'] if dates else 'none'}")
-    return dates
-
-# プロンプト管理機能
-# プロンプト編集機能は削除されました
-# システムで自動的に最適化されたプロンプトを使用します
-
-@app.route('/teacher/manage_logs')
-@require_teacher_auth
-def teacher_manage_logs():
-    """ログ管理画面 - 一括削除・バックアップ"""
-    try:
-        available_dates_raw = get_available_log_dates()
-        available_dates = [
-            {'raw': d, 'formatted': f"{d[:4]}/{d[4:6]}/{d[6:8]}"}
-            for d in available_dates_raw
-        ]
-        
-        # 各日付のログ数を集計
-        log_stats = []
-        for date_info in available_dates:
-            try:
-                logs = load_learning_logs(date_info['raw'])
-                
-                # ユーザー数と対話数を集計
-                users = set()
-                prediction_chats = 0
-                reflection_chats = 0
-                
-                for log in logs:
-                    users.add(log.get('student_number'))
-                    if log.get('log_type') == 'prediction_chat':
-                        prediction_chats += 1
-                    elif log.get('log_type') == 'reflection_chat':
-                        reflection_chats += 1
-                
-                log_stats.append({
-                    'date': date_info,
-                    'log_count': len(logs),
-                    'user_count': len(users),
-                    'prediction_chats': prediction_chats,
-                    'reflection_chats': reflection_chats
-                })
-            except Exception as e:
-                print(f"[MANAGE_LOGS] Error loading stats for {date_info['raw']}: {e}")
-                log_stats.append({
-                    'date': date_info,
-                    'log_count': 0,
-                    'user_count': 0,
-                    'prediction_chats': 0,
-                    'reflection_chats': 0,
-                    'error': str(e)
-                })
-        
-        return render_template('teacher/manage_logs.html',
-                             available_dates=available_dates,
-                             log_stats=log_stats,
-                             teacher_id=session.get('teacher_id'))
-    
-    except Exception as e:
-        print(f"[MANAGE_LOGS] Error: {e}")
-        flash(f'ログ管理画面の読み込みに失敗しました: {str(e)}', 'error')
-        return redirect(url_for('teacher'))
-
-@app.route('/api/teacher/delete_all_logs_for_date', methods=['POST'])
-@require_teacher_auth
-def api_delete_all_logs_for_date():
-    """指定日付のすべてのログを削除"""
-    try:
-        data = request.json
-        date = data.get('date', '').strip()
-        
-        if not date or len(date) != 8 or not date.isdigit():
-            return jsonify({'error': '有効な日付を指定してください'}), 400
-        
-        print(f"[DELETE_ALL] Deleting all logs for date: {date}")
-        
-        # ログを読み込み
-        logs = load_learning_logs(date)
-        original_count = len(logs)
-        
-        if original_count == 0:
-            return jsonify({'error': f'{date} のログはありません'}), 404
-        
-        # ローカルファイルの場合
-        if not USE_FIRESTORE:
-            try:
-                log_filename = f"learning_log_{date}.json"
-                log_file = f"logs/{log_filename}"
-                
-                if os.path.exists(log_file):
-                    os.remove(log_file)
-                    print(f"[DELETE_ALL] SUCCESS - deleted {log_file}")
-                    
-                    return jsonify({
-                        'success': True,
-                        'message': f'{date} のログ {original_count} 件を削除しました',
-                        'deleted_count': original_count
-                    })
-            except Exception as e:
-                print(f"[DELETE_ALL] Error: {e}")
-                return jsonify({'error': f'削除中にエラーが発生しました: {str(e)}'}), 500
-        else:
-            # Firestore の場合
-            try:
-                db.collection('learning_logs').document(f'date_{date}').delete()
-                print(f"[DELETE_ALL] SUCCESS - Firestore deleted date_{date}")
-                
-                return jsonify({
-                    'success': True,
-                    'message': f'{date} のログ {original_count} 件を削除しました',
-                    'deleted_count': original_count
-                })
-            except Exception as e:
-                print(f"[DELETE_ALL] Error: {e}")
-                return jsonify({'error': f'削除中にエラーが発生しました: {str(e)}'}), 500
-    
-    except Exception as e:
-        print(f"[DELETE_ALL] FATAL: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'error': str(e)}), 500
-
 @app.route('/teacher/student_detail')
 @require_teacher_auth
 def student_detail():
@@ -2798,126 +2360,8 @@ def delete_log():
         traceback.print_exc()
         return jsonify({'error': f'ログ削除中にエラーが発生しました: {error_msg}'}), 500
 
-# ノート写真撮影ページ
-@app.route('/note_photo')
-def note_photo():
-    """ノート写真撮影ページ"""
-    class_num = request.args.get('class', '1')
-    class_num = normalize_class_value(class_num) or '1'
-    student_number = request.args.get('number', '1')
-    unit = request.args.get('unit', '')
-    
-    return render_template('note_photo.html')
-
-# ノート写真アップロード
-@app.route('/upload_note_photos', methods=['POST'])
-def upload_note_photos():
-    """ノート写真をアップロード"""
-    try:
-        class_num = request.form.get('class', '1')
-        class_num = normalize_class_value(class_num) or '1'
-        student_number = request.form.get('number', '1')
-        unit = request.form.get('unit', '')
-        
-        # ローカル保存用ディレクトリ作成
-        note_photos_dir = os.path.join('logs', 'note_photos', f'class_{class_num}')
-        os.makedirs(note_photos_dir, exist_ok=True)
-        
-        # 複数のファイルを保存
-        files = request.files.getlist('photos')
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        saved_filenames = []
-        
-        for i, file in enumerate(files):
-            if file and file.filename:
-                filename = f"student_{student_number}_{unit}_{timestamp}_{i+1}.jpg"
-                filepath = os.path.join(note_photos_dir, secure_filename(filename))
-                file.save(filepath)
-                saved_filenames.append(filename)
-                
-                print(f"[NOTE_PHOTO] Saved: {filepath}")
-        
-        # メタデータログを作成
-        metadata = {
-            'timestamp': datetime.now().isoformat(),
-            'class': class_num,
-            'student_number': student_number,
-            'unit': unit,
-            'photo_count': len(saved_filenames),
-            'filenames': saved_filenames
-        }
-        
-        log_entry = {
-            'timestamp': datetime.now().isoformat(),
-            'class_display': f'{class_num}組',
-            'student_number': student_number,
-            'log_type': 'note_photo',
-            'data': metadata
-        }
-        
-        # ログファイルに追記
-        current_date = datetime.now().strftime('%Y%m%d')
-        log_file = os.path.join('logs', f'learning_log_{current_date}.json')
-        
-        try:
-            if os.path.exists(log_file):
-                with open(log_file, 'r', encoding='utf-8') as f:
-                    logs = json.load(f)
-            else:
-                logs = []
-            
-            logs.append(log_entry)
-            
-            with open(log_file, 'w', encoding='utf-8') as f:
-                json.dump(logs, f, ensure_ascii=False, indent=2)
-        except Exception as e:
-            print(f"[NOTE_PHOTO] Error saving log: {e}")
-        
-        print(f"[NOTE_PHOTO] SUCCESS - {len(saved_filenames)} photos uploaded for student {student_number}")
-        
-        return jsonify({
-            'success': True,
-            'message': f'{len(saved_filenames)}枚の写真を保存しました',
-            'photo_count': len(saved_filenames)
-        })
-    
-    except Exception as e:
-        print(f"[NOTE_PHOTO] ERROR: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({
-            'success': False,
-            'message': str(e)
-        }), 500
-
 
 # ===== 教師用ノート写真管理エンドポイント =====
-
-@app.route('/teacher/note_photos')
-@require_teacher_auth
-def teacher_note_photos():
-    """ノート写真確認ページを表示"""
-    units = [
-        '水のあたたまり方',
-        '金属のあたたまり方',
-        '空気の温度と体積',
-        '水を熱し続けた時の温度と様子'
-    ]
-    
-    classes = []
-    note_photos_dir = os.path.join('logs', 'note_photos')
-    if os.path.exists(note_photos_dir):
-        for folder in os.listdir(note_photos_dir):
-            if folder.startswith('class_'):
-                class_num = folder.replace('class_', '')
-                classes.append(class_num)
-    
-    classes = sorted(classes)
-    
-    return render_template('teacher/note_photos.html', 
-                         units=units, 
-                         classes=classes)
-
 
 @app.route('/api/teacher/students-by-class')
 @require_teacher_auth
@@ -2948,204 +2392,42 @@ def api_students_by_class():
     return jsonify(students_by_class)
 
 
-@app.route('/api/teacher/note-photos')
-@require_teacher_auth
-def api_note_photos():
-    """クラスと学生番号で絞り込んだノート写真情報を返す"""
-    class_num = request.args.get('class', '')
-    class_num = normalize_class_value(class_num) or ''
-    student_num = request.args.get('student', '')
-    unit = request.args.get('unit', '')
-    
-    photos = []
-    note_photos_dir = os.path.join('logs', 'note_photos', f'class_{class_num}')
-    
-    if not os.path.exists(note_photos_dir):
-        return jsonify({'photos': []})
-    
-    try:
-        for filename in sorted(os.listdir(note_photos_dir)):
-            # ファイル名形式: student_{number}_{unit}_{timestamp}_{index}.jpg
-            if filename.startswith(f'student_{student_num}_'):
-                # ユニットでフィルター
-                if unit and f'_{unit}_' not in filename and not filename.startswith(f'student_{student_num}_{unit}_'):
-                    continue
-                
-                filepath = os.path.join(note_photos_dir, filename)
-                
-                # ファイル情報を取得
-                try:
-                    stat = os.stat(filepath)
-                    parts = filename[:-4].split('_')  # .jpgを除去して分割
-                    
-                    # student_{number}_{unit}_{timestamp}_{index} の形式を想定
-                    photo_unit = parts[2] if len(parts) > 2 else '単元未設定'
-                    timestamp_str = parts[3] if len(parts) > 3 else '不明'
-                    
-                    # タイムスタンプをタイムゾーン対応のdatetimeに変換
-                    try:
-                        dt = datetime.strptime(timestamp_str, '%Y%m%d_%H%M%S')
-                    except:
-                        dt = datetime.fromtimestamp(stat.st_mtime)
-                    
-                    photos.append({
-                        'filename': filename,
-                        'url': f'/logs/note_photos/class_{class_num}/{filename}',
-                        'unit': photo_unit,
-                        'timestamp': dt.isoformat()
-                    })
-                except Exception as e:
-                    print(f"Error processing photo {filename}: {e}")
-                    continue
-    
-    except Exception as e:
-        print(f"Error listing photos: {e}")
-    
-    # タイムスタンプでソート（新しい順）
-    photos.sort(key=lambda x: x['timestamp'], reverse=True)
-    
-    return jsonify({'photos': photos})
-
-
-@app.route('/api/teacher/delete-note-photo', methods=['POST'])
-@require_teacher_auth
-def api_delete_note_photo():
-    """ノート写真を削除"""
-    data = request.get_json()
-    filename = data.get('filename', '')
-    
-    if not filename or '..' in filename:
-        return jsonify({'success': False, 'message': '不正なファイル名です'}), 400
-    
-    # ファイルを探して削除
-    note_photos_dir = os.path.join('logs', 'note_photos')
-    for class_folder in os.listdir(note_photos_dir):
-        if class_folder.startswith('class_'):
-            filepath = os.path.join(note_photos_dir, class_folder, filename)
-            if os.path.exists(filepath):
-                try:
-                    os.remove(filepath)
-                    return jsonify({'success': True, 'message': '削除しました'})
-                except Exception as e:
-                    return jsonify({'success': False, 'message': f'削除エラー: {e}'}), 500
-    
-    return jsonify({'success': False, 'message': 'ファイルが見つかりません'}), 404
-
-
-@app.route('/api/teacher/download-note-photos')
-@require_teacher_auth
-def api_download_note_photos():
-    """ノート写真をZIP形式でダウンロード"""
-    class_num = request.args.get('class', '')
-    student_num = request.args.get('student', '')
-    unit = request.args.get('unit', '')
-    
-    source_dir = os.path.join('logs', 'note_photos', f'class_{class_num}')
-    
-    if not os.path.exists(source_dir):
-        return jsonify({'success': False, 'message': 'ディレクトリが見つかりません'}), 404
-    
-    try:
-        # 一時ディレクトリでZIPを作成
-        with tempfile.TemporaryDirectory() as tmpdir:
-            zip_path = os.path.join(tmpdir, 'note_photos.zip')
-            
-            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
-                for filename in os.listdir(source_dir):
-                    if filename.startswith(f'student_{student_num}_'):
-                        # ユニットでフィルター
-                        if unit and f'_{unit}_' not in filename and not filename.startswith(f'student_{student_num}_{unit}_'):
-                            continue
-                        
-                        filepath = os.path.join(source_dir, filename)
-                        # ZIPの内部パス: class_{class_num}/filename
-                        arcname = f'class_{class_num}/{filename}'
-                        zf.write(filepath, arcname)
-            
-            # ファイルを読み込んでレスポンス
-            with open(zip_path, 'rb') as f:
-                zip_data = f.read()
-            
-            # ダウンロードファイル名を作成
-            if unit:
-                filename = f'note_photos_{class_num}_{student_num}_{unit}.zip'
-            else:
-                filename = f'note_photos_{class_num}_{student_num}.zip'
-            
-            return Response(
-                zip_data,
-                mimetype='application/zip',
-                headers={'Content-Disposition': f'attachment; filename={filename}'}
-            )
-    
-    except Exception as e:
-        print(f"Error creating ZIP: {e}")
-        return jsonify({'success': False, 'message': f'エラー: {e}'}), 500
-
-
-# ===== 教員用エラーモニタリング =====
-
-@app.route('/teacher/errors')
-@require_teacher_auth
-def teacher_errors():
-    """教員用エラーモニタリングページ"""
-    date = request.args.get('date', datetime.now().strftime('%Y%m%d'))
-    raw_class_filter = request.args.get('class', '')
-    class_filter = normalize_class_value(raw_class_filter) or ''
-    
-    # 利用可能な日付を取得
-    try:
-        available_dates_raw = get_available_log_dates()
-        default_date = available_dates_raw[0] if available_dates_raw else datetime.now().strftime('%Y%m%d')
-        available_dates = [
-            {'raw': d, 'formatted': f"{d[:4]}/{d[4:6]}/{d[6:8]}"}
-            for d in available_dates_raw
-        ]
-    except Exception as e:
-        print(f"[ERRORS] Error getting available dates: {e}")
-        default_date = datetime.now().strftime('%Y%m%d')
-        available_dates = []
-    
-    # エラーログを読み込み
-    error_logs = load_error_logs(date)
-    
-    # フィルタリング
-    if class_filter:
-        try:
-            class_num = int(class_filter)
-            error_logs = [log for log in error_logs if log.get('class_number') == str(class_num)]
-        except ValueError:
-            pass
-    
-    # エラーを集計
-    error_summary = {}
-    for log in error_logs:
-        key = f"{log.get('class_display', '不明')} - {log.get('student_number', '不明')}"
-        if key not in error_summary:
-            error_summary[key] = {
-                'count': 0,
-                'errors': [],
-                'class_num': log.get('class_number'),
-                'student_num': log.get('student_number')
-            }
-        error_summary[key]['count'] += 1
-        error_summary[key]['errors'].append({
-            'timestamp': log.get('timestamp', ''),
-            'error_type': log.get('error_type', ''),
-            'message': log.get('error_message', ''),
-            'stage': log.get('stage', ''),
-            'unit': log.get('unit', '')
-        })
-    
-    return render_template('teacher/errors.html',
-                         error_logs=error_logs,
-                         error_summary=error_summary,
-                         date=date,
-                         class_filter=class_filter,
-                         available_dates=available_dates)
 
 
 # ===== ノート写真ファイル配信 =====
+
+# ===== リセット機能 =====
+
+@app.route('/api/reset_unit_stage', methods=['POST'])
+def api_reset_unit_stage():
+    """単一ユニットの段階をリセット"""
+    data = request.get_json()
+    class_number = data.get('class_number')
+    student_number = data.get('student_number')
+    unit = data.get('unit')
+    
+    try:
+        success = reset_unit_stage(class_number, student_number, unit)
+        if success:
+            return jsonify({'success': True, 'message': f'{unit}の段階をリセットしました。ログは保持されます。'}), 200
+        else:
+            return jsonify({'success': False, 'message': 'リセット対象が見つかりません'}), 404
+    except Exception as e:
+        print(f"[ERROR] Reset failed: {e}")
+        return jsonify({'success': False, 'message': f'エラー: {e}'}), 500
+
+@app.route('/teacher/reset_all', methods=['POST'])
+@require_teacher_auth
+def teacher_reset_all():
+    """全学習者のデータをリセット（教員用）"""
+    try:
+        reset_all_student_data()
+        flash('全学習者の段階とログがリセットされました。', 'success')
+        return redirect('/teacher/dashboard')
+    except Exception as e:
+        print(f"[ERROR] Reset all failed: {e}")
+        flash(f'リセット失敗: {e}', 'danger')
+        return redirect('/teacher/dashboard')
 
 @app.route('/logs/note_photos/<path:path>')
 def serve_note_photos(path):

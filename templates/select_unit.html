@@ -57,12 +57,18 @@
                                 {% endif %}
                             </div>
                             
-                            <!-- ノート写真撮影ボタン -->
-                            <button class="btn btn-outline-info btn-sm w-100 mt-2" 
-                                    onclick="takeNotePhoto('{{ unit }}')"
-                                    disabled>
-                                <i class="fas fa-camera"></i> ノート撮影
-                            </button>
+                            <!-- 予想・考察ボタン -->
+                            <div class="btn-group w-100 mt-2" role="group">
+                                <button class="btn btn-primary btn-sm flex-fill" 
+                                        onclick="goToPrediction('{{ unit }}')">
+                                    <i class="fas fa-lightbulb"></i> 予想
+                                </button>
+                                <button class="btn btn-info btn-sm flex-fill" 
+                                        id="reflection-btn-{{ loop.index }}"
+                                        onclick="goToReflection('{{ unit }}')">
+                                    <i class="fas fa-comments"></i> 考察
+                                </button>
+                            </div>
                         </div>
                     </div>
                     {% endfor %}
@@ -100,6 +106,76 @@ document.getElementById('selectedNumber').textContent = studentNumber;
 const unitProgressElement = document.getElementById('unit-progress-data');
 const unitProgress = unitProgressElement ? JSON.parse(unitProgressElement.textContent) : {};
 
+// 進行状況に基づいて考察ボタンを有効/無効化
+function updateReflectionButtons() {
+    document.querySelectorAll('[id^="reflection-btn-"]').forEach((btn, index) => {
+        const unitIndex = index + 1;
+        const units = Object.keys(unitProgress);
+        if (units.length > index) {
+            const unit = units[index];
+            const progress = unitProgress[unit];
+            const predictionSummaryCreated = progress && progress.prediction_summary_created;
+            
+            // 予想が完了していない場合は考察ボタンを無効
+            if (!predictionSummaryCreated) {
+                btn.disabled = true;
+                btn.title = '予想を完了してから考察に進んでください';
+            } else {
+                btn.disabled = false;
+            }
+        }
+    });
+}
+
+// ページロード時に初期化
+document.addEventListener('DOMContentLoaded', updateReflectionButtons);
+
+function goToPrediction(unit) {
+    const progress = unitProgress[unit];
+    const needsResumption = progress && progress.needs_resumption;
+    
+    if (needsResumption) {
+        const confirmResume = confirm(`この単元は前回の続きがあります。\n前回の続きから始めますか？\n\n進行状況: ${progress.progress_summary}\n\nOK: 続きから開始\nキャンセル: 最初から開始`);
+        
+        setTimeout(() => {
+            if (confirmResume) {
+                window.location.href = `/prediction?class=${classNumber}&number=${studentNumber}&unit=${encodeURIComponent(unit)}&resume=true`;
+            } else {
+                window.location.href = `/prediction?class=${classNumber}&number=${studentNumber}&unit=${encodeURIComponent(unit)}`;
+            }
+        }, 300);
+    } else {
+        window.location.href = `/prediction?class=${classNumber}&number=${studentNumber}&unit=${encodeURIComponent(unit)}`;
+    }
+}
+
+function goToReflection(unit) {
+    const progress = unitProgress[unit];
+    const predictionSummaryCreated = progress && progress.prediction_summary_created;
+    
+    // 予想が完了していないかチェック
+    if (!predictionSummaryCreated) {
+        alert('考察に進む前に、予想を完了してください。');
+        return;
+    }
+    
+    const reflectionNeedsResumption = progress && progress.reflection_needs_resumption;
+    
+    if (reflectionNeedsResumption) {
+        const confirmResume = confirm(`この単元の考察に前回の続きがあります。\n前回の続きから始めますか？\n\n進行状況: ${progress.progress_summary}\n\nOK: 続きから開始\nキャンセル: 最初から開始`);
+        
+        setTimeout(() => {
+            if (confirmResume) {
+                window.location.href = `/reflection?class=${classNumber}&number=${studentNumber}&unit=${encodeURIComponent(unit)}&resume=true`;
+            } else {
+                window.location.href = `/reflection?class=${classNumber}&number=${studentNumber}&unit=${encodeURIComponent(unit)}`;
+            }
+        }, 300);
+    } else {
+        window.location.href = `/reflection?class=${classNumber}&number=${studentNumber}&unit=${encodeURIComponent(unit)}`;
+    }
+}
+
 function selectUnit(unit) {
     // 選択されたカードにアクティブクラスを追加
     document.querySelectorAll('.unit-card').forEach(card => {
@@ -131,7 +207,7 @@ function selectUnit(unit) {
         targetStage = 'reflection';
     } else if (predictionSummaryCreated) {
         // 予想の要約が完了している場合は実験段階へ
-        targetStage = 'experiment';
+        targetStage = 'prediction';
     } else if (needsResumption && targetStage === 'prediction') {
         // 予想段階の復帰
         shouldResume = true;
@@ -159,10 +235,6 @@ function selectUnit(unit) {
 
 function goBack() {
     window.location.href = `/select_number?class=${classNumber}`;
-}
-
-function takeNotePhoto(unit) {
-    window.location.href = `/note_photo?class=${classNumber}&number=${studentNumber}&unit=${encodeURIComponent(unit)}`;
 }
 </script>
 {% endblock %}

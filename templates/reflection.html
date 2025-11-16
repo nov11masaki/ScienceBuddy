@@ -17,11 +17,11 @@
                 </div>
                 <!-- ボタンを右上に配置 -->
                 <div style="position: absolute; top: 10px; right: 10px; display: flex; gap: 8px;">
-                    <button class="btn btn-outline-secondary btn-sm" onclick="window.location.href='/select_unit?class={{ class_number }}&number={{ student_number }}'">
+                    <button class="btn btn-outline-secondary btn-sm" onclick="resetUnit()">
                         <i class="fas fa-redo me-1"></i>
                         やり直す
                     </button>
-                    <button class="btn btn-success btn-sm" id="finalSummaryButton" style="display: none;">
+                    <button class="btn btn-success btn-sm" id="finalSummaryButton" style="display: none;" onclick="getFinalSummary()">
                         <i class="fas fa-check me-2"></i>
                         考察をまとめる
                     </button>
@@ -71,18 +71,15 @@
                         最終考察
                     </h5>
                     <div class="summary-content" id="finalSummaryContent"></div>
-                    <!-- 学習完了ボタン：考察まとめの下に配置 -->
+                    <!-- 単元選択に戻るボタン：考察まとめの下に配置 -->
                     <div class="text-center mt-3">
-                        <a href="/" class="btn btn-success btn-lg" id="completionButton" style="display: none;">
-                            <i class="fas fa-home me-2"></i>
-                            ホームに戻る
-                        </a>
+                        <button onclick="goBackToUnitSelectionFromReflection()" class="btn btn-success btn-lg" id="completionButton" style="display: none;">
+                            <i class="fas fa-arrow-left me-2"></i>
+                            単元選択に戻る
+                        </button>
                     </div>
                 </div>
             </div>
-                            ホームに戻る
-                        </a>
-                    </div>
                 </div>
             </div>
         </div>
@@ -179,6 +176,48 @@ let reflectionExchangeCount = reflectionResumptionInfo.last_conversation_count |
 let recognition = null;
 
 const currentUnit = "{{ unit }}";
+const classNumber = "{{ class_number }}";
+const studentNumber = "{{ student_number }}";
+
+// やり直す処理
+function resetUnit() {
+    if (!confirm('この単元をやり直しますか？\n会話履歴は全て削除されます。')) {
+        return;
+    }
+    
+    console.log('[RESET] Resetting unit:', {class: classNumber, student: studentNumber, unit: currentUnit});
+    
+    fetch('/api/reset_unit_stage', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            class_number: classNumber,
+            student_number: studentNumber,
+            unit: currentUnit
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('このユニットをリセットしました。\n会話履歴は全て削除され、学習ログには記録されます。');
+            // select_unitに戻る
+            window.location.href = `/select_unit?class=${classNumber}&number=${studentNumber}`;
+        } else {
+            alert('リセット失敗: ' + (data.message || 'エラーが発生しました'));
+        }
+    })
+    .catch(error => {
+        console.error('[RESET] Error:', error);
+        alert('リセット中にエラーが発生しました: ' + error.message);
+    });
+}
+
+// 単元選択に戻る
+function goBackToUnitSelectionFromReflection() {
+    window.location.href = `/select_unit?class=${classNumber}&number=${studentNumber}`;
+}
 
 // セッションオブジェクトの初期化（クライアント側のセッションデータ）
 let session = {
@@ -223,11 +262,6 @@ document.addEventListener('DOMContentLoaded', function() {
         last_conversation_count: resumptionInfo?.last_conversation_count
     });
     
-    // まとめが完了していない場合は、常にボタンを表示
-    if (!(resumptionInfo && resumptionInfo.reflection_summary_created)) {
-        showFinalSummaryButton('初期化時に常時表示');
-    }
-    
     if (resumptionInfo && resumptionInfo.is_resumption) {
         console.log('復帰モード: 過去の会話を復元します', resumptionInfo);
         console.log('会話履歴:', window.reflectionConversationHistory);
@@ -246,6 +280,9 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if ((resumptionInfo.last_conversation_count || 0) >= 2) {
             showFinalSummaryButton('復帰時に規定回数達成');
         }
+    } else {
+        // 新規開始時はボタンを非表示（会話が進むまで表示しない）
+        console.log('新規開始モード: ボタンは会話進行時に表示');
     }
     
     // 初期メッセージはHTMLに直接書かれているので、ここでは追加しない

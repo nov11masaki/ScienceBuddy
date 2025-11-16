@@ -17,11 +17,11 @@
                 </div>
                 <!-- ボタンを右上に配置 -->
                 <div style="position: absolute; top: 10px; right: 10px; display: flex; gap: 8px;">
-                    <button class="btn btn-outline-secondary btn-sm" onclick="window.location.href='/select_unit?class={{ class_number }}&number={{ student_number }}'">
+                    <button class="btn btn-outline-secondary btn-sm" onclick="resetUnit()">
                         <i class="fas fa-redo me-1"></i>
                         やり直す
                     </button>
-                    <button class="btn btn-success btn-sm" id="summaryButton" style="display: none;">
+                    <button class="btn btn-success btn-sm" id="summaryButton" style="display: none;" onclick="getSummary()">
                         <i class="fas fa-check me-2"></i>
                         予想をまとめる
                     </button>
@@ -80,12 +80,12 @@
                         あなたの予想
                     </h5>
                     <div class="summary-content" id="summaryContent"></div>
-                    <!-- 実験ボタン：予想まとめの下に配置 -->
+                    <!-- 単元選択に戻るボタン：予想まとめの下に配置 -->
                     <div class="text-center mt-3">
-                        <a href="/experiment" class="btn btn-primary btn-lg" id="experimentStartButton" style="display: none;">
-                            <i class="fas fa-flask me-2"></i>
-                            では、実験を始めましょう！
-                        </a>
+                        <button onclick="goBackToUnitSelection()" class="btn btn-primary btn-lg" id="backToUnitButton" style="display: none;">
+                            <i class="fas fa-arrow-left me-2"></i>
+                            単元選択に戻る
+                        </button>
                     </div>
                 </div>
             </div>
@@ -177,6 +177,47 @@ if (resumptionInfo && typeof resumptionInfo.last_conversation_count === 'number'
     conversationCount = resumptionInfo.last_conversation_count;
 }
 
+// URLからパラメータを取得
+const urlParams = new URLSearchParams(window.location.search);
+const classNumber = urlParams.get('class') || '1';
+const studentNumber = urlParams.get('number') || '1';
+const unit = urlParams.get('unit') || '';
+
+// やり直す処理
+function resetUnit() {
+    if (!confirm('この単元をやり直しますか？\n会話履歴は全て削除されます。')) {
+        return;
+    }
+    
+    console.log('[RESET] Resetting unit:', {class: classNumber, student: studentNumber, unit: unit});
+    
+    fetch('/api/reset_unit_stage', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            class_number: classNumber,
+            student_number: studentNumber,
+            unit: unit
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('このユニットをリセットしました。\n会話履歴は全て削除され、学習ログには記録されます。');
+            // select_unitに戻る
+            window.location.href = `/select_unit?class=${classNumber}&number=${studentNumber}`;
+        } else {
+            alert('リセット失敗: ' + (data.message || 'エラーが発生しました'));
+        }
+    })
+    .catch(error => {
+        console.error('[RESET] Error:', error);
+        alert('リセット中にエラーが発生しました: ' + error.message);
+    });
+}
+
 function showPredictionSummaryButton(reason) {
     // まとめが完了している場合のみ非表示
     if (resumptionInfo && resumptionInfo.prediction_summary_created) return;
@@ -223,11 +264,7 @@ let session = {
 // ページ読み込み時にAPI接続をテスト
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOMContentLoaded イベント発火');
-    
-    // まとめが完了していない場合は、常にボタンを表示
-    if (!(resumptionInfo && resumptionInfo.prediction_summary_created)) {
-        showPredictionSummaryButton('初期化時に常時表示');
-    }
+    console.log('resumptionInfo:', resumptionInfo);
     
     // 復帰処理: 過去の会話履歴を復元
     if (resumptionInfo.is_resumption && resumptionInfo.last_conversation_count > 0) {
@@ -244,6 +281,9 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if ((resumptionInfo.last_conversation_count || 0) >= 2) {
             showPredictionSummaryButton('復帰時に規定回数達成');
         }
+    } else {
+        // 新規開始時はボタンを非表示（会話が進むまで表示しない）
+        console.log('新規開始モード: ボタンは会話進行時に表示');
     }
     
     testApiConnection();
@@ -930,14 +970,14 @@ function getSummary() {
         // 要約後の状態を保存
         session['prediction_summary'] = data.summary;
         
-        // 実験ボタンを表示（要約成功時のみ）
-        const experimentButton = document.getElementById('experimentStartButton');
-        console.log('【DEBUG】experimentButton:', experimentButton);
-        if (experimentButton) {
-            experimentButton.style.display = 'inline-block';
-            console.log('【DEBUG】実験ボタンを表示しました');
+        // 単元選択に戻るボタンを表示（要約成功時のみ）
+        const backButton = document.getElementById('backToUnitButton');
+        console.log('【DEBUG】backToUnitButton:', backButton);
+        if (backButton) {
+            backButton.style.display = 'inline-block';
+            console.log('【DEBUG】単元選択に戻るボタンを表示しました');
             setTimeout(() => {
-                experimentButton.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                backButton.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }, 500);
         }
     })
@@ -945,6 +985,11 @@ function getSummary() {
         console.error('【DEBUG】Summary Error:', error);
         document.getElementById('summaryButton').disabled = false;
     });
+}
+
+// 単元選択に戻る
+function goBackToUnitSelection() {
+    window.location.href = `/select_unit?class=${classNumber}&number=${studentNumber}`;
 }
 
 // 入力モード切り替え
