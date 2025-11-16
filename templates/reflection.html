@@ -148,7 +148,7 @@
 <script type="application/json" id="reflection-status">
 {
     "reflection_summary_created": {{ reflection_summary_created | tojson | safe }},
-    "reflectionSummary": "{{ session.get('reflection_summary', '') | safe }}"
+    "reflectionSummary": {{ session.get('reflection_summary', '') | tojson | safe }}
 }
 </script>
 
@@ -205,10 +205,18 @@ document.addEventListener('DOMContentLoaded', function() {
     const resumptionInfo = reflectionResumptionInfo;
     
     // 考察のまとめが完了していれば復元
-    if (reflectionStatus.reflection_summary_created) {
+    if (reflectionStatus && reflectionStatus.reflection_summary_created) {
         console.log('考察のまとめが完了しています');
         // サーバーから考察のまとめを取得
         restoreReflectionSummary();
+    }
+    
+    // まだまとめが完了していないなら、ボタンを表示
+    if (!reflectionResumptionInfo || !reflectionResumptionInfo.reflection_summary_created) {
+        const finalSummaryButton = document.getElementById('finalSummaryButton');
+        if (finalSummaryButton) {
+            finalSummaryButton.style.display = 'block';
+        }
     }
     
     // 初期メッセージはHTMLに直接書かれているので、ここでは追加しない
@@ -335,16 +343,7 @@ function showFinalSummaryButton(reason) {
     }
 }
 
-// ページロード時に考察まとめボタンを表示（ユーザーが任意のタイミングで押せるように）
-document.addEventListener('DOMContentLoaded', function() {
-    // まだまとめが完了していないなら、ボタンを表示
-    if (!reflectionResumptionInfo || !reflectionResumptionInfo.reflection_summary_created) {
-        const finalSummaryButton = document.getElementById('finalSummaryButton');
-        if (finalSummaryButton) {
-            finalSummaryButton.style.display = 'block';
-        }
-    }
-});
+
 
 // 入力補助の初期化
 function initializeInputAssist() {

@@ -1247,12 +1247,8 @@ def prediction():
     # 単元に応じた最初のAIメッセージを取得
     initial_ai_message = get_initial_ai_message(unit, stage='prediction')
     
-    # 初期メッセージが会話履歴に含まれていない場合は追加
+    # 初期メッセージはUIに表示するだけで、会話履歴には含めない
     conversation_history = session.get('conversation', [])
-    if not conversation_history:
-        # 新規セッション時のみ、初期メッセージを会話履歴に追加
-        conversation_history = [{'role': 'assistant', 'content': initial_ai_message}]
-        session['conversation'] = conversation_history
     
     return render_template('prediction.html', unit=unit, task_content=task_content, 
                          prediction_summary_created=prediction_summary_created, 
@@ -1280,6 +1276,12 @@ def chat():
     messages = [
         {"role": "system", "content": unit_prompt}
     ]
+    
+    # 初回メッセージの場合、初期メッセージを会話に含める
+    if len(conversation) == 1:  # ユーザーメッセージだけ
+        initial_ai_message = get_initial_ai_message(unit, stage='prediction')
+        # 初期メッセージを最初に追加
+        messages.append({"role": "assistant", "content": initial_ai_message})
     
     # 対話履歴をメッセージフォーマットで追加
     for msg in conversation:
@@ -1311,10 +1313,7 @@ def chat():
             log_type='prediction_chat',
             data={
                 'user_message': user_message,
-                'ai_response': ai_message,
-                'conversation_count': len(conversation) // 2,
-                'used_suggestion': False,
-                'suggestion_index': None
+                'ai_response': ai_message
             },
             class_number=session.get('class_number')
         )
@@ -1375,6 +1374,11 @@ def summary():
     conversation = session.get('conversation', [])
     unit = session.get('unit')
     
+    # すでに要約が作成されている場合はスキップ
+    if session.get('prediction_summary'):
+        print(f"[SUMMARY] Already created: {session.get('prediction_summary')[:50]}...")
+        return jsonify({'summary': session.get('prediction_summary')})
+    
     # 単元のプロンプトを読み込み（要約の指示は既にプロンプトファイルに含まれている）
     unit_prompt = load_unit_prompt(unit)
     
@@ -1402,7 +1406,11 @@ def summary():
         # JSON形式のレスポンスの場合は解析して純粋なメッセージを抽出
         summary_text = extract_message_from_json_response(summary_response)
         
+        # セッションに保存してから、フラグとログを更新
         session['prediction_summary'] = summary_text
+        session.modified = True
+        
+        print(f"[SUMMARY] Created and saved: {summary_text[:50]}...")
         
         # 予想完了フラグを設定
         update_student_progress(
@@ -1621,8 +1629,7 @@ def reflect_chat():
             log_type='reflection_chat',
             data={
                 'user_message': user_message,
-                'ai_response': ai_message,
-                'conversation_count': len(reflection_conversation) // 2
+                'ai_response': ai_message
             },
             class_number=session.get('class_number')
         )

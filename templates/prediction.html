@@ -155,7 +155,7 @@
 <script type="application/json" id="prediction-status">
 {
     "prediction_summary_created": {{ prediction_summary_created | tojson | safe }},
-    "predictionSummary": "{{ session.get('prediction_summary', '') | safe }}"
+    "predictionSummary": {{ session.get('prediction_summary', '') | tojson | safe }}
 }
 </script>
 
@@ -187,6 +187,8 @@ function showPredictionSummaryButton(reason) {
 
 // ページロード時にまとめボタンを表示（ユーザーが任意のタイミングで押せるように）
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOMContentLoaded イベント発火');
+    
     // まだまとめが完了していないなら、ボタンを表示
     if (!predictionStatus || !predictionStatus.prediction_summary_created) {
         const summaryButton = document.getElementById('summaryButton');
@@ -195,36 +197,9 @@ document.addEventListener('DOMContentLoaded', function() {
             summaryButton.disabled = false;
         }
     }
-});
-
-// セッションオブジェクトの初期化（クライアント側のセッションデータ）
-let session = {
-    'prediction_summary': ''
-};
-
-// 入力補助用の設定（シンプルなひらがなのみ）
-const inputAssistConfig = {
-    hiragana: [
-        // 右から左への伝統的な50音表配置（縦書き）
-        ['わ', 'ら', 'や', 'ま', 'は', 'な', 'た', 'さ', 'か', 'あ'],
-        ['', 'り', '', 'み', 'ひ', 'に', 'ち', 'し', 'き', 'い'],
-        ['を', 'る', 'ゆ', 'む', 'ふ', 'ぬ', 'つ', 'す', 'く', 'う'],
-        ['', 'れ', '', 'め', 'へ', 'ね', 'て', 'せ', 'け', 'え'],
-        ['ん', 'ろ', 'よ', 'も', 'ほ', 'の', 'と', 'そ', 'こ', 'お'],
-        // 小さい文字と記号（左から右へ）
-        ['゛゜', 'っ', 'ゃ', 'ゅ', 'ょ', '、', '。', '！', '？', 'スペース']
-    ]
-};
-
-const currentUnit = "{{ unit }}";
-let recognition = null;
-
-// ページ読み込み時にAPI接続をテスト
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOMContentLoaded イベント発火');
     
     // 予想のまとめが完了していれば復元
-    if (predictionStatus.prediction_summary_created) {
+    if (predictionStatus && predictionStatus.prediction_summary_created) {
         console.log('予想のまとめが完了しています');
         // サーバーから予想のまとめを取得
         restorePredictionSummary();
@@ -350,11 +325,32 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // まとめボタン
-    document.getElementById('summaryButton').addEventListener('click', getSummary);
+    const summaryBtn = document.getElementById('summaryButton');
+    if (summaryBtn) {
+        summaryBtn.addEventListener('click', getSummary);
+    }
 });
 
-// 入力補助の初期化
-function initializeInputAssist() {
+// セッションオブジェクトの初期化（クライアント側のセッションデータ）
+let session = {
+    'prediction_summary': ''
+};
+
+// 入力補助用の設定（シンプルなひらがなのみ）
+const inputAssistConfig = {
+    hiragana: [
+        // 右から左への伝統的な50音表配置（縦書き）
+        ['わ', 'ら', 'や', 'ま', 'は', 'な', 'た', 'さ', 'か', 'あ'],
+        ['', 'り', '', 'み', 'ひ', 'に', 'ち', 'し', 'き', 'い'],
+        ['を', 'る', 'ゆ', 'む', 'ふ', 'ぬ', 'つ', 'す', 'く', 'う'],
+        ['', 'れ', '', 'め', 'へ', 'ね', 'て', 'せ', 'け', 'え'],
+        ['ん', 'ろ', 'よ', 'も', 'ほ', 'の', 'と', 'そ', 'こ', 'お'],
+        // 小さい文字と記号（左から右へ）
+        ['゛゜', 'っ', 'ゃ', 'ゅ', 'ょ', '、', '。', '！', '？', 'スペース']
+    ]
+};
+
+const currentUnit = "{{ unit }}";
     // ひらがなキーボードを設定（10列グリッドレイアウト、右から左）
     const hiraganaContainer = document.getElementById('hiraganaKeys');
     hiraganaContainer.innerHTML = '';
@@ -847,8 +843,16 @@ function isMeaningfulSummary(summary) {
 function getSummary() {
     console.log('【DEBUG】getSummary 呼び出し');
     
+    const summaryButton = document.getElementById('summaryButton');
+    
+    // ボタンが既に無効な場合は二重実行を防止
+    if (summaryButton.disabled) {
+        console.log('【DEBUG】既にボタンが無効です。二重実行を防止します。');
+        return;
+    }
+    
     // ボタンを無効化
-    document.getElementById('summaryButton').disabled = true;
+    summaryButton.disabled = true;
     
     fetch('/summary', {
         method: 'POST',
@@ -959,22 +963,6 @@ function switchInputMode() {
 // 復帰時に予想のまとめを復元する関数
 function restorePredictionSummary() {
     console.log('restorePredictionSummary: 予想のまとめを復元中...');
-    
-    // 学習ログから予想のまとめを取得する非同期処理
-    // ここではシンプルに、セッションに保存されているデータを利用
-    fetch('/get_prediction_summary', {
-        method: 'GET'
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.summary) {
-            console.log('予想のまとめを取得:', data.summary);
-            document.getElementById('summaryContent').textContent = data.summary;
-            document.getElementById('summarySection').style.display = 'block';
-            document.getElementById('summaryButton').style.display = 'none';
-        }
-    })
-    .catch(error => console.error('予想のまとめ取得エラー:', error));
 }
 
 // エラー報告関数
