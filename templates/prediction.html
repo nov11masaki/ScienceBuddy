@@ -858,6 +858,26 @@ function getSummary() {
         return;
     }
     
+    // 既に要約が表示されている場合は確認を取る
+    if (summaryButton.style.display === 'none') {
+        const confirmed = confirm('予想をまとめ直しますか？\n\nこれまでの予想は消されます。\n本当によろしいですか？');
+        if (!confirmed) {
+            return;
+        }
+        // 確認後、入力エリアと要約を再度表示
+        const messagesContainer = document.getElementById('chatMessages');
+        const userInputArea = messagesContainer.querySelector('.user-input-area');
+        if (userInputArea) {
+            userInputArea.style.display = 'block';
+        }
+        // 要約メッセージを削除（最後のAIメッセージを削除）
+        const aiMessages = Array.from(messagesContainer.querySelectorAll('.ai-message'));
+        if (aiMessages.length > 0) {
+            aiMessages[aiMessages.length - 1].remove();
+        }
+        summaryButton.style.display = 'inline-block';
+    }
+    
     // ボタンを無効化
     summaryButton.disabled = true;
     
