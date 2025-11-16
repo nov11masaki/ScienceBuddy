@@ -603,7 +603,9 @@ function getFinalSummary() {
     const finalSummaryButton = document.getElementById('finalSummaryButton');
     
     // 既に要約が表示されている場合は確認を取る
+    console.log('【DEBUG】ボタン表示状態:', finalSummaryButton.style.display);
     if (finalSummaryButton.style.display === 'none') {
+        console.log('【DEBUG】ボタンが非表示なので確認ダイアログを表示します');
         const confirmed = confirm('考察をやり直しますか？\n\n前回の考察は記録として保存されます。\n新たに考察を立て直します。\n\nよろしいですか？');
         if (!confirmed) {
             return;
@@ -761,30 +763,26 @@ function startVoiceInput() {
         const input = document.getElementById('reflectionInput');
         const placeholderText = document.getElementById('inputPlaceholderText');
         
-        // リアルタイムで入力欄に反映（即座に更新）
-        if (interimTranscript || finalTranscript) {
-            // 最新の音声入力を追加
-            input.value += finalTranscript + interimTranscript;
-            
-            // 入力欄をフォーカスしてスクロール
-            input.focus();
-            input.scrollTop = input.scrollHeight;
-            
-            // プレースホルダーテキストにもリアルタイム表示
-            if (placeholderText) {
-                placeholderText.textContent = input.value;
-            }
-            
-            // 途中結果か確定結果かで表示を分ける
-            if (interimTranscript) {
-                statusText.textContent = '🎤 認識中: ' + interimTranscript;
-                console.log('途中結果:', interimTranscript);
-            }
-            
-            if (finalTranscript) {
-                statusText.textContent = '✅ 認識完了: ' + finalTranscript;
-                console.log('確定結果:', finalTranscript);
-            }
+        // 確定結果のみを入力欄に追加
+        if (finalTranscript) {
+            input.value += finalTranscript;
+            statusText.textContent = '✅ 認識完了: ' + finalTranscript;
+            console.log('確定結果:', finalTranscript);
+        }
+        
+        // 途中結果の表示（ステータスのみ）
+        if (interimTranscript) {
+            statusText.textContent = '🎤 認識中: ' + interimTranscript;
+            console.log('途中結果:', interimTranscript);
+        }
+        
+        // 入力欄をフォーカスしてスクロール
+        input.focus();
+        input.scrollTop = input.scrollHeight;
+        
+        // プレースホルダーテキストにもリアルタイム表示
+        if (placeholderText) {
+            placeholderText.textContent = input.value;
         }
     };
     

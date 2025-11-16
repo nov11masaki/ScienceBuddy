@@ -518,42 +518,33 @@ function startVoiceInput() {
         let interimTranscript = '';
         let finalTranscript = '';
         
-        // 全ての結果を処理
+        // 前回の確定結果からの新しい結果のみを処理
         for (let i = event.resultIndex; i < event.results.length; i++) {
             const transcript = event.results[i][0].transcript;
             if (event.results[i].isFinal) {
                 finalTranscript += transcript;
+                console.log('確定結果:', transcript);
             } else {
                 interimTranscript += transcript;
             }
         }
         
-        // リアルタイムで入力欄に反映（即座に更新）
-        if (interimTranscript || finalTranscript) {
-            // 確定した結果と途中結果を合わせて表示
-            const currentText = input.value.substring(0, startPosition);
-            const newText = finalTranscript + interimTranscript;
-            input.value = currentText + newText;
-            
-            // 入力欄のスクロール位置をカーソル位置に合わせる
-            input.focus();
-            input.scrollTop = input.scrollHeight;
-            
-            // 途中結果か確定結果かで表示を分ける
-            if (interimTranscript) {
-                statusText.textContent = '🎤 認識中: ' + interimTranscript;
-                console.log('途中結果:', interimTranscript);
-            }
-            
-            if (finalTranscript) {
-                // 確定した結果を入力欄に追加
-                startPosition = input.value.length;  // 新しい開始位置を更新
-                statusText.textContent = '✅ 認識完了: ' + finalTranscript;
-                console.log('確定結果:', finalTranscript);
-            }
+        // 入力欄を更新（確定結果のみを追加）
+        if (finalTranscript) {
+            // 確定した結果のみを追加
+            input.value += finalTranscript;
+            startPosition = input.value.length;  // 新しい開始位置を更新
+            statusText.textContent = '✅ 認識完了: ' + finalTranscript;
         }
         
-        // 入力欄を最後までスクロール
+        // 途中結果の表示（ステータスのみ）
+        if (interimTranscript) {
+            statusText.textContent = '🎤 認識中: ' + interimTranscript;
+            console.log('途中結果:', interimTranscript);
+        }
+        
+        // 入力欄のスクロール位置をカーソル位置に合わせる
+        input.focus();
         input.scrollTop = input.scrollHeight;
     };
     
@@ -859,7 +850,9 @@ function getSummary() {
     }
     
     // 既に要約が表示されている場合は確認を取る
+    console.log('【DEBUG】ボタン表示状態:', summaryButton.style.display);
     if (summaryButton.style.display === 'none') {
+        console.log('【DEBUG】ボタンが非表示なので確認ダイアログを表示します');
         const confirmed = confirm('予想をやり直しますか？\n\n前回の予想は記録として保存されます。\n新たに予想を立て直します。\n\nよろしいですか？');
         if (!confirmed) {
             return;
