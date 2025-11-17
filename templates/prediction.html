@@ -864,7 +864,7 @@ function getSummary() {
     console.log('【DEBUG】ボタン表示状態:', summaryButton.style.display);
     if (summaryButton.style.display === 'none') {
         console.log('【DEBUG】ボタンが非表示なので確認ダイアログを表示します');
-        const confirmed = confirm('予想をやり直しますか？\n\n前回の予想は記録として保存されます。\n新たに予想を立て直します。\n\nよろしいですか？');
+        const confirmed = confirm('もう一度やり直しますか？\n\n前の予想は保存されます。\n\nいいですか？');
         if (!confirmed) {
             return;
         }
@@ -912,7 +912,7 @@ function getSummary() {
         
         // 要約が有効な内容か確認
         if (!isMeaningfulSummary(data.summary)) {
-            alert('入力された内容では予想をまとめることができません。\n明確な考えや観察を入力してください。');
+            alert('もっと、いっぱい入力してください。');
             document.getElementById('summaryButton').disabled = false;
             return;
         }
@@ -957,11 +957,25 @@ function getSummary() {
             console.log('【DEBUG】summarySection を表示しました');
         }
         
-        // チャットセクションを非表示
-        const chatSection = document.querySelector('.chat-section');
-        if (chatSection) {
-            chatSection.style.display = 'none';
-            console.log('【DEBUG】chat-section を非表示にしました');
+        // チャット本体のみ非表示にして見やすくする
+        const chatContainer = document.querySelector('.chat-container');
+        if (chatContainer) {
+            chatContainer.style.display = 'none';
+            console.log('【DEBUG】chat-container を非表示にしました');
+        }
+        
+        // 課題カードも隠す（まとめ表示を強調）
+        const taskSection = document.querySelector('.task-section');
+        if (taskSection) {
+            taskSection.style.display = 'none';
+            console.log('【DEBUG】task-section を非表示にしました');
+        }
+        
+        // 入力補助エリアも非表示
+        const inputAssist = document.getElementById('inputAssistSection');
+        if (inputAssist) {
+            inputAssist.style.display = 'none';
+            console.log('【DEBUG】inputAssistSection を非表示にしました');
         }
         
         // サマリーコンテンツに要約を設定
@@ -985,7 +999,7 @@ function getSummary() {
     .catch(error => {
         console.error('【DEBUG】Summary Error:', error);
         // ユーザーに警告を表示
-        alert('⚠️ 予想をまとめられませんでした\n\n' + error.message);
+        alert('予想をまとめることができませんでした。\nもう一度やってみてください。');
         document.getElementById('summaryButton').disabled = false;
     });
 }
@@ -995,7 +1009,7 @@ function goBackToUnitSelection() {
     // まとめボタンが表示されていたら（まとめていなかったら）警告
     const summaryButton = document.getElementById('summaryButton');
     if (summaryButton && summaryButton.style.display !== 'none') {
-        const confirmed = confirm('予想をまとめていません。\n\nこのまま戻ると、これまでの会話は保存されず、この単元をもう一度最初からやり直す必要があります。\n\n本当に戻りますか？');
+        const confirmed = confirm('予想をまとめていません。\n\n戻ると、もう一度やり直さなければなりません。\n\nいいですか？');
         if (!confirmed) {
             return; // キャンセルされたら戻らない
         }
