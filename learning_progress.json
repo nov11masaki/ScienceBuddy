@@ -50,12 +50,35 @@
     },
     "null": {
       "current_stage": "prediction",
-      "last_access": "2025-11-17T22:14:08.559233",
+      "last_access": "2025-11-17T22:22:02.175027",
       "stage_progress": {
         "prediction": {
           "started": false,
           "conversation_count": 0,
           "summary_created": false,
+          "last_message": ""
+        },
+        "experiment": {
+          "started": false,
+          "completed": false
+        },
+        "reflection": {
+          "started": false,
+          "conversation_count": 0,
+          "summary_created": false
+        }
+      },
+      "conversation_history": [],
+      "reflection_conversation_history": []
+    },
+    "空気の温度と体積": {
+      "current_stage": "prediction",
+      "last_access": "2025-11-17T22:18:36.604534",
+      "stage_progress": {
+        "prediction": {
+          "started": false,
+          "conversation_count": 0,
+          "summary_created": true,
           "last_message": ""
         },
         "experiment": {

@@ -1406,26 +1406,32 @@ def summary():
         session['prediction_summary'] = summary_text
         session.modified = True
         
+        # 予想まとめを永続ストレージに保存（セッション切れ対策）
+        class_number = session.get('class_number')
+        student_number = session.get('student_number')
+        student_id = f"{class_number}_{student_number}"
+        _save_summary_to_db(student_id, unit, 'prediction', summary_text)
+        
         print(f"[SUMMARY] Created and saved: {summary_text[:50]}...")
         
         # 予想完了フラグを設定
         update_student_progress(
-            class_number=session.get('class_number'),
-            student_number=session.get('student_number'),
+            class_number=class_number,
+            student_number=student_number,
             unit=unit,
             prediction_summary_created=True
         )
         
         # 予想まとめのログを保存
         save_learning_log(
-            student_number=session.get('student_number'),
+            student_number=student_number,
             unit=unit,
             log_type='prediction_summary',
             data={
                 'summary': summary_text,
                 'conversation': conversation
             },
-            class_number=session.get('class_number')
+            class_number=class_number
         )
         
         return jsonify({'summary': summary_text})
@@ -1559,6 +1565,81 @@ def get_session():
             'details': str(e)
         }), 500
 
+def _save_summary_to_db(student_id, unit, stage, summary_text):
+    """サマリーを永続ストレージに保存（GCS/ローカル）"""
+    # GCSに保存
+    if USE_GCS and bucket:
+        try:
+            _save_summary_gcs(student_id, unit, stage, summary_text)
+            print(f"[SUMMARY_SAVE] GCS saved - {student_id}_{unit}_{stage}")
+        except Exception as e:
+            print(f"[SUMMARY_SAVE] GCS save failed: {e}")
+    
+    # ローカルにも保存
+    try:
+        _save_summary_local(student_id, unit, stage, summary_text)
+        print(f"[SUMMARY_SAVE] Local saved - {student_id}_{unit}_{stage}")
+    except Exception as e:
+        print(f"[SUMMARY_SAVE] Local save failed: {e}")
+
+def _save_summary_local(student_id, unit, stage, summary_text):
+    """サマリーをローカルファイルに保存"""
+    try:
+        summary_file = 'summary_storage.json'
+        
+        # 既存のファイルを読み込む
+        if os.path.exists(summary_file):
+            with open(summary_file, 'r', encoding='utf-8') as f:
+                summaries = json.load(f)
+        else:
+            summaries = {}
+        
+        # キーを作成
+        key = f"{student_id}_{unit}_{stage}"
+        
+        # 新しいサマリーを追加
+        summaries[key] = {
+            'summary': summary_text,
+            'saved_at': datetime.now().isoformat(),
+            'student_id': student_id,
+            'unit': unit,
+            'stage': stage
+        }
+        
+        # ファイルに保存
+        with open(summary_file, 'w', encoding='utf-8') as f:
+            json.dump(summaries, f, ensure_ascii=False, indent=2)
+        
+        print(f"[SUMMARY_SAVE_LOCAL] {key} saved to {summary_file}")
+    except Exception as e:
+        print(f"[SUMMARY_SAVE_LOCAL] Error: {e}")
+
+def _save_summary_gcs(student_id, unit, stage, summary_text):
+    """サマリーをGCSに保存"""
+    try:
+        from google.cloud import storage
+        
+        # GCSのパス: summaries/{student_id}/{unit}/{stage}_summary.json
+        gcs_path = f"summaries/{student_id}/{unit}/{stage}_summary.json"
+        blob = bucket.blob(gcs_path)
+        
+        data = {
+            'summary': summary_text,
+            'saved_at': datetime.now().isoformat(),
+            'student_id': student_id,
+            'unit': unit,
+            'stage': stage
+        }
+        
+        blob.upload_from_string(
+            json.dumps(data, ensure_ascii=False, indent=2),
+            content_type='application/json'
+        )
+        
+        print(f"[SUMMARY_SAVE_GCS] {gcs_path} saved")
+    except Exception as e:
+        print(f"[SUMMARY_SAVE_GCS] Error: {e}")
+
 def _load_summary_from_db(student_id, unit, stage):
     """サマリーをデータベースから取得（GCS/ローカル）"""
     # GCSから取得
@@ -1651,6 +1732,14 @@ def reflection():
     # セッションに会話履歴があるか確認
     session_reflection_conversation = session.get('reflection_conversation')
     student_id = f"{class_number}_{student_number}"
+
+    # 予想まとめがセッションに存在しない場合はストレージから復元
+    if (not prediction_summary) and unit and student_number:
+        restored_prediction_summary = _load_summary_from_db(student_id, unit, 'prediction')
+        if restored_prediction_summary:
+            prediction_summary = restored_prediction_summary
+            session['prediction_summary'] = restored_prediction_summary
+            print(f"[REFLECTION] 予想まとめをストレージから復元: {len(restored_prediction_summary)} 文字")
     
     # resume パラメータが明示的に指定されている場合のみ復元
     if resume:
@@ -1761,31 +1850,48 @@ def reflect_chat():
     
     # プロンプトファイルからベースプロンプトを取得
     unit_prompt = load_unit_prompt(unit)
-    template = load_prompt_template('reflection_system_template.md')
-    if template:
-        reflection_system_prompt = render_prompt_template(
-            template,
-            UNIT_PROMPT=unit_prompt,
-            PREDICTION_SUMMARY=prediction_summary or '予想がまだ記録されていません。'
-        )
-    else:
-        # フォールバック: 旧実装と同等の文字列
-        reflection_system_prompt = f"""
+    
+    # 考察段階のシステムプロンプトを構築
+    reflection_system_prompt = f"""
+あなたは小学4年生の理科学習を支援するAIアシスタントです。現在、児童が実験後の「考察段階」に入っています。
+
+## 重要な役割
+児童は実験を終え、その結果と自分の予想を比較しながら、「なぜそうなったのか」，日常生活や既習事項との関連を自分の言葉で考える段階です。
+
+## あなたが守ること（絶対ルール）
+1. **子どもの発言を最優先する**
+   - 子どもの話した内容をそのまま受け止める
+   - 「〜なんだね」「〜だったんだね」と整理する
+   - 子どもの表現を活かす
+
+2. **自然で短い対話を心がける**
+   - 1往復ごとに1つの応答を返す
+   - 一度に3つ以上の質問をしない
+   - やさしく、短く、日常的な言葉を使う
+
+3. **絶対にしてはいけないこと**
+   - 長文のまとめを途中で出さない
+   - 難しい専門用語を使わない
+   - 子どもの考えを否定しない
+   - 要約を勝手に出さない（子どもが「まとめボタン」を押すまで）
+
+## 対話の進め方
+1. 実験結果を聞く：「じっけんではどんなけっかになった？」
+2. 予想との簡単な確認：「さいしょの予そうと同じだった？」
+3. 子どもの考え・気づきを引き出す（ここが最重要）：「それってなぜだと思う？」「何か気づいたことってある？」
+4. 体験や観察の詳しさを引き出す：「そのときどんなようすだった？」
+5. 日常との結びつけ：「ふだんでも同じようなことってある？」
+
+## 単元の指導内容
 {unit_prompt}
 
-【現在の学習段階】
-児童が実験を終え、結果をもとに考察を深める段階です。
+## 児童の予想
+{prediction_summary or '予想がまだ記録されていません。'}
 
-【児童の予想】
-{prediction_summary}
-
-【これからのやり取り】
-- 対話は単元のマークダウンプロンプト内の「考察段階」に従う
-- 児童の言葉を尊重し、短く返す
-- 無理に導かない
-
-【重要】
-- プロンプトファイルの「考察段階」に従う
+## 大事なこと
+- 子どもが何を考えたか、気づいたかを最優先に引き出す
+- 膜の変化（ふくらむ / 凹む）から体積の変化（大きくなる / 小さくなる）を自然に導く
+- 予想との比較は簡単な確認程度
 """
     
     # メッセージフォーマットで対話履歴を構築

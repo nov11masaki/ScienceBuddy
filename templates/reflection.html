@@ -39,8 +39,17 @@
             </div>
             
             <div class="chat-container">
+                <div class="api-status" id="apiStatus" style="display: none;">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span id="apiStatusMessage">AI接続を確認中...</span>
+                        <button class="btn btn-sm btn-outline-secondary ms-2" onclick="testApiConnection()">
+                            <i class="fas fa-sync"></i> 再テスト
+                        </button>
+                    </div>
+                </div>
+                
                 <div class="chat-messages" id="chatMessages">
-                    <!-- 初期メッセージ -->
                     <div class="message ai-message">
                         <div class="message-avatar"></div>
                         <div class="message-content">
@@ -78,8 +87,6 @@
                             単元選択に戻る
                         </button>
                     </div>
-                </div>
-            </div>
                 </div>
             </div>
         </div>
@@ -156,95 +163,64 @@
 }
 </script>
 
-<!-- 復帰情報をJavaScriptグローバル変数として埋め込み -->
-<script>
-const reflectionResumptionInfo = {{ reflection_resumption_info | tojson | safe }};
+<!-- 復帰情報を埋め込み -->
+<script type="application/json" id="reflection-resumption">
+{{ reflection_resumption_info | tojson | safe }}
+</script>
 
+<script>
 // グローバル変数: 音声認識インスタンス
 let recognition = null;
+
+let reflectionConversationCount = 0;
+let lastMessage = '';
 
 // 考察完了状態を取得
 const reflectionStatusElement = document.getElementById('reflection-status');
 const reflectionStatus = reflectionStatusElement ? JSON.parse(reflectionStatusElement.textContent) : {reflection_summary_created: false};
-let reflectionExchangeCount = 0;
 
-const currentUnit = "{{ unit }}";
-const classNumber = "{{ class_number }}";
-const studentNumber = "{{ student_number }}";
+// 復帰情報
+const reflectionResumptionElement = document.getElementById('reflection-resumption');
+const reflectionResumptionInfo = reflectionResumptionElement ? JSON.parse(reflectionResumptionElement.textContent) : { is_resumption: false };
 
-// 単元選択に戻る
-function goBackToUnitSelectionFromReflection() {
-    // 入力欄の内容を確認
-    const messageInput = document.getElementById('messageInput');
-    const hasInput = messageInput && messageInput.value.trim().length > 0;
-    
-    // まとめボタンが表示されていたら（まとめていなかったら）警告
+// URLからパラメータを取得（無い場合はセッション値を使用）
+const urlParams = new URLSearchParams(window.location.search);
+const classNumber = urlParams.get('class') || "{{ session.get('class_number', '1') }}";
+const studentNumber = urlParams.get('number') || "{{ session.get('student_number', '1') }}";
+const unit = urlParams.get('unit') || "{{ unit | default('', true) }}";
+
+function showReflectionSummaryButton(reason) {
+    // まとめが完了している場合のみ非表示
+    if (reflectionStatus && reflectionStatus.reflection_summary_created) return;
     const summaryButton = document.getElementById('summaryButton');
-    const isNotSummarized = summaryButton && summaryButton.style.display !== 'none';
-    
-    // 入力がある または まとめていない場合は警告を表示
-    if (hasInput || isNotSummarized) {
-        const confirmed = confirm('考察をまとめていません。\n\n戻ると、もう一度やり直さなければなりません。\n\nいいですか？');
-        if (!confirmed) {
-            return; // キャンセルされたら戻らない
-        }
+    if (!summaryButton) return;
+    summaryButton.style.display = 'block';
+    summaryButton.disabled = false;  // ボタンを有効化
+    if (reason) {
+        console.log('【DEBUG】まとめボタン表示:', reason);
     }
-    window.location.href = `/select_unit?class=${classNumber}&number=${studentNumber}`;
 }
 
-// セッションオブジェクトの初期化（クライアント側のセッションデータ）
-let session = {
-    'reflection_summary': ''
-};
-
-// 入力補助用の設定（シンプルなひらがなのみ）
-const inputAssistConfig = {
-    hiragana: [
-        // 右から左への伝統的な50音表配置（縦書き）
-        ['わ', 'ら', 'や', 'ま', 'は', 'な', 'た', 'さ', 'か', 'あ'],
-        ['', 'り', '', 'み', 'ひ', 'に', 'ち', 'し', 'き', 'い'],
-        ['を', 'る', 'ゆ', 'む', 'ふ', 'ぬ', 'つ', 'す', 'く', 'う'],
-        ['', 'れ', '', 'め', 'へ', 'ね', 'て', 'せ', 'け', 'え'],
-        ['ん', 'ろ', 'よ', 'も', 'ほ', 'の', 'と', 'そ', 'こ', 'お'],
-        // 小さい文字と記号（左から右へ）
-        ['゛゜', 'っ', 'ゃ', 'ゅ', 'ょ', '、', '。', '！', '？', 'スペース']
-    ]
-};
-
-// 濁点・半濁点変換マップ
-const dakutenMap = {
-    'か': 'が', 'き': 'ぎ', 'く': 'ぐ', 'け': 'げ', 'こ': 'ご',
-    'さ': 'ざ', 'し': 'じ', 'す': 'ず', 'せ': 'ぜ', 'そ': 'ぞ',
-    'た': 'だ', 'ち': 'ぢ', 'つ': 'づ', 'て': 'で', 'と': 'ど',
-    'は': 'ば', 'ひ': 'び', 'ふ': 'ぶ', 'へ': 'べ', 'ほ': 'ぼ',
-    'が': 'か', 'ぎ': 'き', 'ぐ': 'く', 'げ': 'け', 'ご': 'こ',
-    'ざ': 'さ', 'じ': 'し', 'ず': 'す', 'ぜ': 'せ', 'ぞ': 'そ',
-    'だ': 'た', 'ぢ': 'ち', 'づ': 'つ', 'で': 'て', 'ど': 'と',
-    'ば': 'ぱ', 'び': 'ぴ', 'ぶ': 'ぷ', 'べ': 'ぺ', 'ぼ': 'ぽ',
-    'ぱ': 'は', 'ぴ': 'ひ', 'ぷ': 'ふ', 'ぺ': 'へ', 'ぽ': 'ほ'
-};
-
-// ページ読み込み時の初期化
+// ページロード時にまとめボタンを表示（ユーザーが任意のタイミングで押せるように）
 document.addEventListener('DOMContentLoaded', function() {
-    // 復帰情報を取得
-    const resumptionInfo = reflectionResumptionInfo;
+    console.log('DOMContentLoaded イベント発火');
+    
+    // まだまとめが完了していないなら、ボタンを表示
+    if (!reflectionStatus || !reflectionStatus.reflection_summary_created) {
+        const summaryButton = document.getElementById('summaryButton');
+        if (summaryButton) {
+            summaryButton.style.display = 'block';
+            summaryButton.disabled = false;
+        }
+    }
     
     // 考察のまとめが完了していれば復元
     if (reflectionStatus && reflectionStatus.reflection_summary_created) {
         console.log('考察のまとめが完了しています');
-        // サーバーから考察のまとめを取得
         restoreReflectionSummary();
     }
     
-    // まだまとめが完了していないなら、ボタンを表示
-    if (!reflectionResumptionInfo || !reflectionResumptionInfo.reflection_summary_created) {
-        const summaryButton = document.getElementById('summaryButton');
-        if (summaryButton) {
-            summaryButton.style.display = 'block';
-        }
-    }
-    
-    // 初期メッセージはHTMLに直接書かれているので、ここでは追加しない
+    testApiConnection();
     
     // デフォルトで50音表がOFFなので、入力補助エリアを縮小
     const inputAssistSection = document.getElementById('inputAssistSection');
@@ -254,6 +230,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 入力補助の初期化
     initializeInputAssist();
+    
+    // 入力モード切り替え
+    document.querySelectorAll('input[name="inputMode"]').forEach(radio => {
+        radio.addEventListener('change', switchInputMode);
+    });
     
     // 50音表表示切り替えスイッチ
     const toggle50onSwitch = document.getElementById('toggle50on');
@@ -298,21 +279,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 voiceSection.style.display = 'block';
             } else {
                 voiceSection.style.display = 'none';
-                stopVoiceInput();
+                stopVoiceInput(); // 音声入力が有効な場合は停止
             }
         });
     }
     
     // 音声入力ボタン
     const voiceInputBtn = document.getElementById('voiceInputBtn');
+    console.log('voiceInputBtn要素:', voiceInputBtn);
     if (voiceInputBtn) {
         voiceInputBtn.addEventListener('click', function() {
-            console.log('voiceInputBtnがクリックされました (reflection.html)');
+            console.log('voiceInputBtnがクリックされました');
             startVoiceInput();
         });
+        console.log('voiceInputBtnにイベントリスナーを設定しました');
+    } else {
+        console.error('voiceInputBtn要素が見つかりません');
     }
     
-    // キーボードコントロールボタン
+    // キーボードコントロールボタン（タッチキーボード用）
     const backspaceBtn = document.getElementById('backspaceBtn');
     const clearBtn = document.getElementById('clearBtn');
     
@@ -338,41 +323,53 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('messageInput').addEventListener('keypress', function(e) {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            sendReflection();
+            sendMessage();
         }
     });
     
     // 送信ボタン（チャット入力エリア）
     const sendBtn = document.getElementById('sendButton');
     if (sendBtn) {
-        sendBtn.addEventListener('click', sendReflection);
+        sendBtn.addEventListener('click', sendMessage);
     }
     
     // 送信ボタン（50音表エリア）
     const inputAssistSendBtn = document.getElementById('inputAssistSendBtn');
     if (inputAssistSendBtn) {
-        inputAssistSendBtn.addEventListener('click', sendReflection);
+        inputAssistSendBtn.addEventListener('click', sendMessage);
     }
     
     // まとめボタン
-    document.getElementById('summaryButton').addEventListener('click', getSummary);
+    const summaryBtn = document.getElementById('summaryButton');
+    if (summaryBtn) {
+        summaryBtn.addEventListener('click', getSummary);
+    }
 });
 
-function showFinalSummaryButton(reason) {
-    if (reflectionResumptionInfo && reflectionResumptionInfo.reflection_summary_created) return;
-    const button = document.getElementById('summaryButton');
-    if (!button) return;
-    button.style.display = 'block';
-    if (reason) {
-        console.log('【DEBUG】最終要約ボタン表示:', reason);
-    }
-}
+// セッションオブジェクトの初期化（クライアント側のセッションデータ）
+let session = {
+    'reflection_summary': ''
+};
 
+// 入力補助用の設定（シンプルなひらがなのみ）
+const inputAssistConfig = {
+    hiragana: [
+        // 右から左への伝統的な50音表配置（縦書き）
+        ['わ', 'ら', 'や', 'ま', 'は', 'な', 'た', 'さ', 'か', 'あ'],
+        ['', 'り', '', 'み', 'ひ', 'に', 'ち', 'し', 'き', 'い'],
+        ['を', 'る', 'ゆ', 'む', 'ふ', 'ぬ', 'つ', 'す', 'く', 'う'],
+        ['', 'れ', '', 'め', 'へ', 'ね', 'て', 'せ', 'け', 'え'],
+        ['ん', 'ろ', 'よ', 'も', 'ほ', 'の', 'と', 'そ', 'こ', 'お'],
+        // 小さい文字と記号（左から右へ）
+        ['゛゜', 'っ', 'ゃ', 'ゅ', 'ょ', '、', '。', '！', '？', 'スペース']
+    ]
+};
 
+const currentUnit = "{{ unit }}";
 
 // 入力補助の初期化
 function initializeInputAssist() {
-    // ひらがなキーボードを設定
+    // ひらがなキーボードを設定（10列グリッドレイアウト、右から左）
     const hiraganaContainer = document.getElementById('hiraganaKeys');
     hiraganaContainer.innerHTML = '';
     
@@ -408,12 +405,6 @@ function initializeInputAssist() {
             hiraganaContainer.appendChild(btn);
         });
     });
-}
-
-function insertText(text) {
-    const input = document.getElementById('messageInput');
-    input.value += text;
-    input.focus();
 }
 
 // 濁点・半濁音を追加（循環対応）
@@ -457,25 +448,331 @@ function addDakuten() {
         input.value = text.slice(0, -1) + dakutenCycleMap[lastChar];
     }
     
+    updateInputPreview();  // プレビュー更新
     input.focus();
 }
 
-function sendReflection() {
+// テキストを挿入（50音表から）
+function insertText(text) {
+    const input = document.getElementById('messageInput');
+    input.value += text;
+    input.focus();
+}
+
+// 入力補助の表示切り替え
+function toggleInputAssist(enabled) {
+    const keyboardDiv = document.getElementById('touchKeyboard');
+    const voiceDiv = document.getElementById('voiceInputSection');
+    
+    if (enabled) {
+        keyboardDiv.style.display = 'block';
+        voiceDiv.style.display = 'block';
+    } else {
+        keyboardDiv.style.display = 'none';
+        voiceDiv.style.display = 'none';
+        stopVoiceInput();
+    }
+}
+
+// 音声入力開始/停止
+function startVoiceInput() {
+    console.log('音声入力ボタンがクリックされました');
+    
+    // 既に認識中なら停止
+    if (recognition && recognition.isListening) {
+        console.log('音声認識を停止します');
+        stopVoiceInput();
+        return;
+    }
+    
+    // Web Speech API のサポート確認
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        alert('お使いのブラウザは音声入力に対応していません。Chrome、Edge、Safariをお使いください。');
+        console.error('Web Speech API not supported');
+        return;
+    }
+    
+    console.log('Web Speech API サポート確認OK');
+    
+    try {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.lang = 'ja-JP';
+        recognition.continuous = true;  // 継続的に認識
+        recognition.interimResults = true;  // 途中結果も取得
+        
+        console.log('SpeechRecognition オブジェクト作成完了');
+        
+        const statusDiv = document.getElementById('voiceInputStatus');
+        const statusText = document.getElementById('voiceStatusText');
+        const voiceBtn = document.getElementById('voiceInputBtn');
+        const input = document.getElementById('messageInput');
+        
+        // 認識開始時の入力欄の位置を記憶
+        let startPosition = 0;
+        
+        console.log('DOM要素取得:', {statusDiv, statusText, voiceBtn});
+        
+        recognition.onstart = function() {
+            console.log('音声認識開始');
+            recognition.isListening = true;
+            startPosition = input.value.length;  // 現在の入力位置を記憶
+            statusDiv.style.display = 'block';
+            statusText.textContent = '音声を認識中...';
+            voiceBtn.innerHTML = '<i class="fas fa-stop"></i> 停止';
+            voiceBtn.classList.add('btn-danger');
+            voiceBtn.classList.remove('btn-outline-primary');
+        };
+        
+        recognition.onresult = function(event) {
+            console.log('🎤 onresult イベント:', {resultIndex: event.resultIndex, resultsLength: event.results.length});
+            
+            let interimTranscript = '';
+            let finalTranscript = '';
+            
+            // 前回の確定結果からの新しい結果のみを処理
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const transcript = event.results[i][0].transcript;
+                const isFinal = event.results[i].isFinal;
+                const confidence = event.results[i][0].confidence;
+                
+                console.log(`結果[${i}]:`, {transcript, isFinal, confidence});
+                
+                if (isFinal) {
+                    finalTranscript += transcript + ' ';
+                } else {
+                    interimTranscript += transcript;
+                }
+            }
+            
+            // 入力欄を更新（確定結果のみを追加）
+            if (finalTranscript.trim()) {
+                console.log('✅ 確定結果を追加:', finalTranscript);
+                // 確定した結果のみを追加（余分なスペースを削除）
+                const cleanedFinalTranscript = finalTranscript.trim();
+                input.value += cleanedFinalTranscript + ' ';
+                console.log('入力欄の内容:', input.value);
+                startPosition = input.value.length;  // 新しい開始位置を更新
+                statusText.textContent = '✅ 認識完了: ' + cleanedFinalTranscript;
+            }
+            
+            // 途中結果の表示（ステータスのみ）
+            if (interimTranscript) {
+                statusText.textContent = '🎤 認識中: ' + interimTranscript;
+                console.log('途中結果:', interimTranscript);
+            }
+            
+            // 入力欄のスクロール位置をカーソル位置に合わせる
+            input.focus();
+            input.scrollTop = input.scrollHeight;
+        };
+        
+        recognition.onerror = function(event) {
+            console.error('音声認識エラー:', event.error);
+            statusDiv.style.display = 'none';
+            voiceBtn.innerHTML = '<i class="fas fa-microphone"></i> 音声で入力';
+            voiceBtn.classList.remove('btn-danger');
+            voiceBtn.classList.add('btn-outline-primary');
+            recognition.isListening = false;
+            
+            if (event.error === 'no-speech') {
+                alert('音声が検出されませんでした。もう一度お試しください。');
+            } else if (event.error === 'not-allowed') {
+                alert('マイクの使用が許可されていません。ブラウザの設定を確認してください。');
+            } else if (event.error !== 'aborted') {
+                // aborted エラー（手動停止）以外はアラート表示
+                alert('音声認識エラー: ' + event.error);
+            }
+        };
+        
+        recognition.onend = function() {
+            console.log('音声認識終了');
+            statusDiv.style.display = 'none';
+            voiceBtn.innerHTML = '<i class="fas fa-microphone"></i> 音声で入力';
+            voiceBtn.classList.remove('btn-danger');
+            voiceBtn.classList.add('btn-outline-primary');
+            recognition.isListening = false;
+        };
+        
+        console.log('音声認識を開始します');
+        recognition.start();
+    } catch (error) {
+        console.error('音声認識エラー:', error);
+        alert('音声認識の初期化に失敗しました: ' + error.message);
+    }
+}
+
+// 音声入力停止
+function stopVoiceInput() {
+    console.log('音声入力停止');
+    if (recognition && recognition.isListening) {
+        recognition.stop();
+        recognition.isListening = false;
+    }
+}
+
+function testApiConnection() {
+    fetch('/api/test')
+    .then(response => response.json())
+    .then(data => {
+        const statusDiv = document.getElementById('apiStatus');
+        const messageSpan = document.getElementById('apiStatusMessage');
+        
+        if (data.status === 'success') {
+            statusDiv.style.display = 'none';
+            console.log('API接続テスト成功:', data.response);
+        } else {
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'alert alert-danger';
+            messageSpan.textContent = data.message || 'AI接続に問題があります';
+        }
+    })
+    .catch(error => {
+        console.error('API接続テストエラー:', error);
+        const statusDiv = document.getElementById('apiStatus');
+        const messageSpan = document.getElementById('apiStatusMessage');
+        statusDiv.style.display = 'block';
+        statusDiv.className = 'alert alert-danger';
+        messageSpan.textContent = 'ネットワーク接続に問題があります';
+    });
+}
+
+function sendMessage() {
     const input = document.getElementById('messageInput');
     const message = input.value.trim();
     
     if (!message) return;
     
     // ユーザーメッセージを表示
-    addReflectionMessage(message, 'user');
+    addMessage(message, 'user');
     input.value = '';
+    
+    // APIに送信
+    sendMessageToAPI(message);
+}
+
+function addMessage(content, type, useTypingEffect = false) {
+    const messagesContainer = document.getElementById('chatMessages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${type}-message`;
+    
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'message-content';
+    
+    const avatarDiv = document.createElement('div');
+    avatarDiv.className = 'message-avatar';
+    
+    messageDiv.appendChild(avatarDiv);
+    messageDiv.appendChild(contentDiv);
+    
+    // 入力エリアを取得
+    const inputArea = document.querySelector('.user-input-area');
+    
+    // メッセージを追加
+    if (inputArea) {
+        // 入力エリアの前に追加（入力エリアが最後に来るように）
+        messagesContainer.insertBefore(messageDiv, inputArea);
+    } else {
+        messagesContainer.appendChild(messageDiv);
+    }
+    
+    // タイピングエフェクトを使用する場合（AI応答のみ）
+    if (useTypingEffect && type === 'ai') {
+        typeMessage(contentDiv, content, messagesContainer);
+    } else {
+        contentDiv.innerHTML = content;
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+    
+    return messageDiv; // 作成されたメッセージ要素を返す
+}
+
+// タイピングエフェクト関数
+function typeMessage(element, text, container) {
+    let index = 0;
+    const speed = 30; // ミリ秒単位（数値が小さいほど速い）
+    
+    // カーソルを追加
+    const cursor = document.createElement('span');
+    cursor.className = 'typing-cursor';
+    cursor.textContent = '▌';
+    element.appendChild(cursor);
+    
+    function typeChar() {
+        if (index < text.length) {
+            // カーソルの前にテキストを追加
+            const textNode = document.createTextNode(text.charAt(index));
+            element.insertBefore(textNode, cursor);
+            index++;
+            
+            // 自動スクロール
+            container.scrollTop = container.scrollHeight;
+            
+            setTimeout(typeChar, speed);
+        } else {
+            // タイピング完了後、カーソルを削除
+            cursor.remove();
+        }
+    }
+    
+    typeChar();
+}
+
+function addRetryButton() {
+    const messagesContainer = document.getElementById('chatMessages');
+    const retryDiv = document.createElement('div');
+    retryDiv.className = 'message ai-message retry-message';
+    retryDiv.innerHTML = `
+        <div class="message-avatar"></div>
+        <div class="message-content">
+            <button class="btn btn-outline-primary btn-sm" onclick="retryLastMessage()">
+                <i class="fas fa-redo me-2"></i>再試行
+            </button>
+        </div>
+    `;
+    
+    // 入力エリアを取得
+    const inputArea = document.querySelector('.user-input-area');
+    
+    if (inputArea) {
+        // 入力エリアの前に追加
+        messagesContainer.insertBefore(retryDiv, inputArea);
+    } else {
+        messagesContainer.appendChild(retryDiv);
+    }
+    
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function retryLastMessage() {
+    // 再試行ボタンを削除
+    const retryMessages = document.querySelectorAll('.retry-message');
+    retryMessages.forEach(msg => msg.remove());
+    
+    // 最後のユーザーメッセージを再送信
+    const userMessages = document.querySelectorAll('.user-message .message-content');
+    if (userMessages.length > 0) {
+        const lastMessage = userMessages[userMessages.length - 1].textContent;
+        // 直接APIを呼び出す
+        sendMessageToAPI(lastMessage);
+    }
+}
+
+function sendMessageToAPI(message) {
+    console.log('【DEBUG】sendMessageToAPI 呼び出し, メッセージ:', message);
+    
+    // 読み込み中のメッセージを表示
+    const loadingMessage = addMessage('考え中...', 'ai');
+    loadingMessage.classList.add('loading-message');
     
     // APIリクエストデータ
     const requestData = { 
         message: message
     };
     
-    // AIの応答を取得
+    console.log('【DEBUG】リクエストデータ:', requestData);
+    
+    // AIの応答を取得（考察用エンドポイント）
     fetch('/reflect_chat', {
         method: 'POST',
         headers: {
@@ -484,24 +781,42 @@ function sendReflection() {
         body: JSON.stringify(requestData)
     })
     .then(response => {
+        console.log('【DEBUG】レスポンス受信:', response.status, response.statusText);
+        
+        // 読み込み中メッセージを削除
+        const loadingMessages = document.querySelectorAll('.loading-message');
+        loadingMessages.forEach(msg => msg.remove());
+        
         if (!response.ok) {
             throw new Error(`HTTPエラー: ${response.status} ${response.statusText}`);
         }
+        
         return response.json();
     })
     .then(data => {
+        console.log('【DEBUG】JSONレスポンス:', data);
+        
         if (data.error) {
-            addReflectionMessage('エラーが発生しました: ' + data.error, 'ai', false);
+            console.error('【DEBUG】エラーレスポンス:', data.error);
+            addMessage('⚠️ ' + data.error, 'ai', false);
+            addRetryButton();
         } else {
-            addReflectionMessage(data.response, 'ai', true); // タイピングエフェクト有効
-            reflectionExchangeCount++;
+            console.log('【DEBUG】AI返答を表示:', data.response);
+            addMessage(data.response, 'ai', true); // タイピングエフェクト有効
+            reflectionConversationCount++;
             
             // ユーザーメッセージ数をカウント（往復数 * 2 でメッセージ総数を算出）
-            const totalMessages = reflectionExchangeCount * 2;
+            const totalMessages = reflectionConversationCount * 2;
             
-            // 6メッセージ以上またはAIが要約を提案した場合に表示
-            if (totalMessages >= 6 || data.suggest_final_summary || data.response.includes('まとめ') || data.response.includes('要約')) {
-                showFinalSummaryButton(`会話数:${totalMessages}/${6} / suggest:${data.suggest_final_summary}`);
+            // 6メッセージ以上またはAIが「まとめ」を促したら要約ボタンを表示
+            if (totalMessages >= 6 || data.suggest_summary || data.response.includes('まとめ') || data.response.includes('要約')) {
+                showReflectionSummaryButton(`会話数:${totalMessages}/${6} / suggest:${data.suggest_summary}`);
+            }
+            
+            // デジタル学習ツインのインサイトを表示（開発時のみ）
+            if (data.twin_insights && window.location.hostname === 'localhost') {
+                console.log('学習ツイン分析:', data.twin_insights);
+                displayTwinInsights(data.twin_insights);
             }
             
             // 会話データをサーバーに同期（定期的に自動保存）
@@ -509,17 +824,25 @@ function sendReflection() {
         }
     })
     .catch(error => {
-        console.error('Error:', error);
-        addReflectionMessage('通信エラーが発生しました: ' + error.message, 'ai', false);
+        // 読み込み中メッセージを削除
+        const loadingMessages = document.querySelectorAll('.loading-message');
+        loadingMessages.forEach(msg => msg.remove());
+        
+        console.error('【DEBUG】エラーキャッチ:', error);
+        console.error('通信エラー詳細:', error);
+        addMessage('⚠️ 通信エラーが発生しました: ' + error.message, 'ai', false);
+        addRetryButton();
+        
+        // API接続テストを実行
+        testApiConnection();
     });
 }
 
 // セッションデータをサーバーに同期（GCS/ローカル保存）
 function syncReflectionSessionData(stage) {
     try {
-        const chatMessages = getReflectionChatMessages();
-        const studentId = `{{ session.get('class_number') }}_{{ session.get('student_number') }}`;
-        const unit = `{{ unit }}`;
+        const chatMessages = getChatMessages();
+        const studentId = `${classNumber}_${studentNumber}`;
         const summaryContent = document.getElementById('summaryContent')?.innerHTML || '';
         
         const syncData = {
@@ -554,7 +877,7 @@ function syncReflectionSessionData(stage) {
 }
 
 // チャットメッセージを配列形式で取得
-function getReflectionChatMessages() {
+function getChatMessages() {
     const messages = [];
     const messageElements = document.querySelectorAll('#chatMessages .message');
     
@@ -574,92 +897,13 @@ function getReflectionChatMessages() {
     return messages;
 }
 
-function addReflectionMessage(content, type, useTypingEffect = false) {
-    const messagesContainer = document.getElementById('chatMessages');
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `message ${type}-message`;
-    
-    const contentDiv = document.createElement('div');
-    contentDiv.className = 'message-content';
-    
-    const avatarDiv = document.createElement('div');
-    avatarDiv.className = 'message-avatar';
-    
-    messageDiv.appendChild(avatarDiv);
-    messageDiv.appendChild(contentDiv);
-    
-    // 入力エリアを取得
-    const inputArea = document.querySelector('.user-input-area');
-    
-    // メッセージを追加
-    if (inputArea) {
-        // 入力エリアの前に追加（入力エリアが最後に来るように）
-        messagesContainer.insertBefore(messageDiv, inputArea);
-    } else {
-        messagesContainer.appendChild(messageDiv);
-    }
-    
-    // タイピングエフェクトを使用する場合（AI応答のみ）
-    if (useTypingEffect && type === 'ai') {
-        typeReflectionMessage(contentDiv, content, messagesContainer);
-    } else {
-        contentDiv.innerHTML = content;
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }
-}
-
-// タイピングエフェクト関数
-function typeReflectionMessage(element, text, container) {
-    let index = 0;
-    const speed = 30; // ミリ秒単位（数値が小さいほど速い）
-    
-    // カーソルを追加
-    const cursor = document.createElement('span');
-    cursor.className = 'typing-cursor';
-    cursor.textContent = '▌';
-    element.appendChild(cursor);
-    
-    function typeChar() {
-        if (index < text.length) {
-            // カーソルの前にテキストを追加
-            const textNode = document.createTextNode(text.charAt(index));
-            element.insertBefore(textNode, cursor);
-            index++;
-            
-            // 自動スクロール
-            container.scrollTop = container.scrollHeight;
-            
-            setTimeout(typeChar, speed);
-        } else {
-            // タイピング完了後、カーソルを削除
-            cursor.remove();
-        }
-    }
-    
-    typeChar();
-}
-
-function showCompletionMessage() {
-    console.log('【DEBUG】showCompletionMessage 呼び出し');
-    const completionSection = document.getElementById('completionSection');
-    if (completionSection) {
-        completionSection.style.display = 'block';
-        // スクロールして見やすく
-        setTimeout(() => {
-            completionSection.scrollIntoView({ behavior: 'smooth' });
-        }, 300);
-    }
-}
-
-// 最終要約が実質的な意味を持つかチェック（予想まとめと同じ）
+// 最終要約が実質的な意味を持つかチェック
 function isMeaningfulFinalSummary(summary) {
     if (!summary || summary.trim().length < 15) return false;
     
-    // 無意味な連続文字（記号や同じ文字の繰り返し）をチェック
     const meaninglessPatterns = /([ヴァslmv]{2,}|[ぁぃぅぇぉ]{3,}|~~~|~~~|\.\.\.|【【|】】)/g;
     const meaninglessMatches = (summary.match(meaninglessPatterns) || []).length;
     
-    // 無意味な文字列の割合が高い場合はNG
     if (meaninglessMatches > 0) {
         const totalWords = summary.split(/[\s、。]/g).length;
         if (meaninglessMatches / totalWords > 0.3) {
@@ -667,9 +911,7 @@ function isMeaningfulFinalSummary(summary) {
         }
     }
     
-    // 実験結果や児童の気付きを含んでいるか
-    const hasValidContent = /(?:児童|考え|思う|気づ|わかっ|観察|結果|わかった|発見|理由|原因|関係)/i.test(summary);
-    
+    const hasValidContent = /(?:児童|考え|思う|気づ|わかっ|観察|結果|発見|理由|原因|関係)/i.test(summary);
     return hasValidContent;
 }
 
@@ -677,6 +919,12 @@ function getSummary() {
     console.log('【DEBUG】getSummary 呼び出し');
     
     const summaryButton = document.getElementById('summaryButton');
+    
+    // ボタンが既に無効な場合は二重実行を防止
+    if (summaryButton.disabled) {
+        console.log('【DEBUG】既にボタンが無効です。二重実行を防止します。');
+        return;
+    }
     
     // 既に要約が表示されている場合は確認を取る
     console.log('【DEBUG】ボタン表示状態:', summaryButton.style.display);
@@ -692,12 +940,12 @@ function getSummary() {
         const classNum = urlParams.get('class');
         const studentNum = urlParams.get('number');
         const unit = urlParams.get('unit');
-        window.location.href = `/reflection?class=${classNum}&number=${studentNum}&unit=${unit}&resume=false`;
+        window.location.href = `/reflection?class=${classNum || classNumber}&number=${studentNum || studentNumber}&unit=${unit}&resume=false`;
         return;
     }
     
     // ボタンを無効化
-    document.getElementById('summaryButton').disabled = true;
+    summaryButton.disabled = true;
     
     fetch('/final_summary', {
         method: 'POST',
@@ -719,23 +967,23 @@ function getSummary() {
         });
     })
     .then(data => {
-        console.log('【DEBUG】最終要約データ:', data);
+        console.log('【DEBUG】要約データ:', data);
         if (data.error) {
             alert('まとめられません：' + data.error);
             document.getElementById('summaryButton').disabled = false;
             return;
         }
         
-        console.log('【DEBUG】最終要約を表示します:', data.summary);
+        console.log('【DEBUG】要約を表示します:', data.summary);
         
-        // 最終要約が有効な内容か確認
+        // 要約が有効な内容か確認
         if (!isMeaningfulFinalSummary(data.summary)) {
             alert('もっと、いっぱい入力してください。');
             document.getElementById('summaryButton').disabled = false;
             return;
         }
         
-        // チャットにAIメッセージとして最終要約を追加
+        // チャットにAIメッセージとして要約を追加
         const messagesContainer = document.getElementById('chatMessages');
         const messageDiv = document.createElement('div');
         messageDiv.className = 'message ai-message';
@@ -765,10 +1013,10 @@ function getSummary() {
             messageDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }, 300);
         
-        // 最終要約後の状態を保存
+        // 要約後の状態を保存
         session['reflection_summary'] = data.summary;
         
-        // ファイナルサマリーセクション全体を表示
+        // サマリーセクション全体を表示
         const summarySection = document.getElementById('summarySection');
         if (summarySection) {
             summarySection.style.display = 'block';
@@ -782,11 +1030,11 @@ function getSummary() {
             console.log('【DEBUG】chat-container を非表示にしました');
         }
         
-        // 予想の確認セクションも隠す（まとめ表示を強調）
-        const predictionReview = document.querySelector('.prediction-review');
-        if (predictionReview) {
-            predictionReview.style.display = 'none';
-            console.log('【DEBUG】prediction-review を非表示にしました');
+        // 課題カードも隠す（まとめ表示を強調）
+        const taskSection = document.querySelector('.task-section');
+        if (taskSection) {
+            taskSection.style.display = 'none';
+            console.log('【DEBUG】task-section を非表示にしました');
         }
         
         // 入力補助エリアも非表示
@@ -796,170 +1044,73 @@ function getSummary() {
             console.log('【DEBUG】inputAssistSection を非表示にしました');
         }
         
-        // ファイナルサマリーコンテンツに要約を設定
+        // サマリーコンテンツに要約を設定
         const summaryContent = document.getElementById('summaryContent');
         if (summaryContent) {
             summaryContent.innerHTML = data.summary.replace(/\n/g, '<br>');
             console.log('【DEBUG】summaryContent に要約を設定しました');
         }
         
-        // 学習完了ボタンを表示（考察成功時のみ）
-        const completionButton = document.getElementById('completionButton');
-        console.log('【DEBUG】completionButton:', completionButton);
-        if (completionButton) {
-            completionButton.style.display = 'inline-block';
-            console.log('【DEBUG】学習完了ボタンを表示しました');
+        // 単元選択に戻るボタンを表示（要約成功時のみ）
+        const backButton = document.getElementById('backToUnitButton');
+        console.log('【DEBUG】backToUnitButton:', backButton);
+        if (backButton) {
+            backButton.style.display = 'inline-block';
+            console.log('【DEBUG】単元選択に戻るボタンを表示しました');
             setTimeout(() => {
-                completionButton.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                backButton.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }, 500);
         }
     })
     .catch(error => {
-        console.error('【DEBUG】Final Summary Error:', error);
+        console.error('【DEBUG】Summary Error:', error);
         // ユーザーに警告を表示
-        alert('考察をまとめることができませんでした。\nもう一度やってみてください。');
+        alert('予想をまとめることができませんでした。\nもう一度やってみてください。');
         document.getElementById('summaryButton').disabled = false;
     });
 }
 
-function startVoiceInput() {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-        alert('お使いのブラウザは音声入力に対応していません。Chrome、Edge、Safariをお使いください。');
-        return;
-    }
-    
-    try {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        
-        if (recognition && recognition.isListening) {
-            stopVoiceInput();
+// 単元選択に戻る
+function goBackToUnitSelectionFromReflection() {
+    const summaryButton = document.getElementById('summaryButton');
+    if (summaryButton && summaryButton.style.display !== 'none') {
+        const confirmed = confirm('考察をまとめていません。\n\n戻ると、もう一度やり直さなければなりません。\n\nいいですか？');
+        if (!confirmed) {
             return;
         }
-        
-        recognition = new SpeechRecognition();
-        recognition.lang = 'ja-JP';
-        recognition.continuous = false;
-        recognition.interimResults = true;
-        
-        const statusDiv = document.getElementById('voiceInputStatus');
-        const statusText = document.getElementById('voiceStatusText');
-        const voiceBtn = document.getElementById('voiceInputBtn');
-        
-        recognition.onstart = function() {
-            recognition.isListening = true;
-            statusDiv.style.display = 'block';
-            statusText.textContent = '音声を認識中...';
-            voiceBtn.classList.add('btn-danger');
-            voiceBtn.classList.remove('btn-outline-primary');
-            
-            // 音声入力中はプレースホルダーテキストを非表示
-            const placeholderText = document.getElementById('inputPlaceholderText');
-            if (placeholderText) {
-                placeholderText.style.display = 'none';
-            }
-        };
-        
-        recognition.onresult = function(event) {
-            console.log('🎤 onresult イベント:', {resultIndex: event.resultIndex, resultsLength: event.results.length});
-            
-            let interimTranscript = '';
-            let finalTranscript = '';
-            
-            for (let i = event.resultIndex; i < event.results.length; i++) {
-                const transcript = event.results[i][0].transcript;
-                const isFinal = event.results[i].isFinal;
-                const confidence = event.results[i][0].confidence;
-                
-                console.log(`結果[${i}]:`, {transcript, isFinal, confidence});
-                
-                if (isFinal) {
-                    finalTranscript += transcript + ' ';
-                } else {
-                    interimTranscript += transcript;
-                }
-            }
-            
-            const input = document.getElementById('messageInput');
-            const placeholderText = document.getElementById('inputPlaceholderText');
-            
-            // 確定結果のみを入力欄に追加
-            if (finalTranscript.trim()) {
-                console.log('✅ 確定結果を追加:', finalTranscript);
-                // 余分なスペースを削除してから追加
-                const cleanedFinalTranscript = finalTranscript.trim();
-                input.value += cleanedFinalTranscript + ' ';
-                console.log('入力欄の内容:', input.value);
-                statusText.textContent = '✅ 認識完了: ' + cleanedFinalTranscript;
-            }
-            
-            // 途中結果の表示（ステータスのみ）
-            if (interimTranscript) {
-                statusText.textContent = '🎤 認識中: ' + interimTranscript;
-                console.log('途中結果:', interimTranscript);
-            }
-            
-            // 入力欄をフォーカスしてスクロール
-            input.focus();
-            input.scrollTop = input.scrollHeight;
-            
-            // プレースホルダーテキストにもリアルタイム表示
-            if (placeholderText) {
-                placeholderText.textContent = input.value;
-            }
-        };
-        
-        recognition.onerror = function(event) {
-            console.error('音声認識エラー:', event.error);
-            statusDiv.style.display = 'none';
-            voiceBtn.classList.remove('btn-danger');
-            voiceBtn.classList.add('btn-outline-primary');
-            recognition.isListening = false;
-            
-            if (event.error === 'no-speech') {
-                alert('音声が検出されませんでした。もう一度お試しください。');
-            } else if (event.error === 'not-allowed') {
-                alert('マイクの使用が許可されていません。ブラウザの設定を確認してください。');
-            }
-        };
-        
-        recognition.onend = function() {
-            setTimeout(() => {
-                statusDiv.style.display = 'none';
-                voiceBtn.classList.remove('btn-danger');
-                voiceBtn.classList.add('btn-outline-primary');
-                recognition.isListening = false;
-                
-                // プレースホルダーテキストを表示
-                const placeholderText = document.getElementById('inputPlaceholderText');
-                if (placeholderText) {
-                    placeholderText.style.display = 'block';
-                }
-            }, 1000);
-        };
-        
-        recognition.start();
-    } catch (error) {
-        console.error('音声認識エラー:', error);
-        alert('音声認識の初期化に失敗しました: ' + error.message);
     }
+    window.location.href = `/select_unit?class=${classNumber}&number=${studentNumber}`;
 }
 
-function stopVoiceInput() {
-    if (recognition && recognition.isListening) {
-        recognition.stop();
-        recognition.isListening = false;
+// 入力モード切り替え
+function switchInputMode() {
+    const mode = document.querySelector('input[name="inputMode"]:checked').id;
+    const toggleSwitch = document.getElementById('toggleInputAssist');
+    
+    const touchKeyboard = document.getElementById('touchKeyboard');
+    const keyboardArea = document.getElementById('keyboardArea');
+    
+    if (mode === 'modeKeyboard') {
+        // キーボードモードでは50音表を非表示
+        keyboardArea.style.display = 'none';
+        toggleSwitch.checked = false;
+    } else if (mode === 'mode50on') {
+        // 50音表モード
+        touchKeyboard.style.display = 'block';
+        keyboardArea.style.display = 'block';
+        toggleSwitch.checked = true;
     }
 }
 
 // 復帰時に過去の会話を復元する関数
 // 復帰時に考察のまとめを復元する関数
 function restoreReflectionSummary() {
+    console.log('restoreReflectionSummary: 考察のまとめを復元中...');
     const summarySection = document.getElementById('summarySection');
     const summaryContent = document.getElementById('summaryContent');
-    
-    if (summarySection && summaryContent) {
-        summaryContent.textContent = reflectionStatus.reflectionSummary;
+    if (reflectionStatus && reflectionStatus.reflectionSummary && summarySection && summaryContent) {
         summarySection.style.display = 'block';
+        summaryContent.innerHTML = reflectionStatus.reflectionSummary.replace(/\n/g, '<br>');
     }
 }
 
@@ -1012,6 +1163,7 @@ window.addEventListener('unhandledrejection', (event) => {
         reason: event.reason
     });
 });
+
 </script>
 {% endblock %}
 

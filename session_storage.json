@@ -94,5 +94,69 @@
         "content": "そうなんだね、温めると体積が大きくなって、冷やすとちっちゃくなったんだね。じっけんではどんな結果になった？どんなようすだった？"
       }
     ]
+  },
+  "1_1_空気の温度と体積_prediction": {
+    "timestamp": "2025-11-17T23:06:48.628143",
+    "student_id": "1_1",
+    "unit": "空気の温度と体積",
+    "stage": "prediction",
+    "conversation": [
+      {
+        "role": "assistant",
+        "content": "\n                            まずは空気を温めると体積はどうなるかな？\n                        "
+      },
+      {
+        "role": "user",
+        "content": "体積 大きくなります"
+      },
+      {
+        "role": "assistant",
+        "content": "なるほど、体積が大きくなると思ったんだね。どうしてそう思ったの？何か経験があったかな？"
+      },
+      {
+        "role": "user",
+        "content": "温めると ペットボトルがパンパンになった"
+      },
+      {
+        "role": "assistant",
+        "content": "ペットボトルがパンパンになったんだね。あたためると体積が大きくなるってことだね。じゃあ、冷やしたらどうなると思う？小さくなるってことかな？"
+      },
+      {
+        "role": "user",
+        "content": "そういうことや"
+      },
+      {
+        "role": "assistant",
+        "content": "そ▌"
+      }
+    ]
+  },
+  "1_1_空気の温度と体積_reflection": {
+    "timestamp": "2025-11-17T23:07:45.414056",
+    "student_id": "1_1",
+    "unit": "空気の温度と体積",
+    "stage": "reflection",
+    "conversation": [
+      {
+        "role": "assistant",
+        "content": "\n                            実験でどんな結果になった？\n                        "
+      },
+      {
+        "role": "user",
+        "content": "温めると体積が大きくなって冷やすと体積はちっちゃくなった"
+      },
+      {
+        "role": "assistant",
+        "content": "そうなんだね、温めると体積が大きくなって、冷やすと小さくなるんだね。それはどうしてそう思ったの？どんなことを考えたのかな？"
+      },
+      {
+        "role": "user",
+        "content": "まあそういう風になったからじゃない？"
+      },
+      {
+        "role": "assistant",
+        "content": "な▌"
+      }
+    ]
   }
 }
