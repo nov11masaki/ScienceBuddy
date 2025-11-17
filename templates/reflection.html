@@ -226,6 +226,16 @@ const dakutenMap = {
 
 // ページ読み込み時の初期化
 document.addEventListener('DOMContentLoaded', function() {
+    // localStorage から会話履歴を復元
+    const resume = new URLSearchParams(window.location.search).get('resume');
+    if (resume !== 'false') {
+        // デフォルト: 会話履歴を復元
+        restoreConversationFromLocalStorage();
+    } else {
+        // resume=false の場合: localStorage をクリア
+        clearConversationLocalStorage();
+    }
+    
     // 復帰情報を取得
     const resumptionInfo = reflectionResumptionInfo;
     
@@ -368,6 +378,94 @@ function showFinalSummaryButton(reason) {
     }
 }
 
+// localStorage にセッション内の会話履歴を保存（reflection 用）
+function saveConversationToLocalStorage(message, role) {
+    try {
+        const sessionKey = `conversation_reflection_${classNumber}_${studentNumber}_${currentUnit}`;
+        let history = JSON.parse(localStorage.getItem(sessionKey) || '[]');
+        
+        history.push({
+            role: role,
+            content: message,
+            timestamp: new Date().toISOString()
+        });
+        
+        localStorage.setItem(sessionKey, JSON.stringify(history));
+        console.log('【DEBUG】考察履歴を localStorage に保存:', sessionKey, history.length, 'messages');
+    } catch (error) {
+        console.error('【ERROR】localStorage 保存エラー:', error);
+    }
+}
+
+// localStorage から会話履歴を復元（reflection 用）
+function restoreConversationFromLocalStorage() {
+    try {
+        const sessionKey = `conversation_reflection_${classNumber}_${studentNumber}_${currentUnit}`;
+        const history = JSON.parse(localStorage.getItem(sessionKey) || '[]');
+        
+        if (history.length === 0) {
+            console.log('【DEBUG】復元する考察履歴がありません');
+            return;
+        }
+        
+        console.log('【DEBUG】localStorage から考察履歴を復元:', history.length, 'messages');
+        
+        // メッセージコンテナを取得
+        const messagesContainer = document.getElementById('reflectionMessages');
+        if (!messagesContainer) {
+            console.error('【ERROR】reflectionMessages コンテナが見つかりません');
+            return;
+        }
+        
+        // 既存のメッセージをクリア（初期メッセージと入力エリアは保持）
+        const initialMessages = messagesContainer.querySelectorAll('.message:not(.user-input-area)');
+        initialMessages.forEach((msg, idx) => {
+            if (idx > 0) { // 初期 AI メッセージ以外削除
+                msg.remove();
+            }
+        });
+        
+        const inputArea = messagesContainer.querySelector('.user-input-area');
+        
+        // 復元された会話履歴を表示
+        history.forEach((msg) => {
+            const displayRole = msg.role === 'assistant' ? 'ai' : msg.role;
+            // タイピングエフェクトなしで復元（速度重視）
+            addReflectionMessage(msg.content, displayRole, false);
+            
+            // ユーザーメッセージをカウント
+            if (msg.role === 'user') {
+                reflectionExchangeCount++;
+            }
+        });
+        
+        console.log('【DEBUG】考察履歴復元完了. reflectionExchangeCount:', reflectionExchangeCount);
+        
+        // スクロールを最下部に
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        
+        // ユーザーメッセージ数に基づいてボタン表示判定
+        const totalMessages = reflectionExchangeCount * 2;
+        if (totalMessages >= 6) {
+            showFinalSummaryButton('復元時のメッセージ数確認');
+        }
+        
+    } catch (error) {
+        console.error('【ERROR】localStorage 復元エラー:', error);
+    }
+}
+
+// localStorage から会話履歴をクリア（reflection 用）
+function clearConversationLocalStorage() {
+    try {
+        const sessionKey = `conversation_reflection_${classNumber}_${studentNumber}_${currentUnit}`;
+        localStorage.removeItem(sessionKey);
+        console.log('【DEBUG】考察履歴をクリア:', sessionKey);
+    } catch (error) {
+        console.error('【ERROR】localStorage クリアエラー:', error);
+    }
+}
+
 
 
 // 入力補助の初期化
@@ -470,6 +568,9 @@ function sendReflection() {
     addReflectionMessage(message, 'user');
     input.value = '';
     
+    // localStorage に会話履歴を保存
+    saveConversationToLocalStorage(message, 'user');
+    
     // APIリクエストデータ
     const requestData = { 
         message: message
@@ -494,6 +595,8 @@ function sendReflection() {
             addReflectionMessage('エラーが発生しました: ' + data.error, 'ai', false);
         } else {
             addReflectionMessage(data.response, 'ai', true); // タイピングエフェクト有効
+            // localStorage に AI 応答も保存
+            saveConversationToLocalStorage(data.response, 'assistant');
             reflectionExchangeCount++;
             
             // ユーザーメッセージ数をカウント（往復数 * 2 でメッセージ総数を算出）

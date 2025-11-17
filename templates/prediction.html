@@ -196,6 +196,16 @@ function showPredictionSummaryButton(reason) {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOMContentLoaded イベント発火');
     
+    // localStorage から会話履歴を復元
+    const resume = new URLSearchParams(window.location.search).get('resume');
+    if (resume !== 'false') {
+        // デフォルト: 会話履歴を復元
+        restoreConversationFromLocalStorage();
+    } else {
+        // resume=false の場合: localStorage をクリア
+        clearConversationLocalStorage();
+    }
+    
     // まだまとめが完了していないなら、ボタンを表示
     if (!predictionStatus || !predictionStatus.prediction_summary_created) {
         const summaryButton = document.getElementById('summaryButton');
@@ -603,6 +613,91 @@ function stopVoiceInput() {
     }
 }
 
+// localStorage にセッション内の会話履歴を保存
+function saveConversationToLocalStorage(message, role) {
+    try {
+        const sessionKey = `conversation_${classNumber}_${studentNumber}_${unit}`;
+        let history = JSON.parse(localStorage.getItem(sessionKey) || '[]');
+        
+        history.push({
+            role: role,
+            content: message,
+            timestamp: new Date().toISOString()
+        });
+        
+        localStorage.setItem(sessionKey, JSON.stringify(history));
+        console.log('【DEBUG】会話履歴を localStorage に保存:', sessionKey, history.length, 'messages');
+    } catch (error) {
+        console.error('【ERROR】localStorage 保存エラー:', error);
+    }
+}
+
+// localStorage から会話履歴を復元
+function restoreConversationFromLocalStorage() {
+    try {
+        const sessionKey = `conversation_${classNumber}_${studentNumber}_${unit}`;
+        const history = JSON.parse(localStorage.getItem(sessionKey) || '[]');
+        
+        if (history.length === 0) {
+            console.log('【DEBUG】復元する会話履歴がありません');
+            return;
+        }
+        
+        console.log('【DEBUG】localStorage から会話履歴を復元:', history.length, 'messages');
+        
+        // チャットメッセージコンテナを取得
+        const messagesContainer = document.getElementById('chatMessages');
+        if (!messagesContainer) {
+            console.error('【ERROR】chatMessages コンテナが見つかりません');
+            return;
+        }
+        
+        // 既存のメッセージをクリア（入力エリアは保持）
+        const inputArea = messagesContainer.querySelector('.user-input-area');
+        messagesContainer.innerHTML = '';
+        if (inputArea) {
+            messagesContainer.appendChild(inputArea);
+        }
+        
+        // 復元された会話履歴を表示
+        history.forEach((msg, index) => {
+            const displayRole = msg.role === 'assistant' ? 'ai' : msg.role;
+            // タイピングエフェクトなしで復元（速度重視）
+            addMessage(msg.content, displayRole, false);
+            
+            // ユーザーメッセージをカウント
+            if (msg.role === 'user') {
+                conversationCount++;
+            }
+        });
+        
+        console.log('【DEBUG】会話履歴復元完了. conversationCount:', conversationCount);
+        
+        // スクロールを最下部に
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        
+        // ユーザーメッセージ数に基づいてボタン表示判定
+        const totalMessages = conversationCount * 2;
+        if (totalMessages >= 6) {
+            showPredictionSummaryButton('復元時のメッセージ数確認');
+        }
+        
+    } catch (error) {
+        console.error('【ERROR】localStorage 復元エラー:', error);
+    }
+}
+
+// localStorage から会話履歴をクリア
+function clearConversationLocalStorage() {
+    try {
+        const sessionKey = `conversation_${classNumber}_${studentNumber}_${unit}`;
+        localStorage.removeItem(sessionKey);
+        console.log('【DEBUG】会話履歴をクリア:', sessionKey);
+    } catch (error) {
+        console.error('【ERROR】localStorage クリアエラー:', error);
+    }
+}
+
 function testApiConnection() {
     fetch('/api/test')
     .then(response => response.json())
@@ -638,6 +733,9 @@ function sendMessage() {
     // ユーザーメッセージを表示
     addMessage(message, 'user');
     input.value = '';
+    
+    // localStorage に会話履歴を保存
+    saveConversationToLocalStorage(message, 'user');
     
     // APIに送信
     sendMessageToAPI(message);
@@ -795,6 +893,8 @@ function sendMessageToAPI(message) {
         } else {
             console.log('【DEBUG】AI返答を表示:', data.response);
             addMessage(data.response, 'ai', true); // タイピングエフェクト有効
+            // localStorage に AI 応答も保存
+            saveConversationToLocalStorage(data.response, 'assistant');
             conversationCount++;
             
             // ユーザーメッセージ数をカウント（往復数 * 2 でメッセージ総数を算出）
