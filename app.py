@@ -176,7 +176,7 @@ def require_teacher_auth(f):
 SESSION_STORAGE_FILE = 'session_storage.json'
 
 def save_session_to_db(student_id, unit, stage, conversation_data):
-    """セッションデータをデータベースに保存（復帰用）"""
+    """セッションデータをデータベースに保存（GCS/ローカルハイブリッド）"""
     session_entry = {
         'timestamp': datetime.now().isoformat(),
         'student_id': student_id,
@@ -185,8 +185,12 @@ def save_session_to_db(student_id, unit, stage, conversation_data):
         'conversation': conversation_data
     }
     
-    # ローカルに保存
+    # ローカルに保存（常に実施）
     _save_session_local(session_entry)
+    
+    # GCSに保存（本番環境）
+    if USE_GCS and bucket:
+        _save_session_gcs(session_entry)
 
 def _save_session_local(session_entry):
     """セッションをローカルファイルに保存"""
@@ -208,8 +212,34 @@ def _save_session_local(session_entry):
     except Exception as e:
         print(f"[SESSION_SAVE] Local Error: {e}")
 
+def _save_session_gcs(session_entry):
+    """セッションをGCSに保存"""
+    try:
+        from google.cloud import storage
+        student_id = session_entry['student_id']
+        unit = session_entry['unit']
+        stage = session_entry['stage']
+        key = f"{student_id}_{unit}_{stage}"
+        
+        # GCSのパス: sessions/{student_id}/{unit}/{stage}.json
+        gcs_path = f"sessions/{student_id}/{unit}/{stage}.json"
+        blob = bucket.blob(gcs_path)
+        blob.upload_from_string(
+            json.dumps(session_entry, ensure_ascii=False, indent=2),
+            content_type='application/json'
+        )
+        print(f"[SESSION_SAVE] GCS - {gcs_path}")
+    except Exception as e:
+        print(f"[SESSION_SAVE] GCS Error: {e}")
+
 def load_session_from_db(student_id, unit, stage):
-    """セッションデータをデータベースから復元"""
+    """セッションデータをデータベースから復元（GCS/ローカルハイブリッド）"""
+    # GCSから読み込み（本番環境）
+    if USE_GCS and bucket:
+        conversation = _load_session_gcs(student_id, unit, stage)
+        if conversation is not None:
+            return conversation
+    
     # ローカルから読み込み
     return _load_session_local(student_id, unit, stage)
 
@@ -230,6 +260,25 @@ def _load_session_local(student_id, unit, stage):
         print(f"[SESSION_LOAD] Local Error: {e}")
     
     return []
+
+def _load_session_gcs(student_id, unit, stage):
+    """セッションをGCSから復元"""
+    try:
+        from google.cloud import storage
+        
+        # GCSのパス: sessions/{student_id}/{unit}/{stage}.json
+        gcs_path = f"sessions/{student_id}/{unit}/{stage}.json"
+        blob = bucket.blob(gcs_path)
+        
+        if blob.exists():
+            content = blob.download_as_string().decode('utf-8')
+            data = json.loads(content)
+            print(f"[SESSION_LOAD] GCS - {gcs_path}")
+            return data.get('conversation', [])
+    except Exception as e:
+        print(f"[SESSION_LOAD] GCS Error: {e}")
+    
+    return None
 
 # OpenAI APIの設定
 api_key = os.getenv('OPENAI_API_KEY')
@@ -1382,6 +1431,182 @@ def summary():
         return jsonify({'summary': summary_text})
     except Exception as e:
         return jsonify({'error': f'まとめ生成中にエラーが発生しました。'}), 500
+
+@app.route('/api/sync-session', methods=['POST'])
+def sync_session():
+    """クライアント側のlocalStorageデータをサーバーに同期（GCS/ローカル保存）"""
+    try:
+        data = request.get_json()
+        student_id = data.get('student_id')
+        unit = data.get('unit')
+        stage = data.get('stage')  # 'prediction' or 'reflection'
+        chat_messages = data.get('chat_messages', [])
+        summary_content = data.get('summary_content', '')
+        
+        if not all([student_id, unit, stage]):
+            return jsonify({'error': '必須パラメータが不足しています'}), 400
+        
+        # セッションデータを構成
+        conversation_data = chat_messages
+        
+        # サーバー側にセッションを保存（GCS/ローカル）
+        save_session_to_db(student_id, unit, stage, conversation_data)
+        
+        # サマリーも保存したい場合は別途保存
+        if summary_content:
+            summary_entry = {
+                'timestamp': datetime.now().isoformat(),
+                'student_id': student_id,
+                'unit': unit,
+                'stage': stage,
+                'summary': summary_content
+            }
+            _save_summary_to_db(summary_entry)
+        
+        print(f"[SYNC] Session synced - {student_id}_{unit}_{stage}")
+        return jsonify({
+            'success': True,
+            'message': 'セッションをサーバーに同期しました'
+        })
+    
+    except Exception as e:
+        print(f"[SYNC] Error: {e}")
+        return jsonify({
+            'error': 'セッションの同期に失敗しました',
+            'details': str(e)
+        }), 500
+
+def _save_summary_to_db(summary_entry):
+    """サマリーをデータベースに保存（GCS/ローカルハイブリッド）"""
+    try:
+        # ローカルに保存
+        _save_summary_local(summary_entry)
+        
+        # GCSに保存
+        if USE_GCS and bucket:
+            _save_summary_gcs(summary_entry)
+    except Exception as e:
+        print(f"[SUMMARY_SAVE] Error: {e}")
+
+def _save_summary_local(summary_entry):
+    """サマリーをローカルファイルに保存"""
+    try:
+        summaries = {}
+        summary_file = 'summary_storage.json'
+        if os.path.exists(summary_file):
+            with open(summary_file, 'r', encoding='utf-8') as f:
+                summaries = json.load(f)
+        
+        student_id = summary_entry['student_id']
+        unit = summary_entry['unit']
+        stage = summary_entry['stage']
+        key = f"{student_id}_{unit}_{stage}"
+        summaries[key] = summary_entry
+        
+        with open(summary_file, 'w', encoding='utf-8') as f:
+            json.dump(summaries, f, ensure_ascii=False, indent=2)
+        print(f"[SUMMARY_SAVE] Local - {key}")
+    except Exception as e:
+        print(f"[SUMMARY_SAVE] Local Error: {e}")
+
+def _save_summary_gcs(summary_entry):
+    """サマリーをGCSに保存"""
+    try:
+        from google.cloud import storage
+        student_id = summary_entry['student_id']
+        unit = summary_entry['unit']
+        stage = summary_entry['stage']
+        
+        # GCSのパス: summaries/{student_id}/{unit}/{stage}_summary.json
+        gcs_path = f"summaries/{student_id}/{unit}/{stage}_summary.json"
+        blob = bucket.blob(gcs_path)
+        blob.upload_from_string(
+            json.dumps(summary_entry, ensure_ascii=False, indent=2),
+            content_type='application/json'
+        )
+        print(f"[SUMMARY_SAVE] GCS - {gcs_path}")
+    except Exception as e:
+        print(f"[SUMMARY_SAVE] GCS Error: {e}")
+
+@app.route('/api/get-session', methods=['GET'])
+def get_session():
+    """サーバーからセッションデータを取得（GCS/ローカル）"""
+    try:
+        student_id = request.args.get('student_id')
+        unit = request.args.get('unit')
+        stage = request.args.get('stage')  # 'prediction' or 'reflection'
+        
+        if not all([student_id, unit, stage]):
+            return jsonify({'error': '必須パラメータが不足しています'}), 400
+        
+        # サーバーからセッションを読み込み
+        conversation = load_session_from_db(student_id, unit, stage)
+        
+        # サマリーも読み込み
+        summary = _load_summary_from_db(student_id, unit, stage)
+        
+        print(f"[RETRIEVE] Session retrieved - {student_id}_{unit}_{stage}")
+        return jsonify({
+            'success': True,
+            'chat_messages': conversation,
+            'summary_content': summary
+        })
+    
+    except Exception as e:
+        print(f"[RETRIEVE] Error: {e}")
+        return jsonify({
+            'error': 'セッションの取得に失敗しました',
+            'details': str(e)
+        }), 500
+
+def _load_summary_from_db(student_id, unit, stage):
+    """サマリーをデータベースから取得（GCS/ローカル）"""
+    # GCSから取得
+    if USE_GCS and bucket:
+        summary = _load_summary_gcs(student_id, unit, stage)
+        if summary is not None:
+            return summary
+    
+    # ローカルから取得
+    return _load_summary_local(student_id, unit, stage)
+
+def _load_summary_local(student_id, unit, stage):
+    """サマリーをローカルファイルから取得"""
+    try:
+        summary_file = 'summary_storage.json'
+        if not os.path.exists(summary_file):
+            return ''
+        
+        with open(summary_file, 'r', encoding='utf-8') as f:
+            summaries = json.load(f)
+        
+        key = f"{student_id}_{unit}_{stage}"
+        if key in summaries:
+            print(f"[SUMMARY_LOAD] Local - {key}")
+            return summaries[key].get('summary', '')
+    except Exception as e:
+        print(f"[SUMMARY_LOAD] Local Error: {e}")
+    
+    return ''
+
+def _load_summary_gcs(student_id, unit, stage):
+    """サマリーをGCSから取得"""
+    try:
+        from google.cloud import storage
+        
+        # GCSのパス: summaries/{student_id}/{unit}/{stage}_summary.json
+        gcs_path = f"summaries/{student_id}/{unit}/{stage}_summary.json"
+        blob = bucket.blob(gcs_path)
+        
+        if blob.exists():
+            content = blob.download_as_string().decode('utf-8')
+            data = json.loads(content)
+            print(f"[SUMMARY_LOAD] GCS - {gcs_path}")
+            return data.get('summary', '')
+    except Exception as e:
+        print(f"[SUMMARY_LOAD] GCS Error: {e}")
+    
+    return None
 
 @app.route('/reflection')
 

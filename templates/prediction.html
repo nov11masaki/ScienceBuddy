@@ -810,6 +810,9 @@ function sendMessageToAPI(message) {
                 console.log('学習ツイン分析:', data.twin_insights);
                 displayTwinInsights(data.twin_insights);
             }
+            
+            // 会話データをサーバーに同期（定期的に自動保存）
+            syncSessionData('prediction');
         }
     })
     .catch(error => {
@@ -825,6 +828,65 @@ function sendMessageToAPI(message) {
         // API接続テストを実行
         testApiConnection();
     });
+}
+
+// セッションデータをサーバーに同期（GCS/ローカル保存）
+function syncSessionData(stage) {
+    try {
+        const chatMessages = getChatMessages();
+        const studentId = `${classNumber}_${studentNumber}`;
+        const summaryContent = document.getElementById('summaryContent')?.innerHTML || '';
+        
+        const syncData = {
+            student_id: studentId,
+            unit: unit,
+            stage: stage,
+            chat_messages: chatMessages,
+            summary_content: summaryContent
+        };
+        
+        fetch('/api/sync-session', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(syncData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log('[SYNC] セッションを同期しました:', data.message);
+            } else {
+                console.warn('[SYNC] 同期エラー:', data.error);
+            }
+        })
+        .catch(error => {
+            console.warn('[SYNC] 同期失敗:', error);
+        });
+    } catch (error) {
+        console.warn('[SYNC] セッション同期エラー:', error);
+    }
+}
+
+// チャットメッセージを配列形式で取得
+function getChatMessages() {
+    const messages = [];
+    const messageElements = document.querySelectorAll('#chatMessages .message');
+    
+    messageElements.forEach(element => {
+        const isUser = element.classList.contains('user-message');
+        const isAi = element.classList.contains('ai-message');
+        const contentDiv = element.querySelector('.message-content');
+        
+        if (contentDiv && (isUser || isAi)) {
+            messages.push({
+                role: isUser ? 'user' : 'assistant',
+                content: contentDiv.textContent
+            });
+        }
+    });
+    
+    return messages;
 }
 
 // 要約が実質的な意味を持つかチェック

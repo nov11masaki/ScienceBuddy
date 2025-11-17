@@ -47,6 +47,29 @@
       },
       "conversation_history": [],
       "reflection_conversation_history": []
+    },
+    "null": {
+      "current_stage": "prediction",
+      "last_access": "2025-11-17T22:14:08.559233",
+      "stage_progress": {
+        "prediction": {
+          "started": false,
+          "conversation_count": 0,
+          "summary_created": false,
+          "last_message": ""
+        },
+        "experiment": {
+          "started": false,
+          "completed": false
+        },
+        "reflection": {
+          "started": false,
+          "conversation_count": 0,
+          "summary_created": false
+        }
+      },
+      "conversation_history": [],
+      "reflection_conversation_history": []
     }
   },
   "5_29": {
